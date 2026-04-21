@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"relay/internal/config"
 	"relay/internal/domain"
 	"relay/internal/lib"
 	"relay/internal/services"
@@ -125,7 +126,80 @@ func TestHealthz(t *testing.T) {
 
 func TestHandleProjectShowUsesProjectID(t *testing.T) {
 	projectID := lib.ProjectID("relay")
-	handler := Handler{
+	handler := testHandler(projectID)
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/projects/"+projectID, bytes.NewReader(nil))
+	rec := httptest.NewRecorder()
+
+	handler.handleProjectShow(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
+	}
+	if !bytes.Contains(rec.Body.Bytes(), []byte(projectID)) {
+		t.Fatalf("expected response to include project id, got %s", rec.Body.String())
+	}
+}
+
+func TestProtectedRoutesRequireBearerToken(t *testing.T) {
+	projectID := lib.ProjectID("relay")
+	mux := buildMux(testHandler(projectID), config.Config{APIToken: "secret-token"})
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/projects/"+projectID, nil)
+	rec := httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401, got %d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestProtectedRoutesRejectWrongBearerToken(t *testing.T) {
+	projectID := lib.ProjectID("relay")
+	mux := buildMux(testHandler(projectID), config.Config{APIToken: "secret-token"})
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/projects/"+projectID, nil)
+	req.Header.Set("Authorization", "Bearer wrong-token")
+	rec := httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401, got %d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestProtectedRoutesAcceptCorrectBearerToken(t *testing.T) {
+	projectID := lib.ProjectID("relay")
+	mux := buildMux(testHandler(projectID), config.Config{APIToken: "secret-token"})
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/projects/"+projectID, nil)
+	req.Header.Set("Authorization", "Bearer secret-token")
+	rec := httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestHealthzStaysOpenWhenBearerTokenConfigured(t *testing.T) {
+	mux := buildMux(testHandler(lib.ProjectID("relay")), config.Config{APIToken: "secret-token"})
+
+	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
+	rec := httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func testHandler(projectID string) Handler {
+	return Handler{
 		services: services.New(services.Dependencies{
 			Projects: &fakeProjectStore{
 				projects: map[string]domain.Project{
@@ -142,17 +216,5 @@ func TestHandleProjectShowUsesProjectID(t *testing.T) {
 			OpenQuestions: &fakeOpenQuestionStore{},
 			Packets:       &fakePacketStore{},
 		}),
-	}
-
-	req := httptest.NewRequest(http.MethodGet, "/v1/projects/"+projectID, bytes.NewReader(nil))
-	rec := httptest.NewRecorder()
-
-	handler.handleProjectShow(rec, req)
-
-	if rec.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
-	}
-	if !bytes.Contains(rec.Body.Bytes(), []byte(projectID)) {
-		t.Fatalf("expected response to include project id, got %s", rec.Body.String())
 	}
 }

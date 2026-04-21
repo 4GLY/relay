@@ -30,6 +30,11 @@ spec:
             secretKeyRef:
               name: relay-secrets
               key: database_url
+        - name: RELAY_API_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: relay-secrets
+              key: api_token
         resources:
           requests:
             cpu: 25m

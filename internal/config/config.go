@@ -5,6 +5,7 @@ import "os"
 type Config struct {
 	Addr        string
 	DatabaseURL string
+	APIToken    string
 }
 
 func Load() Config {
@@ -14,9 +15,11 @@ func Load() Config {
 	}
 
 	databaseURL := os.Getenv("RELAY_DATABASE_URL")
+	apiToken := os.Getenv("RELAY_API_TOKEN")
 
 	return Config{
 		Addr:        addr,
 		DatabaseURL: databaseURL,
+		APIToken:    apiToken,
 	}
 }

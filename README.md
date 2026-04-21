@@ -46,6 +46,7 @@ Fill in:
 ```bash
 RELAY_ADDR=:8080
 RELAY_DATABASE_URL='postgresql://user:password@host/neondb?sslmode=require'
+RELAY_API_TOKEN='replace-with-a-long-random-token'
 ```
 
 `.env` is ignored by git.
@@ -114,10 +115,17 @@ Health check:
 curl -sS http://127.0.0.1:8080/healthz
 ```
 
+Set a local shell helper for protected routes:
+
+```bash
+export RELAY_API_TOKEN="${RELAY_API_TOKEN:?missing RELAY_API_TOKEN}"
+```
+
 Capture:
 
 ```bash
 curl -sS -X POST http://127.0.0.1:8080/v1/capture \
+  -H "Authorization: Bearer $RELAY_API_TOKEN" \
   -H 'Content-Type: application/json' \
   -d '{"project":"relay-api-smoke","source":"chat","body":"api smoke test","idempotency_key":"api-capture-1"}'
 ```
@@ -126,6 +134,7 @@ Promote:
 
 ```bash
 curl -sS -X POST http://127.0.0.1:8080/v1/promote \
+  -H "Authorization: Bearer $RELAY_API_TOKEN" \
   -H 'Content-Type: application/json' \
   -d '{"project":"relay-api-smoke","kind":"decision","summary":"Keep Neon as initial PG provider","reason":"Fastest path for Relay validation","idempotency_key":"api-promote-1"}'
 ```
@@ -134,6 +143,7 @@ Build packet:
 
 ```bash
 curl -sS -X POST http://127.0.0.1:8080/v1/packets/build \
+  -H "Authorization: Bearer $RELAY_API_TOKEN" \
   -H 'Content-Type: application/json' \
   -d '{"project":"relay-api-smoke","type":"resume","target":"codex"}'
 ```
@@ -141,11 +151,15 @@ curl -sS -X POST http://127.0.0.1:8080/v1/packets/build \
 Show by project id:
 
 ```bash
-curl -sS http://127.0.0.1:8080/v1/projects/<project_id>
+curl -sS \
+  -H "Authorization: Bearer $RELAY_API_TOKEN" \
+  http://127.0.0.1:8080/v1/projects/<project_id>
 ```
 
 Note:
 
+- `/healthz` stays open
+- all `/v1/*` routes require `Authorization: Bearer <token>` when `RELAY_API_TOKEN` is set
 - CLI `show` is name-based
 - API `GET /v1/projects/{project_id}` is id-based
 
@@ -174,6 +188,5 @@ go test ./...
 
 Likely next steps:
 
-- add auth to the API boundary
 - improve packet formatting and provenance detail
 - document or implement deployment shape for Neon + API hosting

@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"crypto/subtle"
 	"encoding/json"
 	"net/http"
 	"strings"
@@ -20,12 +21,7 @@ func ListenAndServe(cfg config.Config) error {
 	}
 
 	handler := Handler{services: runtime.Services}
-	mux := http.NewServeMux()
-	mux.HandleFunc("/healthz", handleHealth)
-	mux.HandleFunc("/v1/capture", handler.handleCapture)
-	mux.HandleFunc("/v1/promote", handler.handlePromote)
-	mux.HandleFunc("/v1/packets/build", handler.handlePacketBuild)
-	mux.HandleFunc("/v1/projects/", handler.handleProjectShow)
+	mux := buildMux(handler, cfg)
 
 	server := &http.Server{
 		Addr:    cfg.Addr,
@@ -35,12 +31,44 @@ func ListenAndServe(cfg config.Config) error {
 	return server.ListenAndServe()
 }
 
+func buildMux(handler Handler, cfg config.Config) *http.ServeMux {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/healthz", handleHealth)
+	mux.HandleFunc("/v1/capture", requireBearerToken(cfg.APIToken, handler.handleCapture))
+	mux.HandleFunc("/v1/promote", requireBearerToken(cfg.APIToken, handler.handlePromote))
+	mux.HandleFunc("/v1/packets/build", requireBearerToken(cfg.APIToken, handler.handlePacketBuild))
+	mux.HandleFunc("/v1/projects/", requireBearerToken(cfg.APIToken, handler.handleProjectShow))
+	return mux
+}
+
 type Handler struct {
 	services services.Service
 }
 
 func handleHealth(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, contracts.Success("healthz", map[string]string{"status": "ok"}))
+}
+
+func requireBearerToken(token string, next http.HandlerFunc) http.HandlerFunc {
+	if token == "" {
+		return next
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		header := r.Header.Get("Authorization")
+		if !strings.HasPrefix(header, "Bearer ") {
+			writeJSON(w, http.StatusUnauthorized, contracts.Failure("api auth", "UNAUTHORIZED", "missing or invalid bearer token", false, "Authorization"))
+			return
+		}
+
+		provided := strings.TrimSpace(strings.TrimPrefix(header, "Bearer "))
+		if provided == "" || subtle.ConstantTimeCompare([]byte(provided), []byte(token)) != 1 {
+			writeJSON(w, http.StatusUnauthorized, contracts.Failure("api auth", "UNAUTHORIZED", "missing or invalid bearer token", false, "Authorization"))
+			return
+		}
+
+		next(w, r)
+	}
 }
 
 func (h Handler) handleCapture(w http.ResponseWriter, r *http.Request) {

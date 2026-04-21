@@ -6,5 +6,6 @@ namespace: relay
 resources:
   - namespace.yaml
   - relay-secrets-sealed.yaml
+  - relay-registry-creds-sealed.yaml
   - deployment.yaml
   - service.yaml

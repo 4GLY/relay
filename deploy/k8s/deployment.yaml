@@ -15,9 +15,11 @@ spec:
       labels:
         app: relay-api
     spec:
+      imagePullSecrets:
+      - name: relay-registry-creds
       containers:
       - name: relay-api
-        image: ghcr.io/4gly/relay-api:sha-c51dfa3c0cb5c36ec37c7ab19a501ae4ccb4b759
+        image: registry.4gly.dev/library/relay-api:main
         imagePullPolicy: Always
         ports:
         - containerPort: 8080

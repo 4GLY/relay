@@ -1,0 +1,14 @@
+---
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  name: relay-registry-creds
+  namespace: relay
+spec:
+  encryptedData:
+    .dockerconfigjson: AgA46LEfQCrmZNF+FicSLxACYS2JKySBi8mrcIIQ9IxgLPI2a1wxwUjUueF2pkmf8O7dDxNIzMCxyBTJahrWSMCYYQnsPMguWwTx9GA8FWOU5o5Waob5yATUDcDaYL51u8c6rk5VCOV7dp1Y/0gxva/Vrfqo5kU8E77TzP2Id9ajmNWdrkL6uvlh1RMFnGdYO6DP3+ZKGt9ZHZYIld7ozJ1b3GKV/Nyp9r7DQ9oMZtGXW/9LXzC7chkKc5+B/8EjmGO8hhdrdOzNNTfplPnp5/wHUjIGfOvEM4FcZR8NZ1z1SnH5L2njIpl3zVb9u/rMYehduqpKfznHeSwBMuZjo2YXcc3WaXD077g1EgwseykQ4Yde8ZyF0mPSb9pHN0pl8jhxrCSZlLgwxDHuNoh31KfjuH+pYjRJBOyhD+SqVVclHRKZCcNyHIN5b5QySmEVCsdBUwkSm4F8YLwPZEPD/Z0Uo58dPrvg1Ku+JlCCOQn7mF8/U9o2lqydgMvw218DcOcCsJ2eSZpW8fyVji0bEhnKbwZIs5qg/trC4aO72lPgf10ZfxrwCTY2W5czVsEje7XiM+mY3lUB7IyHN9uPYpVTfdXI7vwbdNmddrtTp4/hnTRTa7OVuI5Ps2elK5c3COTHRNHiewGQ2POLTLwT3GDviAehXE4q1T2E4AstJAPADcwyNnnX9rswD5yFg53nbk2tKCD6Q9OF8GknhzAY/1E6Uy5K3WuKccoLWSKPgcrrUq+xIWf5Xm7k87NMLtHB4XjLshnpPGN7If6E7y6f7qodXNpiSUDuCTv6DHaQbz07L8S/l70FBg7CJikKgyq/AwDuamFsv0FWbtZ3N0Zq0g8t8kroDrJHyu37RbqYBVfSkcZEHg==
+  template:
+    metadata:
+      name: relay-registry-creds
+      namespace: relay
+    type: kubernetes.io/dockerconfigjson

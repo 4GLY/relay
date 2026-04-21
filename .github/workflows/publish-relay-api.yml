@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: write
+  packages: write
 
 jobs:
   build-and-sync-manifest:
@@ -27,12 +28,12 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Log in to Harbor
+      - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
-          registry: registry.4gly.dev
-          username: ${{ secrets.HARBOR_USERNAME }}
-          password: ${{ secrets.HARBOR_PASSWORD }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push image
         uses: docker/build-push-action@v6
@@ -42,25 +43,21 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            registry.4gly.dev/library/relay-api:main
-            registry.4gly.dev/library/relay-api:sha-${{ github.sha }}
+            ghcr.io/4gly/relay-api:main
+            ghcr.io/4gly/relay-api:sha-${{ github.sha }}
 
       - name: Update deployment image tag
         run: |
           python <<'PY'
           from pathlib import Path
-          import re
           path = Path("deploy/k8s/deployment.yaml")
           text = path.read_text()
-          desired = "image: registry.4gly.dev/library/relay-api:sha-${{ github.sha }}"
-          text, count = re.subn(
-              r"image: (ghcr\.io/4gly/relay-api:(bootstrap|sha-[0-9a-f]{40})|registry\.4gly\.dev/library/relay-api:(main|sha-[0-9a-f]{40}))",
-              desired,
-              text,
-              count=1,
-          )
-          if count != 1:
-              raise SystemExit("failed to update deployment image tag")
+          old = "image: ghcr.io/4gly/relay-api:bootstrap"
+          if "image: ghcr.io/4gly/relay-api:sha-" in text:
+              import re
+              text = re.sub(r"image: ghcr.io/4gly/relay-api:sha-[0-9a-f]{40}", f"image: ghcr.io/4gly/relay-api:sha-${{ github.sha }}", text)
+          else:
+              text = text.replace(old, f"image: ghcr.io/4gly/relay-api:sha-${{ github.sha }}")
           path.write_text(text)
           PY
 

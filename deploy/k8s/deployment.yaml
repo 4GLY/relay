@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: relay-api
+  namespace: relay
+  labels:
+    app: relay-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: relay-api
+  template:
+    metadata:
+      labels:
+        app: relay-api
+    spec:
+      containers:
+      - name: relay-api
+        image: ghcr.io/4gly/relay-api:bootstrap
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+          name: http
+        env:
+        - name: RELAY_ADDR
+          value: ":8080"
+        - name: RELAY_DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: relay-secrets
+              key: database_url
+        resources:
+          requests:
+            cpu: 25m
+            memory: 64Mi
+          limits:
+            cpu: 250m
+            memory: 256Mi
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 2
+          periodSeconds: 5

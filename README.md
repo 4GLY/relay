@@ -11,6 +11,17 @@ The product surface is the HTTP API.
 
 The local CLI still exists, but only as a dev/debug wrapper around the same service logic.
 
+## Agent Skill
+
+For local agent workflows, use the repo-owned skill wrapper:
+
+```bash
+./skills/relay-api-agent/scripts/setup.sh
+./skills/relay-api-agent/scripts/relay-api.sh doctor
+```
+
+The skill keeps `docs/openapi.yaml` as the canonical contract and gives agents a stable wrapper for key issuance, capture, promote, packet build, and project inspection.
+
 ## Status
 
 This repo currently includes:

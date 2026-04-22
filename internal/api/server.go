@@ -12,6 +12,7 @@ import (
 	"relay/internal/contracts"
 	"relay/internal/lib"
 	"relay/internal/services"
+	"relay/internal/storage/repositories"
 )
 
 func ListenAndServe(cfg config.Config) error {
@@ -21,7 +22,7 @@ func ListenAndServe(cfg config.Config) error {
 	}
 
 	handler := Handler{services: runtime.Services}
-	mux := buildMux(handler, cfg)
+	mux := buildMux(handler, cfg, runtime.APIKeys)
 
 	server := &http.Server{
 		Addr:    cfg.Addr,
@@ -31,13 +32,14 @@ func ListenAndServe(cfg config.Config) error {
 	return server.ListenAndServe()
 }
 
-func buildMux(handler Handler, cfg config.Config) *http.ServeMux {
+func buildMux(handler Handler, cfg config.Config, apiKeys repositories.APIKeyStore) *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", handleHealth)
-	mux.HandleFunc("/v1/capture", requireBearerToken(cfg.APIToken, handler.handleCapture))
-	mux.HandleFunc("/v1/promote", requireBearerToken(cfg.APIToken, handler.handlePromote))
-	mux.HandleFunc("/v1/packets/build", requireBearerToken(cfg.APIToken, handler.handlePacketBuild))
-	mux.HandleFunc("/v1/projects/", requireBearerToken(cfg.APIToken, handler.handleProjectShow))
+	mux.HandleFunc("/v1/api-keys/issue", requireAdminBearerToken(cfg.APIToken, handler.handleIssueAPIKey))
+	mux.HandleFunc("/v1/capture", requireBearerToken(cfg.APIToken, apiKeys, handler.handleCapture))
+	mux.HandleFunc("/v1/promote", requireBearerToken(cfg.APIToken, apiKeys, handler.handlePromote))
+	mux.HandleFunc("/v1/packets/build", requireBearerToken(cfg.APIToken, apiKeys, handler.handlePacketBuild))
+	mux.HandleFunc("/v1/projects/", requireBearerToken(cfg.APIToken, apiKeys, handler.handleProjectShow))
 	return mux
 }
 
@@ -49,7 +51,7 @@ func handleHealth(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, contracts.Success("healthz", map[string]string{"status": "ok"}))
 }
 
-func requireBearerToken(token string, next http.HandlerFunc) http.HandlerFunc {
+func requireAdminBearerToken(token string, next http.HandlerFunc) http.HandlerFunc {
 	if token == "" {
 		return next
 	}
@@ -71,6 +73,40 @@ func requireBearerToken(token string, next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+func requireBearerToken(adminToken string, apiKeys repositories.APIKeyStore, next http.HandlerFunc) http.HandlerFunc {
+	if adminToken == "" && apiKeys == nil {
+		return next
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		header := r.Header.Get("Authorization")
+		if !strings.HasPrefix(header, "Bearer ") {
+			writeJSON(w, http.StatusUnauthorized, contracts.Failure("api auth", "UNAUTHORIZED", "missing or invalid bearer token", false, "Authorization"))
+			return
+		}
+
+		provided := strings.TrimSpace(strings.TrimPrefix(header, "Bearer "))
+		if provided == "" {
+			writeJSON(w, http.StatusUnauthorized, contracts.Failure("api auth", "UNAUTHORIZED", "missing or invalid bearer token", false, "Authorization"))
+			return
+		}
+
+		if adminToken != "" && subtle.ConstantTimeCompare([]byte(provided), []byte(adminToken)) == 1 {
+			next(w, r)
+			return
+		}
+
+		if apiKeys != nil {
+			if _, err := apiKeys.GetByTokenHash(r.Context(), lib.TokenHash(provided)); err == nil {
+				next(w, r)
+				return
+			}
+		}
+
+		writeJSON(w, http.StatusUnauthorized, contracts.Failure("api auth", "UNAUTHORIZED", "missing or invalid bearer token", false, "Authorization"))
+	}
+}
+
 func (h Handler) handleCapture(w http.ResponseWriter, r *http.Request) {
 	var input services.CaptureInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
@@ -83,6 +119,20 @@ func (h Handler) handleCapture(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, contracts.Success("relay capture", result))
+}
+
+func (h Handler) handleIssueAPIKey(w http.ResponseWriter, r *http.Request) {
+	var input services.IssueAPIKeyInput
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		writeJSON(w, http.StatusBadRequest, contracts.Failure("relay api-key issue", "INVALID_JSON", err.Error(), false))
+		return
+	}
+	result, err := h.services.IssueAPIKey(r.Context(), input)
+	if err != nil {
+		writeServiceError(w, "relay api-key issue", err)
+		return
+	}
+	writeJSON(w, http.StatusOK, contracts.Success("relay api-key issue", result))
 }
 
 func (h Handler) handlePromote(w http.ResponseWriter, r *http.Request) {
@@ -138,6 +188,9 @@ func writeServiceError(w http.ResponseWriter, command string, err error) {
 		status := http.StatusBadRequest
 		if appErr.Code == "PROJECT_NOT_FOUND" {
 			status = http.StatusNotFound
+		}
+		if appErr.Code == "API_KEY_NOT_FOUND" {
+			status = http.StatusUnauthorized
 		}
 		if appErr.Code == "MISCONFIGURED" {
 			status = http.StatusInternalServerError

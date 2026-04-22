@@ -64,3 +64,14 @@ type PacketBuildResult struct {
 	SourceArtifactIDs []string `json:"source_artifact_ids"`
 	MissingContext    []string `json:"missing_context"`
 }
+
+type IssueAPIKeyInput struct {
+	Name string `json:"name"`
+}
+
+type IssueAPIKeyResult struct {
+	KeyID       string `json:"key_id"`
+	Name        string `json:"name"`
+	Token       string `json:"token"`
+	TokenPrefix string `json:"token_prefix"`
+}

@@ -18,6 +18,7 @@ type Dependencies struct {
 	Decisions     repositories.DecisionStore
 	OpenQuestions repositories.OpenQuestionStore
 	Packets       repositories.PacketStore
+	APIKeys       repositories.APIKeyStore
 }
 
 type Service struct {
@@ -257,6 +258,39 @@ func (s Service) BuildPacket(ctx context.Context, input PacketBuildInput) (Packe
 		OpenQuestionIDs:   created.OpenQuestionIDs,
 		SourceArtifactIDs: created.SourceArtifactIDs,
 		MissingContext:    collectQuestionSummaries(questions),
+	}, nil
+}
+
+func (s Service) IssueAPIKey(ctx context.Context, input IssueAPIKeyInput) (IssueAPIKeyResult, error) {
+	if input.Name == "" {
+		return IssueAPIKeyResult{}, lib.MissingFields("MISSING_REQUIRED_FIELDS", "name")
+	}
+	if s.deps.APIKeys == nil {
+		return IssueAPIKeyResult{}, lib.Misconfigured("api key store is required")
+	}
+
+	token, err := lib.NewSecretToken("relay_live")
+	if err != nil {
+		return IssueAPIKeyResult{}, err
+	}
+
+	key := domain.APIKey{
+		ID:          lib.NewID("key"),
+		Name:        input.Name,
+		TokenHash:   lib.TokenHash(token),
+		TokenPrefix: lib.TokenPrefix(token),
+	}
+
+	created, err := s.deps.APIKeys.CreateAPIKey(ctx, key)
+	if err != nil {
+		return IssueAPIKeyResult{}, err
+	}
+
+	return IssueAPIKeyResult{
+		KeyID:       created.ID,
+		Name:        created.Name,
+		Token:       token,
+		TokenPrefix: created.TokenPrefix,
 	}, nil
 }
 

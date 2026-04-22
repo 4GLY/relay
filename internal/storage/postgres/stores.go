@@ -259,6 +259,31 @@ func (s Stores) LatestByProject(ctx context.Context, projectID string) (domain.P
 	return packet, err
 }
 
+func (s Stores) CreateAPIKey(ctx context.Context, key domain.APIKey) (domain.APIKey, error) {
+	_, err := s.db.Exec(ctx, `
+		INSERT INTO api_keys (id, name, token_hash, token_prefix)
+		VALUES ($1, $2, $3, $4)
+		ON CONFLICT (id) DO NOTHING
+	`, key.ID, key.Name, key.TokenHash, key.TokenPrefix)
+	if err != nil {
+		return domain.APIKey{}, err
+	}
+	return key, nil
+}
+
+func (s Stores) GetByTokenHash(ctx context.Context, tokenHash string) (domain.APIKey, error) {
+	var key domain.APIKey
+	err := s.db.QueryRow(ctx, `
+		SELECT id, name, token_hash, token_prefix
+		FROM api_keys
+		WHERE token_hash = $1
+	`, tokenHash).Scan(&key.ID, &key.Name, &key.TokenHash, &key.TokenPrefix)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return domain.APIKey{}, lib.NotFound("API_KEY_NOT_FOUND", "api key not found")
+	}
+	return key, err
+}
+
 func countByProject(ctx context.Context, db *pgxpool.Pool, table string, projectID string) (int, error) {
 	var count int
 	query := "SELECT COUNT(*) FROM " + table + " WHERE project_id = $1"

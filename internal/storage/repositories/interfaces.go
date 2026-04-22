@@ -40,3 +40,8 @@ type PacketStore interface {
 	CreatePacket(ctx context.Context, packet domain.Packet) (domain.Packet, error)
 	LatestByProject(ctx context.Context, projectID string) (domain.Packet, error)
 }
+
+type APIKeyStore interface {
+	CreateAPIKey(ctx context.Context, key domain.APIKey) (domain.APIKey, error)
+	GetByTokenHash(ctx context.Context, tokenHash string) (domain.APIKey, error)
+}

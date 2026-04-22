@@ -1,37 +1,43 @@
 # Relay
 
-Relay is an agent-driven second-brain backend for long-running AI-assisted work.
+Relay is an API-first second-brain backend for long-running AI-assisted work.
 
-Current shape:
+The product surface is the HTTP API.
 
-- `agent CLI -> Relay API -> PostgreSQL`
-- Postgres canonical store
-- public CLI surface:
-  - `relay capture`
-  - `relay promote`
-  - `relay packet build`
-  - `relay show`
+- `POST /v1/capture`
+- `POST /v1/promote`
+- `POST /v1/packets/build`
+- `GET /v1/projects/{project_id}`
+
+The local CLI still exists, but only as a dev/debug wrapper around the same service logic.
 
 ## Status
 
 This repo currently includes:
 
-- Go CLI scaffold
-- Go API scaffold
+- Go API
 - PostgreSQL schema and embedded migrations
-- Neon-backed local verification for:
-  - `capture`
-  - `promote`
-  - `packet build`
-  - `show`
+- Neon-backed deployment
+- Bearer auth on all `/v1/*` routes
+- OpenAPI spec and API contract docs
 
-## Requirements
+## API Contract
 
-- Go `1.25.5`
-- PostgreSQL-compatible database
-- a `RELAY_DATABASE_URL`
+Start here:
 
-Neon works out of the box. For Neon, prefer the direct Postgres connection string with `sslmode=require`.
+- Contract guide: [docs/api.md](docs/api.md)
+- OpenAPI spec: [docs/openapi.yaml](docs/openapi.yaml)
+
+Current production base URL:
+
+- `https://relay.4gly.dev`
+
+Auth model:
+
+- `/healthz` is public
+- every `/v1/*` route requires `Authorization: Bearer <token>`
+- `RELAY_API_TOKEN` is the bootstrap admin token
+- issued API keys can be minted through `POST /v1/api-keys/issue`
 
 ## Environment
 
@@ -73,58 +79,25 @@ go run ./cmd/relay-api
 
 The API also applies migrations automatically on startup.
 
-## CLI Smoke Test
-
-Capture a note:
-
-```bash
-go run ./cmd/relay capture --stdin-json <<'EOF'
-{"project":"relay-smoke","source":"chat","body":"hello from relay","idempotency_key":"smoke-capture-1"}
-EOF
-```
-
-Promote a decision:
-
-```bash
-go run ./cmd/relay promote --stdin-json <<'EOF'
-{"project":"relay-smoke","kind":"decision","summary":"Use Neon first","reason":"Fastest path for validation","idempotency_key":"smoke-promote-1"}
-EOF
-```
-
-Build a resume packet:
-
-```bash
-go run ./cmd/relay packet build --stdin-json <<'EOF'
-{"project":"relay-smoke","type":"resume","target":"codex"}
-EOF
-```
-
-Show project state by name:
-
-```bash
-go run ./cmd/relay show --stdin-json <<'EOF'
-{"project":"relay-smoke"}
-EOF
-```
-
 ## API Smoke Test
+
+Set a shell helper:
+
+```bash
+export RELAY_BASE_URL="${RELAY_BASE_URL:-http://127.0.0.1:8080}"
+export RELAY_API_TOKEN="${RELAY_API_TOKEN:?missing RELAY_API_TOKEN}"
+```
 
 Health check:
 
 ```bash
-curl -sS http://127.0.0.1:8080/healthz
-```
-
-Set a local shell helper for protected routes:
-
-```bash
-export RELAY_API_TOKEN="${RELAY_API_TOKEN:?missing RELAY_API_TOKEN}"
+curl -sS "$RELAY_BASE_URL/healthz"
 ```
 
 Capture:
 
 ```bash
-curl -sS -X POST http://127.0.0.1:8080/v1/capture \
+curl -sS -X POST "$RELAY_BASE_URL/v1/capture" \
   -H "Authorization: Bearer $RELAY_API_TOKEN" \
   -H 'Content-Type: application/json' \
   -d '{"project":"relay-api-smoke","source":"chat","body":"api smoke test","idempotency_key":"api-capture-1"}'
@@ -133,16 +106,25 @@ curl -sS -X POST http://127.0.0.1:8080/v1/capture \
 Promote:
 
 ```bash
-curl -sS -X POST http://127.0.0.1:8080/v1/promote \
+curl -sS -X POST "$RELAY_BASE_URL/v1/promote" \
   -H "Authorization: Bearer $RELAY_API_TOKEN" \
   -H 'Content-Type: application/json' \
   -d '{"project":"relay-api-smoke","kind":"decision","summary":"Keep Neon as initial PG provider","reason":"Fastest path for Relay validation","idempotency_key":"api-promote-1"}'
 ```
 
+Issue an API key:
+
+```bash
+curl -sS -X POST "$RELAY_BASE_URL/v1/api-keys/issue" \
+  -H "Authorization: Bearer $RELAY_API_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"agent-smoke"}'
+```
+
 Build packet:
 
 ```bash
-curl -sS -X POST http://127.0.0.1:8080/v1/packets/build \
+curl -sS -X POST "$RELAY_BASE_URL/v1/packets/build" \
   -H "Authorization: Bearer $RELAY_API_TOKEN" \
   -H 'Content-Type: application/json' \
   -d '{"project":"relay-api-smoke","type":"resume","target":"codex"}'
@@ -153,27 +135,8 @@ Show by project id:
 ```bash
 curl -sS \
   -H "Authorization: Bearer $RELAY_API_TOKEN" \
-  http://127.0.0.1:8080/v1/projects/<project_id>
+  "$RELAY_BASE_URL/v1/projects/<project_id>"
 ```
-
-Note:
-
-- `/healthz` stays open
-- all `/v1/*` routes require `Authorization: Bearer <token>` when `RELAY_API_TOKEN` is set
-- CLI `show` is name-based
-- API `GET /v1/projects/{project_id}` is id-based
-
-## Current Schema
-
-Current tables:
-
-- `projects`
-- `notes`
-- `artifacts`
-- `decisions`
-- `open_questions`
-- `packets`
-- `schema_migrations`
 
 ## Verification
 
@@ -184,9 +147,21 @@ gofmt -w $(find . -name '*.go' -type f)
 go test ./...
 ```
 
-## Next
+## Dev CLI
 
-Likely next steps:
+The CLI is not the primary product surface.
 
-- improve packet formatting and provenance detail
-- document or implement deployment shape for Neon + API hosting
+Keep it only for:
+
+- local debugging
+- migration bootstrap
+- manual service smoke tests
+
+Examples:
+
+```bash
+go run ./cmd/relay migrate
+go run ./cmd/relay capture --stdin-json <<'EOF'
+{"project":"relay-smoke","source":"chat","body":"hello from relay","idempotency_key":"smoke-capture-1"}
+EOF
+```

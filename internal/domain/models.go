@@ -49,3 +49,10 @@ type Packet struct {
 	OpenQuestionIDs   []string
 	SourceArtifactIDs []string
 }
+
+type APIKey struct {
+	ID          string
+	Name        string
+	TokenHash   string
+	TokenPrefix string
+}

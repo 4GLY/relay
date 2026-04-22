@@ -13,6 +13,7 @@ import (
 
 type Runtime struct {
 	Services services.Service
+	APIKeys  apiKeyStore
 }
 
 func NewRuntime(ctx context.Context, cfg config.Config) (Runtime, error) {
@@ -37,9 +38,10 @@ func NewRuntime(ctx context.Context, cfg config.Config) (Runtime, error) {
 		Decisions:     decisionStore{stores},
 		OpenQuestions: openQuestionStore{stores},
 		Packets:       packetStore{stores},
+		APIKeys:       apiKeyStore{stores},
 	})
 
-	return Runtime{Services: svc}, nil
+	return Runtime{Services: svc, APIKeys: apiKeyStore{stores}}, nil
 }
 
 type noteStore struct{ postgres.Stores }
@@ -106,4 +108,14 @@ func (s packetStore) CreatePacket(ctx context.Context, packet domain.Packet) (do
 
 func (s packetStore) LatestByProject(ctx context.Context, projectID string) (domain.Packet, error) {
 	return s.Stores.LatestByProject(ctx, projectID)
+}
+
+type apiKeyStore struct{ postgres.Stores }
+
+func (s apiKeyStore) CreateAPIKey(ctx context.Context, key domain.APIKey) (domain.APIKey, error) {
+	return s.Stores.CreateAPIKey(ctx, key)
+}
+
+func (s apiKeyStore) GetByTokenHash(ctx context.Context, tokenHash string) (domain.APIKey, error) {
+	return s.Stores.GetByTokenHash(ctx, tokenHash)
 }

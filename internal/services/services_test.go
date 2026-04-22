@@ -166,6 +166,28 @@ func (s *fakePacketStore) LatestByProject(_ context.Context, _ string) (domain.P
 	return s.latest, nil
 }
 
+type fakeAPIKeyStore struct {
+	itemsByHash map[string]domain.APIKey
+	created     []domain.APIKey
+}
+
+func (s *fakeAPIKeyStore) CreateAPIKey(_ context.Context, key domain.APIKey) (domain.APIKey, error) {
+	if s.itemsByHash == nil {
+		s.itemsByHash = map[string]domain.APIKey{}
+	}
+	s.itemsByHash[key.TokenHash] = key
+	s.created = append(s.created, key)
+	return key, nil
+}
+
+func (s *fakeAPIKeyStore) GetByTokenHash(_ context.Context, tokenHash string) (domain.APIKey, error) {
+	key, ok := s.itemsByHash[tokenHash]
+	if !ok {
+		return domain.APIKey{}, lib.NotFound("API_KEY_NOT_FOUND", "api key not found")
+	}
+	return key, nil
+}
+
 func TestCaptureCreatesProjectNoteAndArtifacts(t *testing.T) {
 	projects := &fakeProjectStore{}
 	notes := &fakeNoteStore{}
@@ -177,6 +199,7 @@ func TestCaptureCreatesProjectNoteAndArtifacts(t *testing.T) {
 		Decisions:     &fakeDecisionStore{},
 		OpenQuestions: &fakeOpenQuestionStore{},
 		Packets:       &fakePacketStore{},
+		APIKeys:       &fakeAPIKeyStore{},
 	})
 
 	result, err := service.Capture(context.Background(), CaptureInput{
@@ -213,6 +236,7 @@ func TestPromoteDecision(t *testing.T) {
 		Decisions:     decisions,
 		OpenQuestions: &fakeOpenQuestionStore{},
 		Packets:       &fakePacketStore{},
+		APIKeys:       &fakeAPIKeyStore{},
 	})
 
 	result, err := service.Promote(context.Background(), PromoteInput{
@@ -268,6 +292,7 @@ func TestBuildPacket(t *testing.T) {
 		Decisions:     decisions,
 		OpenQuestions: questions,
 		Packets:       packets,
+		APIKeys:       &fakeAPIKeyStore{},
 	})
 
 	result, err := service.BuildPacket(context.Background(), PacketBuildInput{
@@ -312,6 +337,7 @@ func TestShowByProjectID(t *testing.T) {
 		Decisions:     &fakeDecisionStore{},
 		OpenQuestions: &fakeOpenQuestionStore{},
 		Packets:       &fakePacketStore{},
+		APIKeys:       &fakeAPIKeyStore{},
 	})
 
 	result, err := service.Show(context.Background(), ShowInput{ProjectID: projectID})
@@ -323,5 +349,32 @@ func TestShowByProjectID(t *testing.T) {
 	}
 	if result.NoteCount != 1 {
 		t.Fatalf("expected 1 note, got %d", result.NoteCount)
+	}
+}
+
+func TestIssueAPIKey(t *testing.T) {
+	keys := &fakeAPIKeyStore{}
+	service := New(Dependencies{
+		Projects:      &fakeProjectStore{},
+		Notes:         &fakeNoteStore{},
+		Artifacts:     &fakeArtifactStore{},
+		Decisions:     &fakeDecisionStore{},
+		OpenQuestions: &fakeOpenQuestionStore{},
+		Packets:       &fakePacketStore{},
+		APIKeys:       keys,
+	})
+
+	result, err := service.IssueAPIKey(context.Background(), IssueAPIKeyInput{Name: "agent"})
+	if err != nil {
+		t.Fatalf("IssueAPIKey returned error: %v", err)
+	}
+	if result.KeyID == "" || result.Token == "" {
+		t.Fatalf("expected issued key id and token, got %#v", result)
+	}
+	if len(keys.created) != 1 {
+		t.Fatalf("expected one created key, got %d", len(keys.created))
+	}
+	if keys.created[0].TokenHash != lib.TokenHash(result.Token) {
+		t.Fatalf("expected stored hash to match returned token")
 	}
 }

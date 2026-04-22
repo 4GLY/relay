@@ -1,0 +1,466 @@
+openapi: 3.1.0
+info:
+  title: Relay API
+  version: 0.1.0
+  summary: API-first second-brain backend for long-running AI-assisted work.
+servers:
+  - url: http://127.0.0.1:8080
+    description: Local development
+  - url: https://relay.4gly.dev
+    description: Production
+tags:
+  - name: health
+  - name: memory
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque token
+  schemas:
+    SuccessEnvelope:
+      type: object
+      required: [ok, command, data, warnings]
+      properties:
+        ok:
+          type: boolean
+          const: true
+        command:
+          type: string
+        data: {}
+        warnings:
+          type: array
+          items:
+            type: string
+    ErrorEnvelope:
+      type: object
+      required: [ok, command, error]
+      properties:
+        ok:
+          type: boolean
+          const: false
+        command:
+          type: string
+        error:
+          type: object
+          required: [code, message, retryable]
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            retryable:
+              type: boolean
+            missing_fields:
+              type: array
+              items:
+                type: string
+    HealthData:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          const: ok
+    CaptureInput:
+      type: object
+      properties:
+        project:
+          type: string
+        repo_path:
+          type: string
+        handoff_path:
+          type: string
+        design_path:
+          type: string
+        note:
+          type: string
+        source:
+          type: string
+        body:
+          type: string
+        idempotency_key:
+          type: string
+      required: [project, source, body]
+    CaptureResult:
+      type: object
+      required: [project_id, created_note_ids, created_artifact_ids]
+      properties:
+        project_id:
+          type: string
+        created_note_ids:
+          type: array
+          items:
+            type: string
+        created_artifact_ids:
+          type: array
+          items:
+            type: string
+    PromoteInput:
+      type: object
+      properties:
+        project:
+          type: string
+        kind:
+          type: string
+          enum: [decision, question]
+        summary:
+          type: string
+        reason:
+          type: string
+        source_note_ids:
+          type: array
+          items:
+            type: string
+        source_artifact_ids:
+          type: array
+          items:
+            type: string
+        idempotency_key:
+          type: string
+      required: [project, kind, summary, reason]
+    PromoteResult:
+      type: object
+      required: [kind, object_id, project_id]
+      properties:
+        kind:
+          type: string
+        object_id:
+          type: string
+        project_id:
+          type: string
+    PacketBuildInput:
+      type: object
+      required: [project, type, target]
+      properties:
+        project:
+          type: string
+        type:
+          type: string
+          example: resume
+        target:
+          type: string
+          example: codex
+    PacketBuildResult:
+      type: object
+      required:
+        - packet_id
+        - project_id
+        - type
+        - target
+        - body
+        - decision_ids
+        - open_question_ids
+        - source_artifact_ids
+        - missing_context
+      properties:
+        packet_id:
+          type: string
+        project_id:
+          type: string
+        type:
+          type: string
+        target:
+          type: string
+        body:
+          type: string
+        decision_ids:
+          type: array
+          items:
+            type: string
+        open_question_ids:
+          type: array
+          items:
+            type: string
+        source_artifact_ids:
+          type: array
+          items:
+            type: string
+        missing_context:
+          type: array
+          items:
+            type: string
+    ShowResult:
+      type: object
+      required:
+        - project_id
+        - note_count
+        - artifact_count
+        - decision_count
+        - open_question_count
+      properties:
+        project_id:
+          type: string
+        note_count:
+          type: integer
+        artifact_count:
+          type: integer
+        decision_count:
+          type: integer
+        open_question_count:
+          type: integer
+        latest_packet_id:
+          type: string
+    IssueAPIKeyInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+    IssueAPIKeyResult:
+      type: object
+      required: [key_id, name, token, token_prefix]
+      properties:
+        key_id:
+          type: string
+        name:
+          type: string
+        token:
+          type: string
+        token_prefix:
+          type: string
+    HealthResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/HealthData'
+    CaptureResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/CaptureResult'
+    PromoteResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/PromoteResult'
+    PacketBuildResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/PacketBuildResult'
+    ShowResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/ShowResult'
+    IssueAPIKeyResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/IssueAPIKeyResult'
+paths:
+  /healthz:
+    get:
+      tags: [health]
+      summary: Health check
+      operationId: healthz
+      responses:
+        '200':
+          description: Service healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+  /v1/api-keys/issue:
+    post:
+      tags: [memory]
+      summary: Issue a new reusable API key
+      operationId: issueApiKey
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueAPIKeyInput'
+      responses:
+        '200':
+          description: API key issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueAPIKeyResponse'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '401':
+          description: Missing or invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /v1/capture:
+    post:
+      tags: [memory]
+      summary: Capture raw memory into a project
+      operationId: captureMemory
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CaptureInput'
+      responses:
+        '200':
+          description: Capture accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaptureResponse'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '401':
+          description: Missing or invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /v1/promote:
+    post:
+      tags: [memory]
+      summary: Promote raw memory into a decision or open question
+      operationId: promoteMemory
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PromoteInput'
+      responses:
+        '200':
+          description: Promotion accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PromoteResponse'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '401':
+          description: Missing or invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /v1/packets/build:
+    post:
+      tags: [memory]
+      summary: Build an agent-ready packet from stored memory
+      operationId: buildPacket
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PacketBuildInput'
+      responses:
+        '200':
+          description: Packet built
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PacketBuildResponse'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '401':
+          description: Missing or invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /v1/projects/{project_id}:
+    get:
+      tags: [memory]
+      summary: Show aggregate state for a project id
+      operationId: showProject
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: project_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Project state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShowResponse'
+        '401':
+          description: Missing or invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'

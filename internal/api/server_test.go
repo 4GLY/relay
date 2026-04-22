@@ -113,6 +113,28 @@ func (s *fakePacketStore) LatestByProject(_ context.Context, _ string) (domain.P
 	return s.latest, nil
 }
 
+type fakeAPIKeyStore struct {
+	itemsByHash map[string]domain.APIKey
+	created     []domain.APIKey
+}
+
+func (s *fakeAPIKeyStore) CreateAPIKey(_ context.Context, key domain.APIKey) (domain.APIKey, error) {
+	if s.itemsByHash == nil {
+		s.itemsByHash = map[string]domain.APIKey{}
+	}
+	s.itemsByHash[key.TokenHash] = key
+	s.created = append(s.created, key)
+	return key, nil
+}
+
+func (s *fakeAPIKeyStore) GetByTokenHash(_ context.Context, tokenHash string) (domain.APIKey, error) {
+	key, ok := s.itemsByHash[tokenHash]
+	if !ok {
+		return domain.APIKey{}, lib.NotFound("API_KEY_NOT_FOUND", "api key not found")
+	}
+	return key, nil
+}
+
 func TestHealthz(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
 	rec := httptest.NewRecorder()
@@ -143,7 +165,7 @@ func TestHandleProjectShowUsesProjectID(t *testing.T) {
 
 func TestProtectedRoutesRequireBearerToken(t *testing.T) {
 	projectID := lib.ProjectID("relay")
-	mux := buildMux(testHandler(projectID), config.Config{APIToken: "secret-token"})
+	mux := buildMux(testHandler(projectID), config.Config{APIToken: "secret-token"}, &fakeAPIKeyStore{})
 
 	req := httptest.NewRequest(http.MethodGet, "/v1/projects/"+projectID, nil)
 	rec := httptest.NewRecorder()
@@ -157,7 +179,7 @@ func TestProtectedRoutesRequireBearerToken(t *testing.T) {
 
 func TestProtectedRoutesRejectWrongBearerToken(t *testing.T) {
 	projectID := lib.ProjectID("relay")
-	mux := buildMux(testHandler(projectID), config.Config{APIToken: "secret-token"})
+	mux := buildMux(testHandler(projectID), config.Config{APIToken: "secret-token"}, &fakeAPIKeyStore{})
 
 	req := httptest.NewRequest(http.MethodGet, "/v1/projects/"+projectID, nil)
 	req.Header.Set("Authorization", "Bearer wrong-token")
@@ -172,7 +194,7 @@ func TestProtectedRoutesRejectWrongBearerToken(t *testing.T) {
 
 func TestProtectedRoutesAcceptCorrectBearerToken(t *testing.T) {
 	projectID := lib.ProjectID("relay")
-	mux := buildMux(testHandler(projectID), config.Config{APIToken: "secret-token"})
+	mux := buildMux(testHandler(projectID), config.Config{APIToken: "secret-token"}, &fakeAPIKeyStore{})
 
 	req := httptest.NewRequest(http.MethodGet, "/v1/projects/"+projectID, nil)
 	req.Header.Set("Authorization", "Bearer secret-token")
@@ -186,7 +208,7 @@ func TestProtectedRoutesAcceptCorrectBearerToken(t *testing.T) {
 }
 
 func TestHealthzStaysOpenWhenBearerTokenConfigured(t *testing.T) {
-	mux := buildMux(testHandler(lib.ProjectID("relay")), config.Config{APIToken: "secret-token"})
+	mux := buildMux(testHandler(lib.ProjectID("relay")), config.Config{APIToken: "secret-token"}, &fakeAPIKeyStore{})
 
 	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
 	rec := httptest.NewRecorder()
@@ -198,7 +220,69 @@ func TestHealthzStaysOpenWhenBearerTokenConfigured(t *testing.T) {
 	}
 }
 
-func testHandler(projectID string) Handler {
+func TestProtectedRoutesAcceptIssuedAPIKey(t *testing.T) {
+	projectID := lib.ProjectID("relay")
+	key := "relay_live_testtoken"
+	keyStore := &fakeAPIKeyStore{
+		itemsByHash: map[string]domain.APIKey{
+			lib.TokenHash(key): {ID: "key_1", Name: "agent", TokenHash: lib.TokenHash(key), TokenPrefix: lib.TokenPrefix(key)},
+		},
+	}
+	mux := buildMux(testHandler(projectID), config.Config{APIToken: "admin-token"}, keyStore)
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/projects/"+projectID, nil)
+	req.Header.Set("Authorization", "Bearer "+key)
+	rec := httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestIssueAPIKeyRouteRequiresAdminToken(t *testing.T) {
+	keyStore := &fakeAPIKeyStore{}
+	mux := buildMux(testHandler(lib.ProjectID("relay")), config.Config{APIToken: "admin-token"}, keyStore)
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/api-keys/issue", bytes.NewReader([]byte(`{"name":"agent"}`)))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401, got %d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestIssueAPIKeyRouteCreatesKey(t *testing.T) {
+	keyStore := &fakeAPIKeyStore{}
+	mux := buildMux(testHandler(lib.ProjectID("relay"), keyStore), config.Config{APIToken: "admin-token"}, keyStore)
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/api-keys/issue", bytes.NewReader([]byte(`{"name":"agent"}`)))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer admin-token")
+	rec := httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
+	}
+	if len(keyStore.created) != 1 {
+		t.Fatalf("expected one created key, got %d", len(keyStore.created))
+	}
+	if !bytes.Contains(rec.Body.Bytes(), []byte(`"token"`)) {
+		t.Fatalf("expected token in response body, got %s", rec.Body.String())
+	}
+}
+
+func testHandler(projectID string, apiKeyStores ...*fakeAPIKeyStore) Handler {
+	var apiKeys *fakeAPIKeyStore
+	if len(apiKeyStores) > 0 {
+		apiKeys = apiKeyStores[0]
+	}
 	return Handler{
 		services: services.New(services.Dependencies{
 			Projects: &fakeProjectStore{
@@ -215,6 +299,7 @@ func testHandler(projectID string) Handler {
 			Decisions:     &fakeDecisionStore{},
 			OpenQuestions: &fakeOpenQuestionStore{},
 			Packets:       &fakePacketStore{},
+			APIKeys:       apiKeys,
 		}),
 	}
 }

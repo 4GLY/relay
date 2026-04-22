@@ -237,6 +237,24 @@ doctor() {
       return 1
     fi
     rm -f "$body"
+
+    body="$(mktemp "${TMPDIR:-/tmp}/relay-api-doctor.XXXXXX.json")"
+    code="$(curl --silent --show-error --output "$body" --write-out '%{http_code}' \
+      -X POST \
+      -H "Authorization: Bearer ${CLIENT_TOKEN}" \
+      -H "Content-Type: application/json" \
+      -H "Accept: application/json, text/event-stream" \
+      --data '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-05","capabilities":{},"clientInfo":{"name":"relay-api-doctor","version":"0.0.1"}}}' \
+      "${BASE_URL}/mcp")"
+    if [[ "$code" == "200" ]]; then
+      echo "mcp initialize ok (${CLIENT_TOKEN_SOURCE}, status=${code})"
+    else
+      echo "mcp initialize failed (${CLIENT_TOKEN_SOURCE}, status=${code})" >&2
+      cat "$body" >&2
+      rm -f "$body"
+      return 1
+    fi
+    rm -f "$body"
   else
     echo "client token not configured"
   fi

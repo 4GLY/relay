@@ -17,6 +17,13 @@ Run setup once:
 /Users/hoon-ch/repos/relay/skills/relay-api-agent/scripts/setup.sh
 ```
 
+`setup.sh` is the intended operator path:
+
+1. store the bootstrap admin token in macOS Keychain
+2. issue a normal client key through the Relay API
+3. store that issued client key in Keychain
+4. run `doctor` against both HTTP and MCP
+
 Then validate:
 
 ```bash
@@ -42,7 +49,7 @@ Client token:
 1. `RELAY_CLIENT_TOKEN`
 2. `RELAY_TOKEN`
 3. macOS Keychain entry `codex.relay-api/client-token`
-4. admin token fallback
+4. admin token fallback for bootstrap or recovery only
 
 ## When To Use
 
@@ -79,6 +86,12 @@ Issue a new client token and store it in Keychain:
 
 ```bash
 /Users/hoon-ch/repos/relay/skills/relay-api-agent/scripts/relay-api.sh issue-key codex-agent --store-client
+```
+
+Run setup with automatic client-key issuance:
+
+```bash
+/Users/hoon-ch/repos/relay/skills/relay-api-agent/scripts/setup.sh --client-name codex-macbook
 ```
 
 Capture a note:
@@ -135,7 +148,7 @@ Show a project:
 ## Guidelines
 
 - Treat `docs/openapi.yaml` as the canonical wire contract.
-- Use admin token only for `issue-key`, `list-keys`, and `revoke-key`.
+- Use admin token only for bootstrap, `issue-key`, `list-keys`, and `revoke-key`.
 - Prefer client tokens for normal agent operations.
 - Always send write payloads as JSON files or stdin, not ad-hoc shell quoting.
 - Keep `idempotency_key` on write operations.

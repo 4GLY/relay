@@ -10,25 +10,28 @@ KEYCHAIN_BASE_URL_ACCOUNT="${RELAY_KEYCHAIN_BASE_URL_ACCOUNT:-base-url}"
 ADMIN_TOKEN="${RELAY_ADMIN_TOKEN:-${RELAY_API_TOKEN:-}}"
 CLIENT_TOKEN="${RELAY_CLIENT_TOKEN:-${RELAY_TOKEN:-}}"
 BASE_URL="${RELAY_BASE_URL:-https://relay.4gly.dev}"
-SKIP_CLIENT=0
+CLIENT_NAME="${RELAY_CLIENT_NAME:-codex-agent}"
+SKIP_ISSUE=0
 VERIFY=1
 
 usage() {
   cat <<EOF
 Usage:
-  setup.sh [--admin-token TOKEN] [--client-token TOKEN] [--base-url URL] [--skip-client] [--no-verify]
+  setup.sh [--admin-token TOKEN] [--client-token TOKEN] [--client-name NAME] [--base-url URL] [--skip-issue] [--no-verify]
 
-Stores Relay credentials in macOS Keychain.
+Stores Relay credentials in macOS Keychain and issues a client key by default.
 
 Environment:
   RELAY_KEYCHAIN_SERVICE          Keychain service name (default: ${KEYCHAIN_SERVICE})
   RELAY_KEYCHAIN_ADMIN_ACCOUNT    Keychain account name for admin token (default: ${KEYCHAIN_ADMIN_ACCOUNT})
   RELAY_KEYCHAIN_CLIENT_ACCOUNT   Keychain account name for client token (default: ${KEYCHAIN_CLIENT_ACCOUNT})
   RELAY_KEYCHAIN_BASE_URL_ACCOUNT Keychain account name for base URL (default: ${KEYCHAIN_BASE_URL_ACCOUNT})
+  RELAY_CLIENT_NAME               Default issued client key name (default: ${CLIENT_NAME})
 
 Examples:
   ${SCRIPT_DIR}/setup.sh
   ${SCRIPT_DIR}/setup.sh --admin-token "<token>"
+  ${SCRIPT_DIR}/setup.sh --admin-token "<token>" --client-name "codex-macbook"
   ${SCRIPT_DIR}/setup.sh --admin-token "<token>" --client-token "<token>"
 EOF
 }
@@ -73,12 +76,16 @@ parse_args() {
         CLIENT_TOKEN="${2:?client token value required}"
         shift 2
         ;;
+      --client-name)
+        CLIENT_NAME="${2:?client name value required}"
+        shift 2
+        ;;
       --base-url)
         BASE_URL="${2:?base URL value required}"
         shift 2
         ;;
-      --skip-client)
-        SKIP_CLIENT=1
+      --skip-issue)
+        SKIP_ISSUE=1
         shift
         ;;
       --no-verify)
@@ -111,21 +118,29 @@ main() {
     exit 1
   fi
 
-  if [[ "${SKIP_CLIENT}" -eq 0 && -z "${CLIENT_TOKEN}" ]]; then
-    CLIENT_TOKEN="$(prompt_secret "Relay client token (optional; press Enter to skip)")"
-  fi
-
   store_secret "${KEYCHAIN_ADMIN_ACCOUNT}" "${ADMIN_TOKEN}"
   echo "Stored Relay admin token in Keychain (${KEYCHAIN_SERVICE}/${KEYCHAIN_ADMIN_ACCOUNT})."
-
-  if [[ -n "${CLIENT_TOKEN}" ]]; then
-    store_secret "${KEYCHAIN_CLIENT_ACCOUNT}" "${CLIENT_TOKEN}"
-    echo "Stored Relay client token in Keychain (${KEYCHAIN_SERVICE}/${KEYCHAIN_CLIENT_ACCOUNT})."
-  fi
 
   if [[ -n "${BASE_URL}" ]]; then
     store_secret "${KEYCHAIN_BASE_URL_ACCOUNT}" "${BASE_URL}"
     echo "Stored Relay base URL in Keychain (${KEYCHAIN_SERVICE}/${KEYCHAIN_BASE_URL_ACCOUNT})."
+  fi
+
+  if [[ -n "${CLIENT_TOKEN}" ]]; then
+    store_secret "${KEYCHAIN_CLIENT_ACCOUNT}" "${CLIENT_TOKEN}"
+    echo "Stored Relay client token in Keychain (${KEYCHAIN_SERVICE}/${KEYCHAIN_CLIENT_ACCOUNT})."
+  elif [[ "${SKIP_ISSUE}" -eq 0 ]]; then
+    echo "Issuing Relay client token '${CLIENT_NAME}' and storing it in Keychain..."
+    RELAY_BASE_URL="${BASE_URL}" \
+    RELAY_ADMIN_TOKEN="${ADMIN_TOKEN}" \
+    RELAY_KEYCHAIN_SERVICE="${KEYCHAIN_SERVICE}" \
+    RELAY_KEYCHAIN_ADMIN_ACCOUNT="${KEYCHAIN_ADMIN_ACCOUNT}" \
+    RELAY_KEYCHAIN_CLIENT_ACCOUNT="${KEYCHAIN_CLIENT_ACCOUNT}" \
+    RELAY_KEYCHAIN_BASE_URL_ACCOUNT="${KEYCHAIN_BASE_URL_ACCOUNT}" \
+      "${SCRIPT_DIR}/relay-api.sh" issue-key "${CLIENT_NAME}" --store-client >/dev/null
+    echo "Issued and stored Relay client token in Keychain (${KEYCHAIN_SERVICE}/${KEYCHAIN_CLIENT_ACCOUNT})."
+  else
+    echo "Skipped client key issuance. Run relay-api.sh issue-key <name> --store-client later."
   fi
 
   if [[ "${VERIFY}" -eq 1 ]]; then

@@ -20,6 +20,8 @@ For local agent workflows, use the repo-owned skill wrapper:
 ./skills/relay-api-agent/scripts/relay-api.sh doctor
 ```
 
+`setup.sh` is the intended local bootstrap path. It stores the bootstrap admin token, issues a normal client key, stores that key in macOS Keychain, and validates both `/v1/*` and `/mcp`.
+
 The skill keeps `docs/openapi.yaml` as the canonical contract and gives agents a stable wrapper for key issuance, capture, promote, packet build, and project inspection.
 
 ## MCP
@@ -218,6 +220,23 @@ Format and tests:
 gofmt -w $(find . -name '*.go' -type f)
 go test ./...
 ```
+
+## Canary
+
+Use the bundled canary for the deployed service:
+
+```bash
+set -a; source .env; set +a
+./scripts/canary.sh
+```
+
+The canary checks:
+
+- `GET /healthz`
+- issued key availability or temporary key issuance
+- `POST /mcp initialize`
+- `POST /mcp tools/list`
+- `POST /mcp tools/call relay_health`
 
 ## Dev CLI
 

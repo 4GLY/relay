@@ -25,8 +25,8 @@ import (
 const maxJSONRequestBodyBytes = 1 << 20
 
 func ListenAndServe(cfg config.Config) error {
-	if cfg.APIToken == "" {
-		return lib.Misconfigured("RELAY_API_TOKEN is required for relay-api")
+	if err := requireStartupAdminToken(cfg); err != nil {
+		return err
 	}
 
 	runtime, err := app.NewRuntime(context.Background(), cfg)
@@ -43,6 +43,13 @@ func ListenAndServe(cfg config.Config) error {
 	}
 
 	return server.ListenAndServe()
+}
+
+func requireStartupAdminToken(cfg config.Config) error {
+	if effectiveAdminToken(cfg) == "" {
+		return lib.Misconfigured("RELAY_ADMIN_TOKEN or RELAY_API_TOKEN is required for relay-api")
+	}
+	return nil
 }
 
 func buildMux(handler Handler, cfg config.Config, runtime app.Runtime) *http.ServeMux {
@@ -82,7 +89,7 @@ func handleHealth(w http.ResponseWriter, _ *http.Request) {
 func requireAdminBearerToken(token string, next http.HandlerFunc) http.HandlerFunc {
 	if token == "" {
 		return func(w http.ResponseWriter, _ *http.Request) {
-			writeJSON(w, http.StatusInternalServerError, contracts.Failure("api auth", "MISCONFIGURED", "admin token is not configured", false, "RELAY_API_TOKEN"))
+			writeJSON(w, http.StatusInternalServerError, contracts.Failure("api auth", "MISCONFIGURED", "admin token is not configured", false, "RELAY_ADMIN_TOKEN or RELAY_API_TOKEN"))
 		}
 	}
 
@@ -109,7 +116,7 @@ func requireAdminBearerToken(token string, next http.HandlerFunc) http.HandlerFu
 func requireBearerToken(adminToken string, apiKeys repositories.APIKeyStore, next http.HandlerFunc) http.HandlerFunc {
 	if adminToken == "" && apiKeys == nil {
 		return func(w http.ResponseWriter, _ *http.Request) {
-			writeJSON(w, http.StatusInternalServerError, contracts.Failure("api auth", "MISCONFIGURED", "bearer auth is not configured", false, "RELAY_API_TOKEN"))
+			writeJSON(w, http.StatusInternalServerError, contracts.Failure("api auth", "MISCONFIGURED", "bearer auth is not configured", false, "RELAY_ADMIN_TOKEN or RELAY_API_TOKEN"))
 		}
 	}
 
@@ -126,7 +133,7 @@ func requireBearerToken(adminToken string, apiKeys repositories.APIKeyStore, nex
 func requireBearerTokenHandler(adminToken string, apiKeys repositories.APIKeyStore, next http.Handler) http.Handler {
 	if adminToken == "" && apiKeys == nil {
 		return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-			writeJSON(w, http.StatusInternalServerError, contracts.Failure("mcp auth", "MISCONFIGURED", "bearer auth is not configured", false, "RELAY_API_TOKEN"))
+			writeJSON(w, http.StatusInternalServerError, contracts.Failure("mcp auth", "MISCONFIGURED", "bearer auth is not configured", false, "RELAY_ADMIN_TOKEN or RELAY_API_TOKEN"))
 		})
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

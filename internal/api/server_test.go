@@ -189,13 +189,19 @@ func TestHealthz(t *testing.T) {
 	}
 }
 
-func TestListenAndServeFailsClosedWithoutAdminToken(t *testing.T) {
-	err := ListenAndServe(config.Config{Addr: "127.0.0.1:0"})
-	if err == nil {
+func TestListenAndServeRequiresEffectiveAdminToken(t *testing.T) {
+	if err := requireStartupAdminToken(config.Config{}); err == nil {
 		t.Fatal("expected error")
-	}
-	if got := err.Error(); !strings.Contains(got, "RELAY_API_TOKEN is required for relay-api") {
+	} else if got := err.Error(); !strings.Contains(got, "RELAY_ADMIN_TOKEN or RELAY_API_TOKEN is required for relay-api") {
 		t.Fatalf("expected missing admin token error, got %v", err)
+	}
+
+	if err := requireStartupAdminToken(config.Config{AdminToken: "admin-token"}); err != nil {
+		t.Fatalf("expected admin token to satisfy startup validation, got %v", err)
+	}
+
+	if err := requireStartupAdminToken(config.Config{APIToken: "legacy-token"}); err != nil {
+		t.Fatalf("expected legacy api token to satisfy startup validation, got %v", err)
 	}
 }
 

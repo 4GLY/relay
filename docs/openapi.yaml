@@ -67,22 +67,29 @@ components:
       properties:
         project:
           type: string
-          description: Optional canonical project name. If omitted, the server may infer the project from repo_path for bound project-scoped keys or from repo_path for global flows.
+          description: Optional canonical project name. If omitted, the server may infer the project from repo_path for normal flows or use the bound project when it safely matches a project-scoped key.
         repo_path:
           type: string
+          description: Optional repo path artifact to attach. When project is omitted, the basename may be used as the inferred project name.
         handoff_path:
           type: string
+          description: Optional handoff markdown path to attach.
         design_path:
           type: string
-        note:
-          type: string
+          description: Optional design document path to attach.
         source:
           type: string
+          default: manual
+          description: Optional memory source such as chat, markdown, or manual. Defaults to manual when omitted.
         body:
           type: string
+          description: Optional raw memory text to store. `note` is accepted as an alias.
+        note:
+          type: string
+          description: Alias for body. Optional raw memory text to store.
         idempotency_key:
           type: string
-      required: [source, body]
+          description: Optional but recommended write key for retries.
     CaptureResult:
       type: object
       required: [project_id, created_note_ids, created_artifact_ids]
@@ -458,7 +465,7 @@ paths:
   /v1/capture:
     post:
       tags: [memory]
-      summary: Capture raw memory into a project
+      summary: Capture raw memory and optional artifacts
       operationId: captureMemory
       security:
         - BearerAuth: []

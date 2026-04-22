@@ -261,6 +261,38 @@ func TestCaptureCreatesProjectNoteAndArtifacts(t *testing.T) {
 	}
 }
 
+func TestCaptureUsesNoteAliasAndDefaultsSource(t *testing.T) {
+	notes := &fakeNoteStore{}
+	service := New(Dependencies{
+		Projects:      &fakeProjectStore{},
+		Notes:         notes,
+		Artifacts:     &fakeArtifactStore{},
+		Decisions:     &fakeDecisionStore{},
+		OpenQuestions: &fakeOpenQuestionStore{},
+		Packets:       &fakePacketStore{},
+		APIKeys:       &fakeAPIKeyStore{},
+	})
+
+	result, err := service.Capture(context.Background(), CaptureInput{
+		Note: "Alias body text",
+	})
+	if err != nil {
+		t.Fatalf("Capture returned error: %v", err)
+	}
+	if result.ProjectID != "" {
+		t.Fatalf("expected no project id, got %q", result.ProjectID)
+	}
+	if len(notes.items) != 1 {
+		t.Fatalf("expected 1 note, got %d", len(notes.items))
+	}
+	if notes.items[0].Body != "Alias body text" {
+		t.Fatalf("expected note body to come from note alias, got %q", notes.items[0].Body)
+	}
+	if notes.items[0].Source != "manual" {
+		t.Fatalf("expected default source manual, got %q", notes.items[0].Source)
+	}
+}
+
 func TestCaptureRejectsOtherProjectForProjectScopedKey(t *testing.T) {
 	relayID := lib.ProjectID("relay")
 	service := New(Dependencies{

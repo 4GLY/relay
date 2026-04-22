@@ -160,21 +160,24 @@ Minimum input:
 
 ```json
 {
-  "project": "relay",
-  "source": "chat",
-  "body": "The user wants one Relay shared across remote environments."
+  "note": "The user wants one Relay shared across remote environments."
 }
 ```
 
 Optional fields:
+- `project`
 - `repo_path`
 - `handoff_path`
 - `design_path`
+- `source`
+- `body`
 - `idempotency_key`
 
 Notes:
 - always send `idempotency_key` on retries or automated writes
-- keep `project` stable across agents if they should share one memory graph
+- `project` is optional; if omitted, the server may infer it from `repo_path`
+- `source` defaults to `manual`
+- `body` is optional; `note` is accepted as an alias for the stored text
 
 ### `relay_promote`
 

@@ -14,7 +14,8 @@ The CLI is only a local dev/debug wrapper.
 
 - `GET /healthz` is public
 - every `/v1/*` route requires `Authorization: Bearer <token>`
-- `RELAY_API_TOKEN` is the bootstrap admin token
+- `RELAY_ADMIN_TOKEN` is the preferred bootstrap admin token
+- `RELAY_API_TOKEN` remains a legacy bootstrap fallback for admin startup and local compatibility
 - `RELAY_CLIENT_TOKEN` is the issued client token for normal API use
 - issued API keys are stored server-side as token hashes
 - `POST /v1/api-keys/issue` accepts only the bootstrap admin token
@@ -169,7 +170,7 @@ Contract notes:
 ### `POST /v1/capture`
 
 Purpose:
-- store raw memory for a project
+- store raw memory and optional artifacts
 - optionally attach repo or document artifacts
 
 Request body:
@@ -179,16 +180,15 @@ Request body:
   "repo_path": ".",
   "handoff_path": "docs/handoff.md",
   "design_path": "docs/design.md",
-  "note": "",
-  "source": "chat",
-  "body": "user said offline matters",
+  "note": "user said offline matters",
   "idempotency_key": "capture-001"
 }
 ```
 
 Contract notes:
-- `source` and `body` are required
-- `project` is optional; when omitted, capture can infer from `repo_path` for normal flows or use the bound project for project-scoped keys
+- `project` is optional; when omitted, capture can infer from `repo_path` for normal flows or use the bound project when it safely matches a project-scoped key
+- `body` is optional; `note` is accepted as an alias for the stored memory text
+- `source` is optional and defaults to `manual`
 - `idempotency_key` should be supplied by agents on writes
 
 ### `POST /v1/promote`

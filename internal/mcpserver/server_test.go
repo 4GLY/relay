@@ -248,9 +248,7 @@ func TestCaptureToolCallsRelayAPI(t *testing.T) {
 	result, err := session.CallTool(ctx, &mcp.CallToolParams{
 		Name: "relay_capture",
 		Arguments: map[string]any{
-			"project": "relay",
-			"source":  "chat",
-			"body":    "from mcp test",
+			"note": "from mcp test",
 		},
 	})
 	if err != nil {
@@ -262,7 +260,7 @@ func TestCaptureToolCallsRelayAPI(t *testing.T) {
 	if authHeader != "Bearer client-token" {
 		t.Fatalf("expected bearer auth header, got %q", authHeader)
 	}
-	if body["project"] != "relay" || body["body"] != "from mcp test" {
+	if body["project"] != "" || body["source"] != "" || body["note"] != "from mcp test" || body["body"] != "" {
 		t.Fatalf("unexpected request body: %#v", body)
 	}
 }

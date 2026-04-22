@@ -115,9 +115,10 @@ func (s *Server) healthTool(ctx context.Context, _ *mcp.CallToolRequest, _ healt
 }
 
 type captureInput struct {
-	Project        string `json:"project" jsonschema:"Required project name. Use a stable shared name such as relay or customer-onboarding"`
-	Source         string `json:"source" jsonschema:"Required memory source such as chat, markdown, or manual"`
-	Body           string `json:"body" jsonschema:"Required raw memory text to store"`
+	Project        string `json:"project,omitempty" jsonschema:"Optional project name. When omitted, the server may infer the project from repo_path or use the bound project when it safely matches a project-scoped key"`
+	Source         string `json:"source,omitempty" jsonschema:"Optional memory source such as chat, markdown, or manual. Defaults to manual"`
+	Body           string `json:"body,omitempty" jsonschema:"Optional raw memory text to store. You can also supply note as an alias"`
+	Note           string `json:"note,omitempty" jsonschema:"Alias for body. Optional raw memory text to store"`
 	RepoPath       string `json:"repo_path,omitempty" jsonschema:"Optional repo path artifact to attach"`
 	HandoffPath    string `json:"handoff_path,omitempty" jsonschema:"Optional handoff markdown path to attach"`
 	DesignPath     string `json:"design_path,omitempty" jsonschema:"Optional design document path to attach"`
@@ -132,6 +133,7 @@ func (s *Server) captureTool(ctx context.Context, _ *mcp.CallToolRequest, input 
 		DesignPath:     input.DesignPath,
 		Source:         input.Source,
 		Body:           input.Body,
+		Note:           input.Note,
 		IdempotencyKey: input.IdempotencyKey,
 	})
 	return nil, result, err

@@ -115,14 +115,13 @@ func (s *Server) healthTool(ctx context.Context, _ *mcp.CallToolRequest, _ healt
 }
 
 type captureInput struct {
-	Project        string `json:"project" jsonschema:"Project name to attach the captured memory to"`
+	Project        string `json:"project" jsonschema:"Required project name. Use a stable shared name such as relay or customer-onboarding"`
+	Source         string `json:"source" jsonschema:"Required memory source such as chat, markdown, or manual"`
+	Body           string `json:"body" jsonschema:"Required raw memory text to store"`
 	RepoPath       string `json:"repo_path,omitempty" jsonschema:"Optional repo path artifact to attach"`
-	HandoffPath    string `json:"handoff_path,omitempty" jsonschema:"Optional handoff document path to attach"`
+	HandoffPath    string `json:"handoff_path,omitempty" jsonschema:"Optional handoff markdown path to attach"`
 	DesignPath     string `json:"design_path,omitempty" jsonschema:"Optional design document path to attach"`
-	Note           string `json:"note,omitempty" jsonschema:"Optional short note field"`
-	Source         string `json:"source" jsonschema:"Memory source, such as chat or markdown"`
-	Body           string `json:"body" jsonschema:"Raw memory text to store"`
-	IdempotencyKey string `json:"idempotency_key,omitempty" jsonschema:"Optional idempotency key for safe retries"`
+	IdempotencyKey string `json:"idempotency_key,omitempty" jsonschema:"Optional but recommended write key for safe retries"`
 }
 
 func (s *Server) captureTool(ctx context.Context, _ *mcp.CallToolRequest, input captureInput) (*mcp.CallToolResult, services.CaptureResult, error) {
@@ -131,7 +130,6 @@ func (s *Server) captureTool(ctx context.Context, _ *mcp.CallToolRequest, input 
 		RepoPath:       input.RepoPath,
 		HandoffPath:    input.HandoffPath,
 		DesignPath:     input.DesignPath,
-		Note:           input.Note,
 		Source:         input.Source,
 		Body:           input.Body,
 		IdempotencyKey: input.IdempotencyKey,
@@ -140,13 +138,13 @@ func (s *Server) captureTool(ctx context.Context, _ *mcp.CallToolRequest, input 
 }
 
 type promoteInput struct {
-	Project           string   `json:"project" jsonschema:"Project name that owns the promoted memory"`
-	Kind              string   `json:"kind" jsonschema:"Promotion kind: decision or question"`
-	Summary           string   `json:"summary" jsonschema:"Durable statement to preserve"`
-	Reason            string   `json:"reason,omitempty" jsonschema:"Why this decision or question matters"`
-	SourceNoteIDs     []string `json:"source_note_ids,omitempty" jsonschema:"Supporting note ids"`
-	SourceArtifactIDs []string `json:"source_artifact_ids,omitempty" jsonschema:"Supporting artifact ids"`
-	IdempotencyKey    string   `json:"idempotency_key,omitempty" jsonschema:"Optional idempotency key for safe retries"`
+	Project           string   `json:"project" jsonschema:"Required project name that owns the promoted memory"`
+	Kind              string   `json:"kind" jsonschema:"Required promotion kind. Valid values: decision or question"`
+	Summary           string   `json:"summary" jsonschema:"Required durable statement to preserve"`
+	Reason            string   `json:"reason,omitempty" jsonschema:"Required when kind is decision. Omit for question when there is no settled answer yet"`
+	SourceNoteIDs     []string `json:"source_note_ids,omitempty" jsonschema:"Optional supporting note ids"`
+	SourceArtifactIDs []string `json:"source_artifact_ids,omitempty" jsonschema:"Optional supporting artifact ids"`
+	IdempotencyKey    string   `json:"idempotency_key,omitempty" jsonschema:"Optional but recommended write key for safe retries"`
 }
 
 func (s *Server) promoteTool(ctx context.Context, _ *mcp.CallToolRequest, input promoteInput) (*mcp.CallToolResult, services.PromoteResult, error) {
@@ -163,9 +161,9 @@ func (s *Server) promoteTool(ctx context.Context, _ *mcp.CallToolRequest, input 
 }
 
 type buildPacketInput struct {
-	Project string `json:"project" jsonschema:"Project name to build the packet from"`
-	Type    string `json:"type,omitempty" jsonschema:"Packet type, usually resume"`
-	Target  string `json:"target,omitempty" jsonschema:"Target agent or client, such as codex"`
+	Project string `json:"project" jsonschema:"Required project name to build the packet from"`
+	Type    string `json:"type,omitempty" jsonschema:"Optional packet type. Defaults to resume"`
+	Target  string `json:"target,omitempty" jsonschema:"Optional packet target. Defaults to codex in MCP flows"`
 }
 
 func (s *Server) buildPacketTool(ctx context.Context, _ *mcp.CallToolRequest, input buildPacketInput) (*mcp.CallToolResult, services.PacketBuildResult, error) {
@@ -186,7 +184,7 @@ func (s *Server) buildPacketTool(ctx context.Context, _ *mcp.CallToolRequest, in
 }
 
 type showProjectInput struct {
-	ProjectID string `json:"project_id" jsonschema:"Canonical Relay project id"`
+	ProjectID string `json:"project_id" jsonschema:"Required canonical Relay project id, not the project name"`
 }
 
 func (s *Server) showProjectTool(ctx context.Context, _ *mcp.CallToolRequest, input showProjectInput) (*mcp.CallToolResult, services.ShowResult, error) {

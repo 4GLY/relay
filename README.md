@@ -71,6 +71,7 @@ This repo currently includes:
 Start here:
 
 - Contract guide: [docs/api.md](docs/api.md)
+- MCP guide: [docs/mcp.md](docs/mcp.md)
 - OpenAPI spec: [docs/openapi.yaml](docs/openapi.yaml)
 
 Current production base URL:

@@ -1,0 +1,191 @@
+# Relay MCP
+
+Relay exposes a narrow MCP surface for agents that need shared memory tools.
+
+This page is for MCP consumers.
+Use it when you want to connect an agent to Relay over `stdio` or remote `HTTP`.
+
+## Base Endpoint
+
+- production: `https://relay.4gly.dev/mcp`
+- local: `http://127.0.0.1:8080/mcp`
+
+## Auth
+
+- remote `/mcp` requires `Authorization: Bearer <token>`
+- use `RELAY_MCP_TOKEN` if one exists
+- otherwise Relay falls back to `RELAY_API_TOKEN`
+
+## Public Tool Surface
+
+`tools/list` on the deployed endpoint is intentionally small.
+
+- `relay_health`
+- `relay_capture`
+- `relay_promote`
+- `relay_build_packet`
+- `relay_show_project`
+
+API key issue, list, and revoke are not part of the public MCP surface.
+Use the HTTP API or the local skill for those operator tasks.
+
+## Tool Guide
+
+### `relay_health`
+
+Use:
+- verify reachability
+- confirm the resolved Relay base URL
+
+Input:
+- none
+
+Output:
+- `status`
+- `base_url`
+- `admin_enabled`
+
+### `relay_capture`
+
+Use:
+- store raw working memory
+- attach optional repo or document artifacts
+
+Minimum input:
+
+```json
+{
+  "project": "relay",
+  "source": "chat",
+  "body": "The user wants one Relay shared across remote environments."
+}
+```
+
+Optional fields:
+- `repo_path`
+- `handoff_path`
+- `design_path`
+- `idempotency_key`
+
+Notes:
+- always send `idempotency_key` on retries or automated writes
+- keep `project` stable across agents if they should share one memory graph
+
+### `relay_promote`
+
+Use:
+- turn raw memory into a durable decision
+- record an open question that still blocks work
+
+Decision example:
+
+```json
+{
+  "project": "relay",
+  "kind": "decision",
+  "summary": "Relay serves remote MCP from the main API process.",
+  "reason": "Deployment stays simple while implementation remains layered.",
+  "idempotency_key": "promote-remote-mcp-001"
+}
+```
+
+Question example:
+
+```json
+{
+  "project": "relay",
+  "kind": "question",
+  "summary": "Should packet formatting become target-specific in v1?"
+}
+```
+
+Optional fields:
+- `reason`
+- `source_note_ids`
+- `source_artifact_ids`
+- `idempotency_key`
+
+Notes:
+- `kind` must be `decision` or `question`
+- `reason` is required for `decision`
+
+### `relay_build_packet`
+
+Use:
+- generate an agent-ready summary packet from stored Relay memory
+
+Minimum input:
+
+```json
+{
+  "project": "relay"
+}
+```
+
+Optional fields:
+- `type`
+- `target`
+
+Defaults:
+- `type`: `resume`
+- `target`: `codex`
+
+Output:
+- `packet_id`
+- `project_id`
+- `type`
+- `target`
+- `body`
+- `decision_ids`
+- `open_question_ids`
+- `source_artifact_ids`
+- `missing_context`
+
+### `relay_show_project`
+
+Use:
+- inspect aggregate project state
+- fetch the canonical `project_id` counts after capture or promotion
+
+Input:
+
+```json
+{
+  "project_id": "proj_xxx"
+}
+```
+
+Output:
+- `project_id`
+- `note_count`
+- `artifact_count`
+- `decision_count`
+- `open_question_count`
+- `latest_packet_id`
+
+## Transport Notes
+
+### Remote HTTP
+
+Use:
+- shared Relay across multiple remote environments
+- public endpoint protected by bearer auth
+
+Behavior:
+- `POST /mcp`
+- streamable HTTP
+- stateless
+
+### Local stdio
+
+Use:
+- local debugging
+- local operator workflows
+
+Entrypoint:
+
+```bash
+go run ./cmd/relay-mcp
+```
+
+The local stdio entrypoint may expose extra admin tools when the local environment has admin credentials.

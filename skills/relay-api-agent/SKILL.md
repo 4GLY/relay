@@ -32,6 +32,8 @@ Then validate:
 
 `setup.sh` and `issue-key --store-client` write to macOS Keychain.
 If the current session cannot access the login Keychain, use env vars instead and rerun setup locally.
+`issue-key --store-client` is for global client tokens only. Project-scoped keys stay scoped and should not be stored in the generic client slot.
+`doctor` accepts a valid scoped token even when the project lookup is intentionally missing, because that response can be `403` for a project-bound key.
 
 The helper resolves settings in this order.
 
@@ -81,7 +83,7 @@ Validate health and auth:
 ./skills/relay-api-agent/scripts/relay-api.sh doctor
 ```
 
-Issue a new client token and store it in Keychain:
+Issue a new global client token and store it in Keychain:
 
 ```bash
 ./skills/relay-api-agent/scripts/relay-api.sh issue-key codex-agent --store-client
@@ -92,6 +94,8 @@ Issue a project-scoped key:
 ```bash
 ./skills/relay-api-agent/scripts/relay-api.sh issue-key codex-agent --scope project --project relay
 ```
+
+Project-scoped keys are not stored with `--store-client`; keep them out of the generic client token slot.
 
 Run setup with automatic client-key issuance:
 

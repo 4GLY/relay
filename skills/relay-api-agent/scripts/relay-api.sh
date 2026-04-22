@@ -40,7 +40,7 @@ Environment:
 Examples:
   relay-api.sh doctor
   relay-api.sh issue-key codex-agent --store-client
-  relay-api.sh issue-key codex-agent --scope project --project relay --store-client
+  relay-api.sh issue-key codex-agent --scope project --project relay
   relay-api.sh capture payload.json
   cat payload.json | relay-api.sh promote -
   relay-api.sh raw GET /v1/projects/proj_xxx
@@ -224,7 +224,7 @@ doctor() {
     code="$(curl --silent --show-error --output "$body" --write-out '%{http_code}' \
       -H "Authorization: Bearer ${CLIENT_TOKEN}" \
       "${BASE_URL}/v1/projects/proj_doctor_missing")"
-    if [[ "$code" == "200" || "$code" == "404" ]]; then
+    if [[ "$code" == "200" || "$code" == "403" || "$code" == "404" ]]; then
       echo "client token usable (${CLIENT_TOKEN_SOURCE}, status=${code})"
     else
       echo "client token check failed (${CLIENT_TOKEN_SOURCE}, status=${code})" >&2
@@ -290,6 +290,10 @@ issue_key() {
   fi
   if [[ "${scope}" == "project" && -z "${project}" && -z "${project_id}" ]]; then
     echo "--scope project requires --project or --project-id" >&2
+    exit 1
+  fi
+  if [[ "${store_client}" == "1" && ( -n "${project}" || -n "${project_id}" || "${scope}" == "project" ) ]]; then
+    echo "--store-client only applies to global client tokens; omit it for project-scoped keys" >&2
     exit 1
   fi
   local payload

@@ -372,6 +372,63 @@ func TestRevokeAPIKeyRouteRevokesIssuedKey(t *testing.T) {
 	}
 }
 
+func TestMCPRouteRequiresBearerToken(t *testing.T) {
+	mux := buildMux(testHandler(lib.ProjectID("relay")), config.Config{APIToken: "admin-token"}, testRuntime(lib.ProjectID("relay")))
+
+	req := httptest.NewRequest(http.MethodPost, "/mcp", bytes.NewReader(mcpInitializeBody()))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json, text/event-stream")
+	rec := httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401, got %d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestMCPRouteAcceptsAdminBearerToken(t *testing.T) {
+	mux := buildMux(testHandler(lib.ProjectID("relay")), config.Config{APIToken: "admin-token"}, testRuntime(lib.ProjectID("relay")))
+
+	req := httptest.NewRequest(http.MethodPost, "/mcp", bytes.NewReader(mcpInitializeBody()))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json, text/event-stream")
+	req.Header.Set("Authorization", "Bearer admin-token")
+	rec := httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestMCPRouteAcceptsIssuedAPIKey(t *testing.T) {
+	key := "relay_live_testtoken"
+	keyStore := &fakeAPIKeyStore{
+		itemsByHash: map[string]domain.APIKey{
+			lib.TokenHash(key): {ID: "key_1", Name: "agent", TokenHash: lib.TokenHash(key), TokenPrefix: lib.TokenPrefix(key)},
+		},
+	}
+	mux := buildMux(testHandler(lib.ProjectID("relay"), keyStore), config.Config{APIToken: "admin-token"}, testRuntime(lib.ProjectID("relay"), keyStore))
+
+	req := httptest.NewRequest(http.MethodPost, "/mcp", bytes.NewReader(mcpInitializeBody()))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json, text/event-stream")
+	req.Header.Set("Authorization", "Bearer "+key)
+	rec := httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func mcpInitializeBody() []byte {
+	return []byte(`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-05","capabilities":{},"clientInfo":{"name":"server-test","version":"0.0.1"}}}`)
+}
+
 func testHandler(projectID string, apiKeyStores ...*fakeAPIKeyStore) Handler {
 	var apiKeys *fakeAPIKeyStore
 	if len(apiKeyStores) > 0 {

@@ -45,8 +45,10 @@ Notes:
 
 - HTTP MCP uses streamable HTTP at `POST /mcp`.
 - The deployed `/mcp` endpoint is stateless, which fits Relay's request-response tools.
-- `RELAY_MCP_TOKEN` protects the remote MCP endpoint for multi-environment use.
-- If `RELAY_MCP_TOKEN` is unset, Relay falls back to `RELAY_API_TOKEN`.
+- Remote `/mcp` accepts the same bearer policy as `/v1/*`.
+- Use an issued API key for normal remote agents.
+- `RELAY_MCP_TOKEN` is just the preferred client env var name for MCP consumers.
+- If `RELAY_MCP_TOKEN` is unset, local examples fall back to `RELAY_API_TOKEN`.
 - The public `/mcp` surface is intentionally narrow:
   - `relay_health`
   - `relay_capture`
@@ -106,7 +108,7 @@ RELAY_ADDR=:8080
 RELAY_BASE_URL='https://relay.4gly.dev'
 RELAY_DATABASE_URL='postgresql://user:password@host/neondb?sslmode=require'
 RELAY_API_TOKEN='replace-with-a-long-random-token'
-RELAY_MCP_TOKEN='replace-with-a-separate-mcp-token'
+RELAY_MCP_TOKEN='optional client-side MCP token env var'
 ```
 
 `.env` is ignored by git.

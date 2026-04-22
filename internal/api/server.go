@@ -6,9 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
-	"time"
 
-	"github.com/modelcontextprotocol/go-sdk/auth"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"relay/internal/app"
@@ -59,7 +57,7 @@ func buildMCPHandler(cfg config.Config, runtime app.Runtime) http.Handler {
 		Stateless:    true,
 		JSONResponse: true,
 	})
-	return requireMCPBearerToken(cfg.MCPToken, handler)
+	return requireBearerTokenHandler(cfg.APIToken, runtime.APIKeys, handler)
 }
 
 type Handler struct {
@@ -98,44 +96,49 @@ func requireBearerToken(adminToken string, apiKeys repositories.APIKeyStore, nex
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		header := r.Header.Get("Authorization")
-		if !strings.HasPrefix(header, "Bearer ") {
+		if !isAuthorizedBearerToken(r, adminToken, apiKeys) {
 			writeJSON(w, http.StatusUnauthorized, contracts.Failure("api auth", "UNAUTHORIZED", "missing or invalid bearer token", false, "Authorization"))
 			return
 		}
-
-		provided := strings.TrimSpace(strings.TrimPrefix(header, "Bearer "))
-		if provided == "" {
-			writeJSON(w, http.StatusUnauthorized, contracts.Failure("api auth", "UNAUTHORIZED", "missing or invalid bearer token", false, "Authorization"))
-			return
-		}
-
-		if adminToken != "" && subtle.ConstantTimeCompare([]byte(provided), []byte(adminToken)) == 1 {
-			next(w, r)
-			return
-		}
-
-		if apiKeys != nil {
-			if _, err := apiKeys.GetByTokenHash(r.Context(), lib.TokenHash(provided)); err == nil {
-				next(w, r)
-				return
-			}
-		}
-
-		writeJSON(w, http.StatusUnauthorized, contracts.Failure("api auth", "UNAUTHORIZED", "missing or invalid bearer token", false, "Authorization"))
+		next(w, r)
 	}
 }
 
-func requireMCPBearerToken(token string, next http.Handler) http.Handler {
-	if token == "" {
+func requireBearerTokenHandler(adminToken string, apiKeys repositories.APIKeyStore, next http.Handler) http.Handler {
+	if adminToken == "" && apiKeys == nil {
 		return next
 	}
-	return auth.RequireBearerToken(func(_ context.Context, provided string, _ *http.Request) (*auth.TokenInfo, error) {
-		if strings.TrimSpace(provided) == token {
-			return &auth.TokenInfo{Expiration: time.Now().Add(24 * time.Hour)}, nil
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !isAuthorizedBearerToken(r, adminToken, apiKeys) {
+			writeJSON(w, http.StatusUnauthorized, contracts.Failure("mcp auth", "UNAUTHORIZED", "missing or invalid bearer token", false, "Authorization"))
+			return
 		}
-		return nil, auth.ErrInvalidToken
-	}, nil)(next)
+		next.ServeHTTP(w, r)
+	})
+}
+
+func isAuthorizedBearerToken(r *http.Request, adminToken string, apiKeys repositories.APIKeyStore) bool {
+	header := r.Header.Get("Authorization")
+	if !strings.HasPrefix(header, "Bearer ") {
+		return false
+	}
+
+	provided := strings.TrimSpace(strings.TrimPrefix(header, "Bearer "))
+	if provided == "" {
+		return false
+	}
+
+	if adminToken != "" && subtle.ConstantTimeCompare([]byte(provided), []byte(adminToken)) == 1 {
+		return true
+	}
+
+	if apiKeys != nil {
+		if _, err := apiKeys.GetByTokenHash(r.Context(), lib.TokenHash(provided)); err == nil {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (h Handler) handleCapture(w http.ResponseWriter, r *http.Request) {

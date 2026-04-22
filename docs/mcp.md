@@ -116,8 +116,10 @@ Expected shape:
 ## Auth
 
 - remote `/mcp` requires `Authorization: Bearer <token>`
-- use `RELAY_MCP_TOKEN` if one exists
-- otherwise Relay falls back to `RELAY_API_TOKEN`
+- remote `/mcp` accepts the same bearer policy as `/v1/*`
+- use an issued API key for normal remote agent access
+- `RELAY_MCP_TOKEN` is the preferred local env var name for MCP consumers
+- if `RELAY_MCP_TOKEN` is unset, the bundled examples fall back to `RELAY_API_TOKEN`
 
 ## Public Tool Surface
 

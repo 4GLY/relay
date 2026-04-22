@@ -16,6 +16,103 @@ Use it when you want to connect an agent to Relay over `stdio` or remote `HTTP`.
 - raw HTTP `tools/call`: [`examples/mcp/http/call-tool.sh`](../examples/mcp/http/call-tool.sh)
 - Go client with official `go-sdk`: [`examples/mcp/go/main.go`](../examples/mcp/go/main.go)
 
+## End-to-End Session
+
+This is the shortest useful remote MCP session:
+
+1. `relay_capture` stores raw memory and returns `project_id` plus any created note ids.
+2. `relay_promote` turns that raw note into a durable decision or question.
+3. `relay_build_packet` produces an agent-ready `resume` packet.
+4. `relay_show_project` checks aggregate state using the canonical `project_id`.
+
+Example with the bundled raw HTTP helper:
+
+```bash
+set -euo pipefail
+
+export RELAY_MCP_TOKEN=...
+PROJECT="relay-mcp-e2e-docs"
+
+CAPTURE_JSON="$(
+  ./examples/mcp/http/call-tool.sh relay_capture "$(
+    jq -nc \
+      --arg project "$PROJECT" \
+      --arg source "chat" \
+      --arg body "Document an end-to-end MCP session for Relay." \
+      '{
+        project: $project,
+        source: $source,
+        body: $body,
+        idempotency_key: "docs-e2e-capture-001"
+      }'
+  )"
+)"
+
+PROJECT_ID="$(printf '%s' "$CAPTURE_JSON" | jq -r '.result.structuredContent.project_id')"
+NOTE_ID="$(printf '%s' "$CAPTURE_JSON" | jq -r '.result.structuredContent.created_note_ids[0]')"
+
+PROMOTE_JSON="$(
+  ./examples/mcp/http/call-tool.sh relay_promote "$(
+    jq -nc \
+      --arg project "$PROJECT" \
+      --arg note_id "$NOTE_ID" \
+      '{
+        project: $project,
+        kind: "decision",
+        summary: "Relay exposes a narrow public MCP surface.",
+        reason: "Consumers should use a small stable tool set.",
+        source_note_ids: [$note_id],
+        idempotency_key: "docs-e2e-promote-002"
+      }'
+  )"
+)"
+
+PACKET_JSON="$(
+  ./examples/mcp/http/call-tool.sh relay_build_packet "$(
+    jq -nc \
+      --arg project "$PROJECT" \
+      '{project: $project}'
+  )"
+)"
+
+SHOW_JSON="$(
+  ./examples/mcp/http/call-tool.sh relay_show_project "$(
+    jq -nc \
+      --arg project_id "$PROJECT_ID" \
+      '{project_id: $project_id}'
+  )"
+)"
+
+printf '%s\n' "$CAPTURE_JSON" | jq '.result.structuredContent'
+printf '%s\n' "$PROMOTE_JSON" | jq '.result.structuredContent'
+printf '%s\n' "$PACKET_JSON" | jq '.result.structuredContent'
+printf '%s\n' "$SHOW_JSON" | jq '.result.structuredContent'
+```
+
+Expected shape:
+
+- `relay_capture`
+  - `project_id`
+  - `created_note_ids`
+  - `created_artifact_ids`
+- `relay_promote`
+  - `kind`
+  - `object_id`
+  - `project_id`
+- `relay_build_packet`
+  - `packet_id`
+  - `project_id`
+  - `body`
+  - `decision_ids`
+  - `open_question_ids`
+- `relay_show_project`
+  - `project_id`
+  - `note_count`
+  - `artifact_count`
+  - `decision_count`
+  - `open_question_count`
+  - `latest_packet_id`
+
 ## Auth
 
 - remote `/mcp` requires `Authorization: Bearer <token>`

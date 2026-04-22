@@ -37,3 +37,11 @@ func NotFound(code string, message string) AppError {
 		Retryable: false,
 	}
 }
+
+func Forbidden(code string, message string) AppError {
+	return AppError{
+		Code:      code,
+		Message:   message,
+		Retryable: false,
+	}
+}

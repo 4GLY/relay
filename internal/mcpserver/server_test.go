@@ -11,6 +11,8 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/auth"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"relay/internal/domain"
+	"relay/internal/lib"
 	"relay/internal/relayapi"
 	"relay/internal/services"
 )
@@ -156,6 +158,49 @@ func TestListToolsIncludesAdminWhenEnabled(t *testing.T) {
 	}
 }
 
+func TestServiceBackedStdIOAdminToolIssuesAPIKey(t *testing.T) {
+	keys := &fakeAPIKeyStore{}
+	service := services.New(services.Dependencies{
+		Projects:      &servicesTestProjectStore{},
+		Notes:         &servicesTestNoteStore{},
+		Artifacts:     &servicesTestArtifactStore{},
+		Decisions:     &servicesTestDecisionStore{},
+		OpenQuestions: &servicesTestOpenQuestionStore{},
+		Packets:       &servicesTestPacketStore{},
+		APIKeys:       keys,
+	})
+
+	server := NewFromService(service, "https://relay.4gly.dev", true)
+	serverTransport, clientTransport := mcp.NewInMemoryTransports()
+	ctx := context.Background()
+	go func() {
+		_ = server.Run(ctx, serverTransport)
+	}()
+
+	client := mcp.NewClient(&mcp.Implementation{Name: "relay-mcp-test-client", Version: "v1.0.0"}, nil)
+	session, err := client.Connect(ctx, clientTransport, nil)
+	if err != nil {
+		t.Fatalf("connect: %v", err)
+	}
+	defer session.Close()
+
+	result, err := session.CallTool(ctx, &mcp.CallToolParams{
+		Name: "relay_issue_api_key",
+		Arguments: map[string]any{
+			"name": "agent",
+		},
+	})
+	if err != nil {
+		t.Fatalf("call admin tool: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("unexpected tool error: %#v", result)
+	}
+	if len(keys.created) != 1 {
+		t.Fatalf("expected one created key, got %d", len(keys.created))
+	}
+}
+
 func TestCaptureToolCallsRelayAPI(t *testing.T) {
 	var authHeader string
 	var body map[string]any
@@ -203,9 +248,7 @@ func TestCaptureToolCallsRelayAPI(t *testing.T) {
 	result, err := session.CallTool(ctx, &mcp.CallToolParams{
 		Name: "relay_capture",
 		Arguments: map[string]any{
-			"project": "relay",
-			"source":  "chat",
-			"body":    "from mcp test",
+			"note": "from mcp test",
 		},
 	})
 	if err != nil {
@@ -217,9 +260,116 @@ func TestCaptureToolCallsRelayAPI(t *testing.T) {
 	if authHeader != "Bearer client-token" {
 		t.Fatalf("expected bearer auth header, got %q", authHeader)
 	}
-	if body["project"] != "relay" || body["body"] != "from mcp test" {
+	if body["project"] != "" || body["source"] != "" || body["note"] != "from mcp test" || body["body"] != "" {
 		t.Fatalf("unexpected request body: %#v", body)
 	}
+}
+
+type servicesTestProjectStore struct{}
+
+func (s *servicesTestProjectStore) EnsureProject(_ context.Context, project domain.Project) (domain.Project, error) {
+	return project, nil
+}
+
+func (s *servicesTestProjectStore) GetByName(_ context.Context, name string) (domain.Project, error) {
+	return domain.Project{ID: lib.ProjectID(name), Name: name}, nil
+}
+
+func (s *servicesTestProjectStore) GetByID(_ context.Context, id string) (domain.Project, error) {
+	return domain.Project{ID: id, Name: id}, nil
+}
+
+type servicesTestNoteStore struct{}
+
+func (s *servicesTestNoteStore) CreateNote(_ context.Context, note domain.Note) (domain.Note, error) {
+	return note, nil
+}
+
+func (s *servicesTestNoteStore) CountByProject(_ context.Context, _ string) (int, error) {
+	return 0, nil
+}
+
+func (s *servicesTestNoteStore) ListByProject(_ context.Context, _ string) ([]domain.Note, error) {
+	return nil, nil
+}
+
+type servicesTestArtifactStore struct{}
+
+func (s *servicesTestArtifactStore) CreateArtifact(_ context.Context, artifact domain.Artifact) (domain.Artifact, error) {
+	return artifact, nil
+}
+
+func (s *servicesTestArtifactStore) CountByProject(_ context.Context, _ string) (int, error) {
+	return 0, nil
+}
+
+func (s *servicesTestArtifactStore) ListByProject(_ context.Context, _ string) ([]domain.Artifact, error) {
+	return nil, nil
+}
+
+type servicesTestDecisionStore struct{}
+
+func (s *servicesTestDecisionStore) CreateDecision(_ context.Context, decision domain.Decision) (domain.Decision, error) {
+	return decision, nil
+}
+
+func (s *servicesTestDecisionStore) CountByProject(_ context.Context, _ string) (int, error) {
+	return 0, nil
+}
+
+func (s *servicesTestDecisionStore) ListByProject(_ context.Context, _ string) ([]domain.Decision, error) {
+	return nil, nil
+}
+
+type servicesTestOpenQuestionStore struct{}
+
+func (s *servicesTestOpenQuestionStore) CreateOpenQuestion(_ context.Context, question domain.OpenQuestion) (domain.OpenQuestion, error) {
+	return question, nil
+}
+
+func (s *servicesTestOpenQuestionStore) CountByProject(_ context.Context, _ string) (int, error) {
+	return 0, nil
+}
+
+func (s *servicesTestOpenQuestionStore) ListByProject(_ context.Context, _ string) ([]domain.OpenQuestion, error) {
+	return nil, nil
+}
+
+type servicesTestPacketStore struct{}
+
+func (s *servicesTestPacketStore) CreatePacket(_ context.Context, packet domain.Packet) (domain.Packet, error) {
+	return packet, nil
+}
+
+func (s *servicesTestPacketStore) LatestByProject(_ context.Context, _ string) (domain.Packet, error) {
+	return domain.Packet{}, nil
+}
+
+type fakeAPIKeyStore struct {
+	created []domain.APIKey
+}
+
+func (s *fakeAPIKeyStore) CreateAPIKey(_ context.Context, key domain.APIKey) (domain.APIKey, error) {
+	s.created = append(s.created, key)
+	return key, nil
+}
+
+func (s *fakeAPIKeyStore) GetByTokenHash(_ context.Context, _ string) (domain.APIKey, error) {
+	return domain.APIKey{}, nil
+}
+
+func (s *fakeAPIKeyStore) ListAPIKeys(_ context.Context) ([]domain.APIKey, error) {
+	return s.created, nil
+}
+
+func (s *fakeAPIKeyStore) RevokeAPIKey(_ context.Context, keyID string) (domain.APIKey, error) {
+	for i, key := range s.created {
+		if key.ID == keyID {
+			s.created[i].Revoked = true
+			return s.created[i], nil
+		}
+	}
+	return domain.APIKey{}, nil
 }
 
 func TestHTTPStreamableTransport(t *testing.T) {

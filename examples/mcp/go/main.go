@@ -37,12 +37,12 @@ func main() {
 		baseURL = "https://relay.4gly.dev/mcp"
 	}
 
-	token := os.Getenv("RELAY_MCP_TOKEN")
+	token := os.Getenv("RELAY_CLIENT_TOKEN")
 	if token == "" {
-		token = os.Getenv("RELAY_API_TOKEN")
+		token = os.Getenv("RELAY_MCP_TOKEN")
 	}
 	if token == "" {
-		log.Fatal("RELAY_MCP_TOKEN or RELAY_API_TOKEN is required")
+		log.Fatal("RELAY_CLIENT_TOKEN or RELAY_MCP_TOKEN is required")
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

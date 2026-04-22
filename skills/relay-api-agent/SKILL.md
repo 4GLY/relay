@@ -14,7 +14,7 @@ Relay is API-first. This skill is the fast agent-facing wrapper around the canon
 Run setup once:
 
 ```bash
-/Users/hoon-ch/repos/relay/skills/relay-api-agent/scripts/setup.sh
+./skills/relay-api-agent/scripts/setup.sh
 ```
 
 `setup.sh` is the intended operator path:
@@ -27,11 +27,13 @@ Run setup once:
 Then validate:
 
 ```bash
-/Users/hoon-ch/repos/relay/skills/relay-api-agent/scripts/relay-api.sh doctor
+./skills/relay-api-agent/scripts/relay-api.sh doctor
 ```
 
 `setup.sh` and `issue-key --store-client` write to macOS Keychain.
 If the current session cannot access the login Keychain, use env vars instead and rerun setup locally.
+`issue-key --store-client` is for global client tokens only. Project-scoped keys stay scoped and should not be stored in the generic client slot.
+`doctor` accepts a valid scoped token even when the project lookup is intentionally missing, because that response can be `403` for a project-bound key.
 
 The helper resolves settings in this order.
 
@@ -47,9 +49,8 @@ Admin token:
 
 Client token:
 1. `RELAY_CLIENT_TOKEN`
-2. `RELAY_TOKEN`
+2. `RELAY_MCP_TOKEN`
 3. macOS Keychain entry `codex.relay-api/client-token`
-4. admin token fallback for bootstrap or recovery only
 
 ## When To Use
 
@@ -65,7 +66,7 @@ Client token:
 | Operation | Command |
 | --- | --- |
 | Health check | `relay-api.sh doctor` |
-| Issue API key | `relay-api.sh issue-key <name>` |
+| Issue API key | `relay-api.sh issue-key <name> [--scope project --project <name> [--project-id <id>]]` |
 | List API keys | `relay-api.sh list-keys` |
 | Revoke API key | `relay-api.sh revoke-key <key-id>` |
 | Capture memory | `relay-api.sh capture <json-file|->` |
@@ -79,19 +80,27 @@ Client token:
 Validate health and auth:
 
 ```bash
-/Users/hoon-ch/repos/relay/skills/relay-api-agent/scripts/relay-api.sh doctor
+./skills/relay-api-agent/scripts/relay-api.sh doctor
 ```
 
-Issue a new client token and store it in Keychain:
+Issue a new global client token and store it in Keychain:
 
 ```bash
-/Users/hoon-ch/repos/relay/skills/relay-api-agent/scripts/relay-api.sh issue-key codex-agent --store-client
+./skills/relay-api-agent/scripts/relay-api.sh issue-key codex-agent --store-client
 ```
+
+Issue a project-scoped key:
+
+```bash
+./skills/relay-api-agent/scripts/relay-api.sh issue-key codex-agent --scope project --project relay
+```
+
+Project-scoped keys are not stored with `--store-client`; keep them out of the generic client token slot.
 
 Run setup with automatic client-key issuance:
 
 ```bash
-/Users/hoon-ch/repos/relay/skills/relay-api-agent/scripts/setup.sh --client-name codex-macbook
+./skills/relay-api-agent/scripts/setup.sh --client-name codex-macbook
 ```
 
 Capture a note:
@@ -106,7 +115,7 @@ cat <<'JSON' >/tmp/relay-capture.json
 }
 JSON
 
-/Users/hoon-ch/repos/relay/skills/relay-api-agent/scripts/relay-api.sh capture /tmp/relay-capture.json
+./skills/relay-api-agent/scripts/relay-api.sh capture /tmp/relay-capture.json
 ```
 
 Promote a decision:
@@ -122,7 +131,7 @@ cat <<'JSON' >/tmp/relay-promote.json
 }
 JSON
 
-/Users/hoon-ch/repos/relay/skills/relay-api-agent/scripts/relay-api.sh promote /tmp/relay-promote.json
+./skills/relay-api-agent/scripts/relay-api.sh promote /tmp/relay-promote.json
 ```
 
 Build a packet:
@@ -136,13 +145,13 @@ cat <<'JSON' >/tmp/relay-packet.json
 }
 JSON
 
-/Users/hoon-ch/repos/relay/skills/relay-api-agent/scripts/relay-api.sh build-packet /tmp/relay-packet.json
+./skills/relay-api-agent/scripts/relay-api.sh build-packet /tmp/relay-packet.json
 ```
 
 Show a project:
 
 ```bash
-/Users/hoon-ch/repos/relay/skills/relay-api-agent/scripts/relay-api.sh show proj_xxx
+./skills/relay-api-agent/scripts/relay-api.sh show proj_xxx
 ```
 
 ## Guidelines
@@ -156,7 +165,7 @@ Show a project:
 
 ## Files
 
-- [scripts/relay-api.sh](/Users/hoon-ch/repos/relay/skills/relay-api-agent/scripts/relay-api.sh)
-- [scripts/setup.sh](/Users/hoon-ch/repos/relay/skills/relay-api-agent/scripts/setup.sh)
-- [docs/api.md](/Users/hoon-ch/repos/relay/docs/api.md)
-- [docs/openapi.yaml](/Users/hoon-ch/repos/relay/docs/openapi.yaml)
+- [scripts/relay-api.sh](scripts/relay-api.sh)
+- [scripts/setup.sh](scripts/setup.sh)
+- [docs/api.md](../../docs/api.md)
+- [docs/openapi.yaml](../../docs/openapi.yaml)

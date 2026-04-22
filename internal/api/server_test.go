@@ -189,16 +189,21 @@ func TestHealthz(t *testing.T) {
 	}
 }
 
-func TestListenAndServeFailsClosedWithoutAdminToken(t *testing.T) {
-	err := ListenAndServe(config.Config{Addr: "127.0.0.1:0"})
-	if err == nil {
+func TestListenAndServeRequiresEffectiveAdminToken(t *testing.T) {
+	if err := requireStartupAdminToken(config.Config{}); err == nil {
 		t.Fatal("expected error")
-	}
-	if got := err.Error(); !strings.Contains(got, "RELAY_API_TOKEN is required for relay-api") {
+	} else if got := err.Error(); !strings.Contains(got, "RELAY_ADMIN_TOKEN or RELAY_API_TOKEN is required for relay-api") {
 		t.Fatalf("expected missing admin token error, got %v", err)
 	}
-}
 
+	if err := requireStartupAdminToken(config.Config{AdminToken: "admin-token"}); err != nil {
+		t.Fatalf("expected admin token to satisfy startup validation, got %v", err)
+	}
+
+	if err := requireStartupAdminToken(config.Config{APIToken: "legacy-token"}); err != nil {
+		t.Fatalf("expected legacy api token to satisfy startup validation, got %v", err)
+	}
+}
 func TestHandleProjectShowUsesProjectID(t *testing.T) {
 	projectID := lib.ProjectID("relay")
 	handler := testHandler(projectID)
@@ -294,6 +299,145 @@ func TestProtectedRoutesAcceptIssuedAPIKey(t *testing.T) {
 	}
 }
 
+func TestProtectedRoutesAcceptProjectScopedKeyForBoundProject(t *testing.T) {
+	projectID := lib.ProjectID("relay")
+	key := "relay_live_testtoken"
+	keyStore := &fakeAPIKeyStore{
+		itemsByHash: map[string]domain.APIKey{
+			lib.TokenHash(key): {
+				ID:          "key_1",
+				Name:        "agent",
+				TokenHash:   lib.TokenHash(key),
+				TokenPrefix: lib.TokenPrefix(key),
+				Scope:       services.APIKeyScopeProject,
+				ProjectID:   projectID,
+			},
+		},
+	}
+	mux := buildMux(testHandler(projectID), config.Config{APIToken: "admin-token"}, testRuntime(projectID, keyStore))
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/projects/"+projectID, nil)
+	req.Header.Set("Authorization", "Bearer "+key)
+	rec := httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestProtectedRoutesRejectUnknownPersistedKeyScope(t *testing.T) {
+	projectID := lib.ProjectID("relay")
+	key := "relay_live_testtoken"
+	keyStore := &fakeAPIKeyStore{
+		itemsByHash: map[string]domain.APIKey{
+			lib.TokenHash(key): {
+				ID:          "key_1",
+				Name:        "agent",
+				TokenHash:   lib.TokenHash(key),
+				TokenPrefix: lib.TokenPrefix(key),
+				Scope:       "corrupted",
+			},
+		},
+	}
+	mux := buildMux(testHandler(projectID), config.Config{APIToken: "admin-token"}, testRuntime(projectID, keyStore))
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/projects/"+projectID, nil)
+	req.Header.Set("Authorization", "Bearer "+key)
+	rec := httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401, got %d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestProtectedRoutesRejectProjectScopedKeyForDifferentProject(t *testing.T) {
+	projectID := lib.ProjectID("relay")
+	otherID := lib.ProjectID("other")
+	key := "relay_live_testtoken"
+	keyStore := &fakeAPIKeyStore{
+		itemsByHash: map[string]domain.APIKey{
+			lib.TokenHash(key): {
+				ID:          "key_1",
+				Name:        "agent",
+				TokenHash:   lib.TokenHash(key),
+				TokenPrefix: lib.TokenPrefix(key),
+				Scope:       services.APIKeyScopeProject,
+				ProjectID:   projectID,
+			},
+		},
+	}
+	mux := buildMux(testHandler(projectID), config.Config{APIToken: "admin-token"}, testRuntime(projectID, keyStore))
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/projects/"+otherID, nil)
+	req.Header.Set("Authorization", "Bearer "+key)
+	rec := httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("expected 403, got %d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestProtectedRoutesRejectMalformedProjectScopedKey(t *testing.T) {
+	projectID := lib.ProjectID("relay")
+	key := "relay_live_testtoken"
+	keyStore := &fakeAPIKeyStore{
+		itemsByHash: map[string]domain.APIKey{
+			lib.TokenHash(key): {
+				ID:          "key_1",
+				Name:        "agent",
+				TokenHash:   lib.TokenHash(key),
+				TokenPrefix: lib.TokenPrefix(key),
+				Scope:       services.APIKeyScopeProject,
+			},
+		},
+	}
+	mux := buildMux(testHandler(projectID), config.Config{APIToken: "admin-token"}, testRuntime(projectID, keyStore))
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/projects/"+projectID, nil)
+	req.Header.Set("Authorization", "Bearer "+key)
+	rec := httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401, got %d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestProtectedRoutesAllowGlobalKeyAcrossProjects(t *testing.T) {
+	projectID := lib.ProjectID("relay")
+	otherID := lib.ProjectID("other")
+	key := "relay_live_testtoken"
+	keyStore := &fakeAPIKeyStore{
+		itemsByHash: map[string]domain.APIKey{
+			lib.TokenHash(key): {
+				ID:          "key_1",
+				Name:        "agent",
+				TokenHash:   lib.TokenHash(key),
+				TokenPrefix: lib.TokenPrefix(key),
+				Scope:       services.APIKeyScopeGlobal,
+			},
+		},
+	}
+	mux := buildMux(testHandler(projectID), config.Config{APIToken: "admin-token"}, testRuntime(projectID, keyStore))
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/projects/"+otherID, nil)
+	req.Header.Set("Authorization", "Bearer "+key)
+	rec := httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
 func TestIssueAPIKeyRouteRequiresAdminToken(t *testing.T) {
 	keyStore := &fakeAPIKeyStore{}
 	mux := buildMux(testHandler(lib.ProjectID("relay")), config.Config{APIToken: "admin-token"}, testRuntime(lib.ProjectID("relay"), keyStore))
@@ -344,6 +488,49 @@ func TestAdminRoutesFailClosedWithoutAdminToken(t *testing.T) {
 	}
 }
 
+func TestAdminRoutesPreferConfiguredAdminToken(t *testing.T) {
+	keyStore := &fakeAPIKeyStore{}
+	mux := buildMux(testHandler(lib.ProjectID("relay"), keyStore), config.Config{
+		AdminToken: "admin-token",
+		APIToken:   "client-token",
+	}, testRuntime(lib.ProjectID("relay"), keyStore))
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/api-keys", nil)
+	req.Header.Set("Authorization", "Bearer admin-token")
+	rec := httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
+	}
+
+	req = httptest.NewRequest(http.MethodGet, "/v1/api-keys", nil)
+	req.Header.Set("Authorization", "Bearer client-token")
+	rec = httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401 for client token on admin route, got %d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestBearerProtectedRoutesFailClosedWithoutBearerConfig(t *testing.T) {
+	mux := buildMux(testHandler(lib.ProjectID("relay")), config.Config{}, testRuntime(lib.ProjectID("relay")))
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/projects/relay", nil)
+	rec := httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("expected 500, got %d body=%s", rec.Code, rec.Body.String())
+	}
+	if !bytes.Contains(rec.Body.Bytes(), []byte("MISCONFIGURED")) {
+		t.Fatalf("expected misconfigured response, got %s", rec.Body.String())
+	}
+}
 func TestIssueAPIKeyRouteCreatesKey(t *testing.T) {
 	keyStore := &fakeAPIKeyStore{}
 	mux := buildMux(testHandler(lib.ProjectID("relay"), keyStore), config.Config{APIToken: "admin-token"}, testRuntime(lib.ProjectID("relay"), keyStore))
@@ -363,6 +550,35 @@ func TestIssueAPIKeyRouteCreatesKey(t *testing.T) {
 	}
 	if !bytes.Contains(rec.Body.Bytes(), []byte(`"token"`)) {
 		t.Fatalf("expected token in response body, got %s", rec.Body.String())
+	}
+}
+
+func TestIssueAPIKeyRouteCreatesProjectScopedKey(t *testing.T) {
+	projectID := lib.ProjectID("relay")
+	keyStore := &fakeAPIKeyStore{}
+	mux := buildMux(testHandler(projectID, keyStore), config.Config{APIToken: "admin-token"}, testRuntime(projectID, keyStore))
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/api-keys/issue", bytes.NewReader([]byte(`{"name":"agent","scope":"project","project":"relay"}`)))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer admin-token")
+	rec := httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
+	}
+	if len(keyStore.created) != 1 {
+		t.Fatalf("expected one created key, got %d", len(keyStore.created))
+	}
+	if keyStore.created[0].Scope != services.APIKeyScopeProject {
+		t.Fatalf("expected project scope, got %q", keyStore.created[0].Scope)
+	}
+	if keyStore.created[0].ProjectID != projectID {
+		t.Fatalf("expected project id %q, got %q", projectID, keyStore.created[0].ProjectID)
+	}
+	if !bytes.Contains(rec.Body.Bytes(), []byte(`"scope":"project"`)) {
+		t.Fatalf("expected scope in response body, got %s", rec.Body.String())
 	}
 }
 
@@ -418,6 +634,106 @@ func TestRevokeAPIKeyRouteRevokesIssuedKey(t *testing.T) {
 	}
 }
 
+func TestCaptureRouteRejectsUnknownJSONField(t *testing.T) {
+	projectID := lib.ProjectID("relay")
+	mux := buildMux(testHandler(projectID), config.Config{APIToken: "admin-token"}, testRuntime(projectID))
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/capture", bytes.NewReader([]byte(`{"project":"relay","source":"chat","body":"hello","unexpected":"value"}`)))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer admin-token")
+	rec := httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d body=%s", rec.Code, rec.Body.String())
+	}
+	if !bytes.Contains(rec.Body.Bytes(), []byte(`"code":"UNKNOWN_JSON_FIELD"`)) {
+		t.Fatalf("expected unknown field error, got %s", rec.Body.String())
+	}
+}
+
+func TestCaptureRouteRejectsMalformedUTF8(t *testing.T) {
+	projectID := lib.ProjectID("relay")
+	mux := buildMux(testHandler(projectID), config.Config{APIToken: "admin-token"}, testRuntime(projectID))
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/capture", bytes.NewReader([]byte("{\"project\":\"relay\",\"source\":\"chat\",\"body\":\"\xff\"}")))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer admin-token")
+	rec := httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d body=%s", rec.Code, rec.Body.String())
+	}
+	if !bytes.Contains(rec.Body.Bytes(), []byte(`"code":"INVALID_JSON"`)) {
+		t.Fatalf("expected invalid json error, got %s", rec.Body.String())
+	}
+	if !bytes.Contains(rec.Body.Bytes(), []byte("malformed UTF-8")) {
+		t.Fatalf("expected malformed utf-8 message, got %s", rec.Body.String())
+	}
+}
+
+func TestCaptureRouteRejectsOversizedBody(t *testing.T) {
+	projectID := lib.ProjectID("relay")
+	mux := buildMux(testHandler(projectID), config.Config{APIToken: "admin-token"}, testRuntime(projectID))
+
+	oversized := []byte(`{"project":"relay","source":"chat","body":"` + strings.Repeat("a", maxJSONRequestBodyBytes) + `"}`)
+	req := httptest.NewRequest(http.MethodPost, "/v1/capture", bytes.NewReader(oversized))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer admin-token")
+	rec := httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusRequestEntityTooLarge {
+		t.Fatalf("expected 413, got %d body=%s", rec.Code, rec.Body.String())
+	}
+	if !bytes.Contains(rec.Body.Bytes(), []byte(`"code":"REQUEST_TOO_LARGE"`)) {
+		t.Fatalf("expected request too large error, got %s", rec.Body.String())
+	}
+}
+
+func TestIssueAPIKeyRouteRejectsInvalidScopeWithValidationError(t *testing.T) {
+	keyStore := &fakeAPIKeyStore{}
+	mux := buildMux(testHandler(lib.ProjectID("relay"), keyStore), config.Config{APIToken: "admin-token"}, testRuntime(lib.ProjectID("relay"), keyStore))
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/api-keys/issue", bytes.NewReader([]byte(`{"name":"agent","scope":"invalid"}`)))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer admin-token")
+	rec := httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d body=%s", rec.Code, rec.Body.String())
+	}
+	if !bytes.Contains(rec.Body.Bytes(), []byte(`"code":"INVALID_API_KEY_SCOPE"`)) {
+		t.Fatalf("expected invalid scope code, got %s", rec.Body.String())
+	}
+}
+
+func TestMCPRouteRejectsOversizedBody(t *testing.T) {
+	mux := buildMux(testHandler(lib.ProjectID("relay")), config.Config{APIToken: "admin-token"}, testRuntime(lib.ProjectID("relay")))
+
+	oversized := []byte(strings.Repeat("a", maxJSONRequestBodyBytes+1))
+	req := httptest.NewRequest(http.MethodPost, "/mcp", bytes.NewReader(oversized))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json, text/event-stream")
+	req.Header.Set("Authorization", "Bearer admin-token")
+	rec := httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusRequestEntityTooLarge {
+		t.Fatalf("expected 413, got %d body=%s", rec.Code, rec.Body.String())
+	}
+	if !bytes.Contains(rec.Body.Bytes(), []byte(`"code":"REQUEST_TOO_LARGE"`)) {
+		t.Fatalf("expected request too large error, got %s", rec.Body.String())
+	}
+}
+
 func TestMCPRouteRequiresBearerToken(t *testing.T) {
 	mux := buildMux(testHandler(lib.ProjectID("relay")), config.Config{APIToken: "admin-token"}, testRuntime(lib.ProjectID("relay")))
 
@@ -433,8 +749,45 @@ func TestMCPRouteRequiresBearerToken(t *testing.T) {
 	}
 }
 
+func TestMCPRouteFailsClosedWithoutBearerConfig(t *testing.T) {
+	mux := buildMux(testHandler(lib.ProjectID("relay")), config.Config{}, testRuntime(lib.ProjectID("relay")))
+
+	req := httptest.NewRequest(http.MethodPost, "/mcp", bytes.NewReader(mcpInitializeBody()))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json, text/event-stream")
+	rec := httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("expected 500, got %d body=%s", rec.Code, rec.Body.String())
+	}
+	if !bytes.Contains(rec.Body.Bytes(), []byte("MISCONFIGURED")) {
+		t.Fatalf("expected misconfigured response, got %s", rec.Body.String())
+	}
+}
+
 func TestMCPRouteAcceptsAdminBearerToken(t *testing.T) {
 	mux := buildMux(testHandler(lib.ProjectID("relay")), config.Config{APIToken: "admin-token"}, testRuntime(lib.ProjectID("relay")))
+
+	req := httptest.NewRequest(http.MethodPost, "/mcp", bytes.NewReader(mcpInitializeBody()))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json, text/event-stream")
+	req.Header.Set("Authorization", "Bearer admin-token")
+	rec := httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestMCPRouteAcceptsConfiguredAdminToken(t *testing.T) {
+	mux := buildMux(testHandler(lib.ProjectID("relay")), config.Config{
+		AdminToken: "admin-token",
+		APIToken:   "client-token",
+	}, testRuntime(lib.ProjectID("relay")))
 
 	req := httptest.NewRequest(http.MethodPost, "/mcp", bytes.NewReader(mcpInitializeBody()))
 	req.Header.Set("Content-Type", "application/json")
@@ -480,11 +833,13 @@ func testHandler(projectID string, apiKeyStores ...*fakeAPIKeyStore) Handler {
 	if len(apiKeyStores) > 0 {
 		apiKeys = apiKeyStores[0]
 	}
+	otherProjectID := lib.ProjectID("other")
 	return Handler{
 		services: services.New(services.Dependencies{
 			Projects: &fakeProjectStore{
 				projects: map[string]domain.Project{
 					"relay": {ID: projectID, Name: "relay"},
+					"other": {ID: otherProjectID, Name: "other"},
 				},
 			},
 			Notes: &fakeNoteStore{

@@ -14,7 +14,9 @@ The CLI is only a local dev/debug wrapper.
 
 - `GET /healthz` is public
 - every `/v1/*` route requires `Authorization: Bearer <token>`
-- `RELAY_API_TOKEN` is the bootstrap admin token
+- `RELAY_ADMIN_TOKEN` is the preferred bootstrap admin token
+- `RELAY_API_TOKEN` remains a legacy bootstrap fallback for admin startup and local compatibility
+- `RELAY_CLIENT_TOKEN` is the issued client token for normal API use
 - issued API keys are stored server-side as token hashes
 - `POST /v1/api-keys/issue` accepts only the bootstrap admin token
 - `GET /v1/api-keys` accepts only the bootstrap admin token
@@ -24,7 +26,7 @@ Example:
 
 ```bash
 curl -sS \
-  -H "Authorization: Bearer $RELAY_API_TOKEN" \
+  -H "Authorization: Bearer $RELAY_CLIENT_TOKEN" \
   https://relay.4gly.dev/v1/projects/<project_id>
 ```
 
@@ -73,6 +75,7 @@ Response:
 
 Purpose:
 - mint a new reusable API key for agents or clients
+- optionally bind the key to a single project
 
 Auth:
 - bootstrap admin token only
@@ -81,7 +84,9 @@ Request body:
 
 ```json
 {
-  "name": "agent-smoke"
+  "name": "agent-smoke",
+  "scope": "project",
+  "project": "relay"
 }
 ```
 
@@ -95,7 +100,9 @@ Response body:
     "key_id": "key_xxx",
     "name": "agent-smoke",
     "token": "relay_live_xxx",
-    "token_prefix": "relay_live_xxx"
+    "token_prefix": "relay_live_xxx",
+    "scope": "project",
+    "project_id": "proj_xxx"
   },
   "warnings": []
 }
@@ -105,6 +112,9 @@ Contract notes:
 - plaintext token is returned once
 - only the hash is stored in Postgres
 - issued keys can be used on the normal `/v1/*` routes
+- `scope` defaults to `global`
+- `scope: project` requires `project` or `project_id`
+- `project` and `project_id` must resolve to the same project when both are present
 
 ### `GET /v1/api-keys`
 
@@ -126,6 +136,8 @@ Response body:
         "key_id": "key_xxx",
         "name": "agent-smoke",
         "token_prefix": "relay_live_xxx",
+        "scope": "project",
+        "project_id": "proj_xxx",
         "revoked": false
       }
     ]
@@ -153,30 +165,30 @@ Request body:
 Contract notes:
 - revoked keys stop working on normal `/v1/*` routes
 - bootstrap admin token is not affected
+- list and revoke responses include the key scope and project binding when present
 
 ### `POST /v1/capture`
 
 Purpose:
-- store raw memory for a project
+- store raw memory and optional artifacts
 - optionally attach repo or document artifacts
 
 Request body:
 
 ```json
 {
-  "project": "relay",
   "repo_path": ".",
   "handoff_path": "docs/handoff.md",
   "design_path": "docs/design.md",
-  "note": "",
-  "source": "chat",
-  "body": "user said offline matters",
+  "note": "user said offline matters",
   "idempotency_key": "capture-001"
 }
 ```
 
 Contract notes:
-- `project`, `source`, `body` are the practical minimum
+- `project` is optional; when omitted, capture can infer from `repo_path` for normal flows or use the bound project when it safely matches a project-scoped key
+- `body` is optional; `note` is accepted as an alias for the stored memory text
+- `source` is optional and defaults to `manual`
 - `idempotency_key` should be supplied by agents on writes
 
 ### `POST /v1/promote`

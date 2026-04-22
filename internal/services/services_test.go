@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"relay/internal/domain"
@@ -260,6 +261,239 @@ func TestCaptureCreatesProjectNoteAndArtifacts(t *testing.T) {
 	}
 }
 
+func TestCaptureUsesNoteAliasAndDefaultsSource(t *testing.T) {
+	notes := &fakeNoteStore{}
+	service := New(Dependencies{
+		Projects:      &fakeProjectStore{},
+		Notes:         notes,
+		Artifacts:     &fakeArtifactStore{},
+		Decisions:     &fakeDecisionStore{},
+		OpenQuestions: &fakeOpenQuestionStore{},
+		Packets:       &fakePacketStore{},
+		APIKeys:       &fakeAPIKeyStore{},
+	})
+
+	result, err := service.Capture(context.Background(), CaptureInput{
+		Note: "Alias body text",
+	})
+	if err != nil {
+		t.Fatalf("Capture returned error: %v", err)
+	}
+	if result.ProjectID != "" {
+		t.Fatalf("expected no project id, got %q", result.ProjectID)
+	}
+	if len(notes.items) != 1 {
+		t.Fatalf("expected 1 note, got %d", len(notes.items))
+	}
+	if notes.items[0].Body != "Alias body text" {
+		t.Fatalf("expected note body to come from note alias, got %q", notes.items[0].Body)
+	}
+	if notes.items[0].Source != "manual" {
+		t.Fatalf("expected default source manual, got %q", notes.items[0].Source)
+	}
+}
+
+func TestCaptureUsesBoundProjectForNoteOnlyProjectScopedKey(t *testing.T) {
+	relayID := lib.ProjectID("relay")
+	notes := &fakeNoteStore{}
+	artifacts := &fakeArtifactStore{}
+	service := New(Dependencies{
+		Projects: &fakeProjectStore{
+			projects: map[string]domain.Project{
+				"relay": {ID: relayID, Name: "relay", RootPath: "/tmp/relay"},
+			},
+		},
+		Notes:         notes,
+		Artifacts:     artifacts,
+		Decisions:     &fakeDecisionStore{},
+		OpenQuestions: &fakeOpenQuestionStore{},
+		Packets:       &fakePacketStore{},
+		APIKeys:       &fakeAPIKeyStore{},
+	})
+
+	ctx := ContextWithAuthInfo(context.Background(), AuthInfo{
+		KeyID:     "key_1",
+		Scope:     APIKeyScopeProject,
+		ProjectID: relayID,
+	})
+
+	result, err := service.Capture(ctx, CaptureInput{
+		Note: "Bound project note only",
+	})
+	if err != nil {
+		t.Fatalf("Capture returned error: %v", err)
+	}
+	if result.ProjectID != relayID {
+		t.Fatalf("expected bound project id %q, got %q", relayID, result.ProjectID)
+	}
+	if len(notes.items) != 1 {
+		t.Fatalf("expected 1 note, got %d", len(notes.items))
+	}
+	if notes.items[0].ProjectID != relayID {
+		t.Fatalf("expected note to be stored against bound project, got %#v", notes.items[0])
+	}
+	if len(artifacts.items) != 0 {
+		t.Fatalf("expected no artifacts without repo_path or document paths, got %#v", artifacts.items)
+	}
+}
+
+func TestCaptureRejectsOtherProjectForProjectScopedKey(t *testing.T) {
+	relayID := lib.ProjectID("relay")
+	service := New(Dependencies{
+		Projects: &fakeProjectStore{
+			projects: map[string]domain.Project{
+				"relay": {ID: relayID, Name: "relay"},
+				"other": {ID: lib.ProjectID("other"), Name: "other"},
+			},
+		},
+		Notes:         &fakeNoteStore{},
+		Artifacts:     &fakeArtifactStore{},
+		Decisions:     &fakeDecisionStore{},
+		OpenQuestions: &fakeOpenQuestionStore{},
+		Packets:       &fakePacketStore{},
+		APIKeys:       &fakeAPIKeyStore{},
+	})
+
+	ctx := ContextWithAuthInfo(context.Background(), AuthInfo{
+		KeyID:     "key_1",
+		Scope:     APIKeyScopeProject,
+		ProjectID: relayID,
+	})
+
+	_, err := service.Capture(ctx, CaptureInput{
+		Project: "other",
+		Source:  "chat",
+		Body:    "hello",
+	})
+	if err == nil {
+		t.Fatal("expected project-scoped key to reject capture into a different project")
+	}
+	appErr, ok := err.(lib.AppError)
+	if !ok {
+		t.Fatalf("expected AppError, got %T", err)
+	}
+	if appErr.Code != "FORBIDDEN" {
+		t.Fatalf("expected FORBIDDEN, got %q", appErr.Code)
+	}
+}
+
+func TestCaptureUsesBoundProjectForMatchingRepoPathDerivedName(t *testing.T) {
+	relayID := lib.ProjectID("relay")
+	notes := &fakeNoteStore{}
+	service := New(Dependencies{
+		Projects: &fakeProjectStore{
+			projects: map[string]domain.Project{
+				"relay": {ID: relayID, Name: "relay", RootPath: "/tmp/relay"},
+			},
+		},
+		Notes:         notes,
+		Artifacts:     &fakeArtifactStore{},
+		Decisions:     &fakeDecisionStore{},
+		OpenQuestions: &fakeOpenQuestionStore{},
+		Packets:       &fakePacketStore{},
+		APIKeys:       &fakeAPIKeyStore{},
+	})
+
+	ctx := ContextWithAuthInfo(context.Background(), AuthInfo{
+		KeyID:     "key_1",
+		Scope:     APIKeyScopeProject,
+		ProjectID: relayID,
+	})
+
+	result, err := service.Capture(ctx, CaptureInput{
+		RepoPath: "/tmp/relay",
+		Source:   "chat",
+		Body:     "hello",
+	})
+	if err != nil {
+		t.Fatalf("Capture returned error: %v", err)
+	}
+	if result.ProjectID != relayID {
+		t.Fatalf("expected bound project id %q, got %q", relayID, result.ProjectID)
+	}
+	if len(notes.items) != 1 || notes.items[0].ProjectID != relayID {
+		t.Fatalf("expected note to be stored against bound project, got %#v", notes.items)
+	}
+}
+
+func TestCaptureRejectsRepoPathAliasForProjectScopedKey(t *testing.T) {
+	relayID := lib.ProjectID("relay")
+	service := New(Dependencies{
+		Projects: &fakeProjectStore{
+			projects: map[string]domain.Project{
+				"relay": {ID: relayID, Name: "relay", RootPath: "/tmp/relay"},
+			},
+		},
+		Notes:         &fakeNoteStore{},
+		Artifacts:     &fakeArtifactStore{},
+		Decisions:     &fakeDecisionStore{},
+		OpenQuestions: &fakeOpenQuestionStore{},
+		Packets:       &fakePacketStore{},
+		APIKeys:       &fakeAPIKeyStore{},
+	})
+
+	ctx := ContextWithAuthInfo(context.Background(), AuthInfo{
+		KeyID:     "key_1",
+		Scope:     APIKeyScopeProject,
+		ProjectID: relayID,
+	})
+
+	_, err := service.Capture(ctx, CaptureInput{
+		RepoPath: "/tmp/custom-alias",
+		Source:   "chat",
+		Body:     "hello",
+	})
+	if err == nil {
+		t.Fatal("expected repo_path alias to be rejected for project-scoped capture")
+	}
+	appErr, ok := err.(lib.AppError)
+	if !ok {
+		t.Fatalf("expected AppError, got %T", err)
+	}
+	if appErr.Code != "FORBIDDEN" {
+		t.Fatalf("expected FORBIDDEN, got %q", appErr.Code)
+	}
+}
+
+func TestCaptureRejectsRepoPathWithoutBoundRootPathForProjectScopedKey(t *testing.T) {
+	relayID := lib.ProjectID("relay")
+	service := New(Dependencies{
+		Projects: &fakeProjectStore{
+			projects: map[string]domain.Project{
+				"relay": {ID: relayID, Name: "relay"},
+			},
+		},
+		Notes:         &fakeNoteStore{},
+		Artifacts:     &fakeArtifactStore{},
+		Decisions:     &fakeDecisionStore{},
+		OpenQuestions: &fakeOpenQuestionStore{},
+		Packets:       &fakePacketStore{},
+		APIKeys:       &fakeAPIKeyStore{},
+	})
+
+	ctx := ContextWithAuthInfo(context.Background(), AuthInfo{
+		KeyID:     "key_1",
+		Scope:     APIKeyScopeProject,
+		ProjectID: relayID,
+	})
+
+	_, err := service.Capture(ctx, CaptureInput{
+		RepoPath: "/tmp/relay",
+		Source:   "chat",
+		Body:     "hello",
+	})
+	if err == nil {
+		t.Fatal("expected repo_path to be rejected when the bound project has no stored root path")
+	}
+	appErr, ok := err.(lib.AppError)
+	if !ok {
+		t.Fatalf("expected AppError, got %T", err)
+	}
+	if appErr.Code != "FORBIDDEN" {
+		t.Fatalf("expected FORBIDDEN, got %q", appErr.Code)
+	}
+}
+
 func TestPromoteDecision(t *testing.T) {
 	projects := &fakeProjectStore{
 		projects: map[string]domain.Project{
@@ -291,6 +525,47 @@ func TestPromoteDecision(t *testing.T) {
 	}
 	if len(decisions.items) != 1 {
 		t.Fatalf("expected 1 decision, got %d", len(decisions.items))
+	}
+}
+
+func TestPromoteRejectsOtherProjectForProjectScopedKey(t *testing.T) {
+	relayID := lib.ProjectID("relay")
+	service := New(Dependencies{
+		Projects: &fakeProjectStore{
+			projects: map[string]domain.Project{
+				"relay": {ID: relayID, Name: "relay"},
+				"other": {ID: lib.ProjectID("other"), Name: "other"},
+			},
+		},
+		Notes:         &fakeNoteStore{},
+		Artifacts:     &fakeArtifactStore{},
+		Decisions:     &fakeDecisionStore{},
+		OpenQuestions: &fakeOpenQuestionStore{},
+		Packets:       &fakePacketStore{},
+		APIKeys:       &fakeAPIKeyStore{},
+	})
+
+	ctx := ContextWithAuthInfo(context.Background(), AuthInfo{
+		KeyID:     "key_1",
+		Scope:     APIKeyScopeProject,
+		ProjectID: relayID,
+	})
+
+	_, err := service.Promote(ctx, PromoteInput{
+		Project: "other",
+		Kind:    "decision",
+		Summary: "ship it",
+		Reason:  "because",
+	})
+	if err == nil {
+		t.Fatal("expected project-scoped key to reject promote into a different project")
+	}
+	appErr, ok := err.(lib.AppError)
+	if !ok {
+		t.Fatalf("expected AppError, got %T", err)
+	}
+	if appErr.Code != "FORBIDDEN" {
+		t.Fatalf("expected FORBIDDEN, got %q", appErr.Code)
 	}
 }
 
@@ -355,6 +630,135 @@ func TestBuildPacket(t *testing.T) {
 	}
 }
 
+func TestBuildPacketRejectsOtherProjectForProjectScopedKey(t *testing.T) {
+	relayID := lib.ProjectID("relay")
+	service := New(Dependencies{
+		Projects: &fakeProjectStore{
+			projects: map[string]domain.Project{
+				"relay": {ID: relayID, Name: "relay"},
+				"other": {ID: lib.ProjectID("other"), Name: "other"},
+			},
+		},
+		Notes:         &fakeNoteStore{},
+		Artifacts:     &fakeArtifactStore{},
+		Decisions:     &fakeDecisionStore{},
+		OpenQuestions: &fakeOpenQuestionStore{},
+		Packets:       &fakePacketStore{},
+		APIKeys:       &fakeAPIKeyStore{},
+	})
+
+	ctx := ContextWithAuthInfo(context.Background(), AuthInfo{
+		KeyID:     "key_1",
+		Scope:     APIKeyScopeProject,
+		ProjectID: relayID,
+	})
+
+	_, err := service.BuildPacket(ctx, PacketBuildInput{
+		Project: "other",
+		Type:    "resume",
+		Target:  "codex",
+	})
+	if err == nil {
+		t.Fatal("expected project-scoped key to reject packet build for a different project")
+	}
+	appErr, ok := err.(lib.AppError)
+	if !ok {
+		t.Fatalf("expected AppError, got %T", err)
+	}
+	if appErr.Code != "FORBIDDEN" {
+		t.Fatalf("expected FORBIDDEN, got %q", appErr.Code)
+	}
+}
+
+func TestProjectScopedAccessRejectsMissingAndOtherProjectsWithoutLeak(t *testing.T) {
+	relayID := lib.ProjectID("relay")
+	otherID := lib.ProjectID("other")
+	service := New(Dependencies{
+		Projects: &fakeProjectStore{
+			projects: map[string]domain.Project{
+				"relay": {ID: relayID, Name: "relay"},
+				"other": {ID: otherID, Name: "other"},
+			},
+		},
+		Notes:         &fakeNoteStore{},
+		Artifacts:     &fakeArtifactStore{},
+		Decisions:     &fakeDecisionStore{},
+		OpenQuestions: &fakeOpenQuestionStore{},
+		Packets:       &fakePacketStore{},
+		APIKeys:       &fakeAPIKeyStore{},
+	})
+
+	ctx := ContextWithAuthInfo(context.Background(), AuthInfo{
+		KeyID:     "key_1",
+		Scope:     APIKeyScopeProject,
+		ProjectID: relayID,
+	})
+
+	tests := []struct {
+		name string
+		run  func() error
+	}{
+		{
+			name: "show-other",
+			run: func() error {
+				_, err := service.Show(ctx, ShowInput{ProjectID: otherID})
+				return err
+			},
+		},
+		{
+			name: "show-missing",
+			run: func() error {
+				_, err := service.Show(ctx, ShowInput{ProjectID: lib.ProjectID("missing")})
+				return err
+			},
+		},
+		{
+			name: "promote-other",
+			run: func() error {
+				_, err := service.Promote(ctx, PromoteInput{Project: "other", Kind: "decision", Summary: "ship it", Reason: "because"})
+				return err
+			},
+		},
+		{
+			name: "promote-missing",
+			run: func() error {
+				_, err := service.Promote(ctx, PromoteInput{Project: "missing", Kind: "decision", Summary: "ship it", Reason: "because"})
+				return err
+			},
+		},
+		{
+			name: "packet-other",
+			run: func() error {
+				_, err := service.BuildPacket(ctx, PacketBuildInput{Project: "other", Type: "resume", Target: "codex"})
+				return err
+			},
+		},
+		{
+			name: "packet-missing",
+			run: func() error {
+				_, err := service.BuildPacket(ctx, PacketBuildInput{Project: "missing", Type: "resume", Target: "codex"})
+				return err
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.run()
+			if err == nil {
+				t.Fatal("expected error")
+			}
+			appErr, ok := err.(lib.AppError)
+			if !ok {
+				t.Fatalf("expected AppError, got %T", err)
+			}
+			if appErr.Code != "FORBIDDEN" {
+				t.Fatalf("expected FORBIDDEN, got %q", appErr.Code)
+			}
+		})
+	}
+}
+
 func TestShowByProjectID(t *testing.T) {
 	projectID := lib.ProjectID("relay")
 	projects := &fakeProjectStore{
@@ -390,6 +794,132 @@ func TestShowByProjectID(t *testing.T) {
 	}
 }
 
+func TestShowAllowsBoundProjectForProjectScopedKey(t *testing.T) {
+	projectID := lib.ProjectID("relay")
+	service := New(Dependencies{
+		Projects: &fakeProjectStore{
+			projects: map[string]domain.Project{
+				"relay": {ID: projectID, Name: "relay"},
+			},
+		},
+		Notes:         &fakeNoteStore{},
+		Artifacts:     &fakeArtifactStore{},
+		Decisions:     &fakeDecisionStore{},
+		OpenQuestions: &fakeOpenQuestionStore{},
+		Packets:       &fakePacketStore{},
+		APIKeys:       &fakeAPIKeyStore{},
+	})
+
+	ctx := ContextWithAuthInfo(context.Background(), AuthInfo{
+		KeyID:     "key_1",
+		Scope:     APIKeyScopeProject,
+		ProjectID: projectID,
+	})
+
+	if _, err := service.Show(ctx, ShowInput{ProjectID: projectID}); err != nil {
+		t.Fatalf("Show returned error: %v", err)
+	}
+}
+
+func TestShowRejectsOtherProjectForProjectScopedKey(t *testing.T) {
+	relayID := lib.ProjectID("relay")
+	otherID := lib.ProjectID("other")
+	service := New(Dependencies{
+		Projects: &fakeProjectStore{
+			projects: map[string]domain.Project{
+				"relay": {ID: relayID, Name: "relay"},
+				"other": {ID: otherID, Name: "other"},
+			},
+		},
+		Notes:         &fakeNoteStore{},
+		Artifacts:     &fakeArtifactStore{},
+		Decisions:     &fakeDecisionStore{},
+		OpenQuestions: &fakeOpenQuestionStore{},
+		Packets:       &fakePacketStore{},
+		APIKeys:       &fakeAPIKeyStore{},
+	})
+
+	ctx := ContextWithAuthInfo(context.Background(), AuthInfo{
+		KeyID:     "key_1",
+		Scope:     APIKeyScopeProject,
+		ProjectID: relayID,
+	})
+
+	_, err := service.Show(ctx, ShowInput{ProjectID: otherID})
+	if err == nil {
+		t.Fatal("expected project-scoped key to reject a different project")
+	}
+	appErr, ok := err.(lib.AppError)
+	if !ok {
+		t.Fatalf("expected AppError, got %T", err)
+	}
+	if appErr.Code != "FORBIDDEN" {
+		t.Fatalf("expected FORBIDDEN, got %q", appErr.Code)
+	}
+}
+
+func TestShowRejectsMalformedProjectScopedAuth(t *testing.T) {
+	projectID := lib.ProjectID("relay")
+	service := New(Dependencies{
+		Projects: &fakeProjectStore{
+			projects: map[string]domain.Project{
+				"relay": {ID: projectID, Name: "relay"},
+			},
+		},
+		Notes:         &fakeNoteStore{},
+		Artifacts:     &fakeArtifactStore{},
+		Decisions:     &fakeDecisionStore{},
+		OpenQuestions: &fakeOpenQuestionStore{},
+		Packets:       &fakePacketStore{},
+		APIKeys:       &fakeAPIKeyStore{},
+	})
+
+	ctx := ContextWithAuthInfo(context.Background(), AuthInfo{
+		KeyID: "key_1",
+		Scope: APIKeyScopeProject,
+	})
+
+	_, err := service.Show(ctx, ShowInput{ProjectID: projectID})
+	if err == nil {
+		t.Fatal("expected malformed project-scoped auth to be rejected")
+	}
+	appErr, ok := err.(lib.AppError)
+	if !ok {
+		t.Fatalf("expected AppError, got %T", err)
+	}
+	if appErr.Code != "FORBIDDEN" {
+		t.Fatalf("expected FORBIDDEN, got %q", appErr.Code)
+	}
+}
+
+func TestShowAllowsGlobalKeyAcrossProjects(t *testing.T) {
+	relayID := lib.ProjectID("relay")
+	otherID := lib.ProjectID("other")
+	service := New(Dependencies{
+		Projects: &fakeProjectStore{
+			projects: map[string]domain.Project{
+				"relay": {ID: relayID, Name: "relay"},
+				"other": {ID: otherID, Name: "other"},
+			},
+		},
+		Notes:         &fakeNoteStore{},
+		Artifacts:     &fakeArtifactStore{},
+		Decisions:     &fakeDecisionStore{},
+		OpenQuestions: &fakeOpenQuestionStore{},
+		Packets:       &fakePacketStore{},
+		APIKeys:       &fakeAPIKeyStore{},
+	})
+
+	ctx := ContextWithAuthInfo(context.Background(), AuthInfo{
+		KeyID: "key_1",
+		Scope: APIKeyScopeGlobal,
+	})
+
+	if _, err := service.Show(ctx, ShowInput{ProjectID: otherID}); err != nil {
+		t.Fatalf("Show returned error: %v", err)
+	}
+}
+
 func TestIssueAPIKey(t *testing.T) {
 	keys := &fakeAPIKeyStore{}
 	service := New(Dependencies{
@@ -402,7 +932,12 @@ func TestIssueAPIKey(t *testing.T) {
 		APIKeys:       keys,
 	})
 
-	result, err := service.IssueAPIKey(context.Background(), IssueAPIKeyInput{Name: "agent"})
+	ctx := ContextWithAuthInfo(context.Background(), AuthInfo{
+		IsAdmin: true,
+		Scope:   APIKeyScopeGlobal,
+	})
+
+	result, err := service.IssueAPIKey(ctx, IssueAPIKeyInput{Name: "agent"})
 	if err != nil {
 		t.Fatalf("IssueAPIKey returned error: %v", err)
 	}
@@ -414,6 +949,153 @@ func TestIssueAPIKey(t *testing.T) {
 	}
 	if keys.created[0].TokenHash != lib.TokenHash(result.Token) {
 		t.Fatalf("expected stored hash to match returned token")
+	}
+}
+
+func TestIssueAPIKeyRejectsInvalidScope(t *testing.T) {
+	service := New(Dependencies{
+		Projects:      &fakeProjectStore{},
+		Notes:         &fakeNoteStore{},
+		Artifacts:     &fakeArtifactStore{},
+		Decisions:     &fakeDecisionStore{},
+		OpenQuestions: &fakeOpenQuestionStore{},
+		Packets:       &fakePacketStore{},
+		APIKeys:       &fakeAPIKeyStore{},
+	})
+
+	ctx := ContextWithAuthInfo(context.Background(), AuthInfo{
+		IsAdmin: true,
+		Scope:   APIKeyScopeGlobal,
+	})
+
+	_, err := service.IssueAPIKey(ctx, IssueAPIKeyInput{Name: "agent", Scope: "invalid"})
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	appErr, ok := err.(lib.AppError)
+	if !ok {
+		t.Fatalf("expected AppError, got %T", err)
+	}
+	if appErr.Code != "INVALID_API_KEY_SCOPE" {
+		t.Fatalf("expected INVALID_API_KEY_SCOPE, got %q", appErr.Code)
+	}
+}
+
+func TestIssueAPIKeyRejectsProjectBindingWithoutProjectScope(t *testing.T) {
+	service := New(Dependencies{
+		Projects:      &fakeProjectStore{},
+		Notes:         &fakeNoteStore{},
+		Artifacts:     &fakeArtifactStore{},
+		Decisions:     &fakeDecisionStore{},
+		OpenQuestions: &fakeOpenQuestionStore{},
+		Packets:       &fakePacketStore{},
+		APIKeys:       &fakeAPIKeyStore{},
+	})
+
+	ctx := ContextWithAuthInfo(context.Background(), AuthInfo{
+		IsAdmin: true,
+		Scope:   APIKeyScopeGlobal,
+	})
+
+	_, err := service.IssueAPIKey(ctx, IssueAPIKeyInput{
+		Name:    "agent",
+		Project: "relay",
+	})
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	appErr, ok := err.(lib.AppError)
+	if !ok {
+		t.Fatalf("expected AppError, got %T", err)
+	}
+	if appErr.Code != "INVALID_API_KEY_SCOPE" {
+		t.Fatalf("expected INVALID_API_KEY_SCOPE, got %q", appErr.Code)
+	}
+}
+
+func TestIssueAPIKeyPersistsProjectScopeBinding(t *testing.T) {
+	projectID := lib.ProjectID("relay")
+	keys := &fakeAPIKeyStore{}
+	service := New(Dependencies{
+		Projects: &fakeProjectStore{
+			projects: map[string]domain.Project{
+				"relay": {ID: projectID, Name: "relay"},
+			},
+		},
+		Notes:         &fakeNoteStore{},
+		Artifacts:     &fakeArtifactStore{},
+		Decisions:     &fakeDecisionStore{},
+		OpenQuestions: &fakeOpenQuestionStore{},
+		Packets:       &fakePacketStore{},
+		APIKeys:       keys,
+	})
+
+	ctx := ContextWithAuthInfo(context.Background(), AuthInfo{
+		IsAdmin: true,
+		Scope:   APIKeyScopeGlobal,
+	})
+
+	result, err := service.IssueAPIKey(ctx, IssueAPIKeyInput{
+		Name:    "agent",
+		Scope:   APIKeyScopeProject,
+		Project: "relay",
+	})
+	if err != nil {
+		t.Fatalf("IssueAPIKey returned error: %v", err)
+	}
+	if result.Scope != APIKeyScopeProject {
+		t.Fatalf("expected project scope, got %q", result.Scope)
+	}
+	if result.ProjectID != projectID {
+		t.Fatalf("expected project id %q, got %q", projectID, result.ProjectID)
+	}
+	if len(keys.created) != 1 {
+		t.Fatalf("expected one created key, got %d", len(keys.created))
+	}
+	if keys.created[0].Scope != APIKeyScopeProject {
+		t.Fatalf("expected stored project scope, got %q", keys.created[0].Scope)
+	}
+	if keys.created[0].ProjectID != projectID {
+		t.Fatalf("expected stored project id %q, got %q", projectID, keys.created[0].ProjectID)
+	}
+}
+
+func TestIssueAPIKeyRejectsProjectMismatch(t *testing.T) {
+	service := New(Dependencies{
+		Projects: &fakeProjectStore{
+			projects: map[string]domain.Project{
+				"relay": {ID: lib.ProjectID("proj_relay"), Name: "relay"},
+				"other": {ID: lib.ProjectID("proj_other"), Name: "other"},
+			},
+		},
+		Notes:         &fakeNoteStore{},
+		Artifacts:     &fakeArtifactStore{},
+		Decisions:     &fakeDecisionStore{},
+		OpenQuestions: &fakeOpenQuestionStore{},
+		Packets:       &fakePacketStore{},
+		APIKeys:       &fakeAPIKeyStore{},
+	})
+
+	ctx := ContextWithAuthInfo(context.Background(), AuthInfo{
+		IsAdmin: true,
+		Scope:   APIKeyScopeGlobal,
+	})
+
+	_, err := service.IssueAPIKey(ctx, IssueAPIKeyInput{
+		Name:      "agent",
+		Scope:     APIKeyScopeProject,
+		Project:   "relay",
+		ProjectID: lib.ProjectID("proj_other"),
+	})
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	appErr, ok := err.(lib.AppError)
+	if !ok {
+		t.Fatalf("expected AppError, got %T", err)
+	}
+	if appErr.Code != "PROJECT_MISMATCH" {
+		t.Fatalf("expected PROJECT_MISMATCH, got %q", appErr.Code)
 	}
 }
 
@@ -433,7 +1115,12 @@ func TestListAPIKeys(t *testing.T) {
 		APIKeys:       keys,
 	})
 
-	result, err := service.ListAPIKeys(context.Background())
+	ctx := ContextWithAuthInfo(context.Background(), AuthInfo{
+		IsAdmin: true,
+		Scope:   APIKeyScopeGlobal,
+	})
+
+	result, err := service.ListAPIKeys(ctx)
 	if err != nil {
 		t.Fatalf("ListAPIKeys returned error: %v", err)
 	}
@@ -458,11 +1145,358 @@ func TestRevokeAPIKey(t *testing.T) {
 		APIKeys:       keys,
 	})
 
-	result, err := service.RevokeAPIKey(context.Background(), RevokeAPIKeyInput{KeyID: "key_1"})
+	ctx := ContextWithAuthInfo(context.Background(), AuthInfo{
+		IsAdmin: true,
+		Scope:   APIKeyScopeGlobal,
+	})
+
+	result, err := service.RevokeAPIKey(ctx, RevokeAPIKeyInput{KeyID: "key_1"})
 	if err != nil {
 		t.Fatalf("RevokeAPIKey returned error: %v", err)
 	}
 	if !result.Revoked {
 		t.Fatalf("expected revoked result")
+	}
+}
+
+func TestAdminMethodsRejectNonAdminAuthContext(t *testing.T) {
+	keys := &fakeAPIKeyStore{
+		itemsByHash: map[string]domain.APIKey{
+			"hash": {ID: "key_1", Name: "agent", TokenHash: "hash", TokenPrefix: "relay_live_abc"},
+		},
+	}
+	service := New(Dependencies{
+		Projects:      &fakeProjectStore{},
+		Notes:         &fakeNoteStore{},
+		Artifacts:     &fakeArtifactStore{},
+		Decisions:     &fakeDecisionStore{},
+		OpenQuestions: &fakeOpenQuestionStore{},
+		Packets:       &fakePacketStore{},
+		APIKeys:       keys,
+	})
+
+	ctx := ContextWithAuthInfo(context.Background(), AuthInfo{
+		KeyID: "key_1",
+		Scope: APIKeyScopeGlobal,
+	})
+
+	tests := []struct {
+		name string
+		run  func(context.Context) error
+	}{
+		{
+			name: "issue",
+			run: func(ctx context.Context) error {
+				_, err := service.IssueAPIKey(ctx, IssueAPIKeyInput{Name: "agent"})
+				return err
+			},
+		},
+		{
+			name: "list",
+			run: func(ctx context.Context) error {
+				_, err := service.ListAPIKeys(ctx)
+				return err
+			},
+		},
+		{
+			name: "revoke",
+			run: func(ctx context.Context) error {
+				_, err := service.RevokeAPIKey(ctx, RevokeAPIKeyInput{KeyID: "key_1"})
+				return err
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.run(ctx)
+			if err == nil {
+				t.Fatal("expected non-admin auth context to be rejected")
+			}
+			appErr, ok := err.(lib.AppError)
+			if !ok {
+				t.Fatalf("expected AppError, got %T", err)
+			}
+			if appErr.Code != "FORBIDDEN" {
+				t.Fatalf("expected FORBIDDEN, got %q", appErr.Code)
+			}
+		})
+	}
+}
+
+func TestUserControlledStringFieldsRejectOverlongValues(t *testing.T) {
+	service := New(Dependencies{
+		Projects: &fakeProjectStore{
+			projects: map[string]domain.Project{
+				"relay": {ID: lib.ProjectID("relay"), Name: "relay"},
+			},
+		},
+		Notes:         &fakeNoteStore{},
+		Artifacts:     &fakeArtifactStore{},
+		Decisions:     &fakeDecisionStore{},
+		OpenQuestions: &fakeOpenQuestionStore{},
+		Packets:       &fakePacketStore{},
+		APIKeys:       &fakeAPIKeyStore{},
+	})
+
+	longText := strings.Repeat("a", maxCaptureTextLength+1)
+	longKey := strings.Repeat("k", maxAPIKeyIDLength+1)
+	longName := strings.Repeat("n", maxAPIKeyNameLength+1)
+	longTarget := strings.Repeat("t", maxPacketTargetLength+1)
+
+	tests := []struct {
+		name string
+		run  func() error
+	}{
+		{
+			name: "capture body",
+			run: func() error {
+				_, err := service.Capture(context.Background(), CaptureInput{
+					Project: "relay",
+					Source:  "chat",
+					Body:    longText,
+				})
+				return err
+			},
+		},
+		{
+			name: "promote summary",
+			run: func() error {
+				_, err := service.Promote(context.Background(), PromoteInput{
+					Project: "relay",
+					Kind:    "decision",
+					Summary: longText,
+					Reason:  "because",
+				})
+				return err
+			},
+		},
+		{
+			name: "packet target",
+			run: func() error {
+				_, err := service.BuildPacket(context.Background(), PacketBuildInput{
+					Project: "relay",
+					Type:    "resume",
+					Target:  longTarget,
+				})
+				return err
+			},
+		},
+		{
+			name: "api key name",
+			run: func() error {
+				ctx := ContextWithAuthInfo(context.Background(), AuthInfo{IsAdmin: true, Scope: APIKeyScopeGlobal})
+				_, err := service.IssueAPIKey(ctx, IssueAPIKeyInput{Name: longName})
+				return err
+			},
+		},
+		{
+			name: "revoke key id",
+			run: func() error {
+				ctx := ContextWithAuthInfo(context.Background(), AuthInfo{IsAdmin: true, Scope: APIKeyScopeGlobal})
+				_, err := service.RevokeAPIKey(ctx, RevokeAPIKeyInput{KeyID: longKey})
+				return err
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.run()
+			if err == nil {
+				t.Fatal("expected overlong input to be rejected")
+			}
+			appErr, ok := err.(lib.AppError)
+			if !ok {
+				t.Fatalf("expected AppError, got %T", err)
+			}
+			if appErr.Code != "FIELD_TOO_LONG" {
+				t.Fatalf("expected FIELD_TOO_LONG, got %q", appErr.Code)
+			}
+			if appErr.Message == "" {
+				t.Fatal("expected validation message")
+			}
+		})
+	}
+}
+
+func TestValidateStringFieldLengthCountsUTF8Characters(t *testing.T) {
+	shortUTF8 := strings.Repeat("界", 3)
+	if err := validateStringFieldLength("name", shortUTF8, 4); err != nil {
+		t.Fatalf("expected rune-based validation to accept %q, got %v", shortUTF8, err)
+	}
+
+	longUTF8 := strings.Repeat("界", 5)
+	err := validateStringFieldLength("name", longUTF8, 4)
+	if err == nil {
+		t.Fatal("expected overlong UTF-8 input to be rejected")
+	}
+	appErr, ok := err.(lib.AppError)
+	if !ok {
+		t.Fatalf("expected AppError, got %T", err)
+	}
+	if appErr.Code != "FIELD_TOO_LONG" {
+		t.Fatalf("expected FIELD_TOO_LONG, got %q", appErr.Code)
+	}
+	if appErr.Message != "name exceeds maximum length of 4 characters" {
+		t.Fatalf("expected character-based message, got %q", appErr.Message)
+	}
+}
+
+func TestCaptureRejectsOverlongDerivedProjectName(t *testing.T) {
+	service := New(Dependencies{
+		Projects: &fakeProjectStore{
+			projects: map[string]domain.Project{},
+		},
+		Notes:         &fakeNoteStore{},
+		Artifacts:     &fakeArtifactStore{},
+		Decisions:     &fakeDecisionStore{},
+		OpenQuestions: &fakeOpenQuestionStore{},
+		Packets:       &fakePacketStore{},
+		APIKeys:       &fakeAPIKeyStore{},
+	})
+
+	_, err := service.Capture(context.Background(), CaptureInput{
+		RepoPath: strings.Repeat("a", maxCaptureProjectLength+1),
+		Source:   "chat",
+		Body:     "hello",
+	})
+	if err == nil {
+		t.Fatal("expected derived project name to be validated")
+	}
+	appErr, ok := err.(lib.AppError)
+	if !ok {
+		t.Fatalf("expected AppError, got %T", err)
+	}
+	if appErr.Code != "FIELD_TOO_LONG" {
+		t.Fatalf("expected FIELD_TOO_LONG, got %q", appErr.Code)
+	}
+}
+
+func TestPromoteRejectsTooManyOrTooLongSourceIDs(t *testing.T) {
+	service := New(Dependencies{
+		Projects: &fakeProjectStore{
+			projects: map[string]domain.Project{
+				"relay": {ID: lib.ProjectID("relay"), Name: "relay"},
+			},
+		},
+		Notes:         &fakeNoteStore{},
+		Artifacts:     &fakeArtifactStore{},
+		Decisions:     &fakeDecisionStore{},
+		OpenQuestions: &fakeOpenQuestionStore{},
+		Packets:       &fakePacketStore{},
+		APIKeys:       &fakeAPIKeyStore{},
+	})
+
+	tooManyNoteIDs := make([]string, maxPromoteSourceIDs+1)
+	for i := range tooManyNoteIDs {
+		tooManyNoteIDs[i] = "note_1"
+	}
+
+	tests := []struct {
+		name  string
+		input PromoteInput
+		code  string
+	}{
+		{
+			name: "note count",
+			input: PromoteInput{
+				Project:           "relay",
+				Kind:              "decision",
+				Summary:           "ship it",
+				Reason:            "because",
+				SourceNoteIDs:     tooManyNoteIDs,
+				SourceArtifactIDs: nil,
+			},
+			code: "FIELD_TOO_MANY_ITEMS",
+		},
+		{
+			name: "artifact id length",
+			input: PromoteInput{
+				Project:           "relay",
+				Kind:              "decision",
+				Summary:           "ship it",
+				Reason:            "because",
+				SourceNoteIDs:     nil,
+				SourceArtifactIDs: []string{strings.Repeat("a", maxPromoteSourceIDLength+1)},
+			},
+			code: "FIELD_TOO_LONG",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := service.Promote(context.Background(), tt.input)
+			if err == nil {
+				t.Fatal("expected promote input to be rejected")
+			}
+			appErr, ok := err.(lib.AppError)
+			if !ok {
+				t.Fatalf("expected AppError, got %T", err)
+			}
+			if appErr.Code != tt.code {
+				t.Fatalf("expected %s, got %q", tt.code, appErr.Code)
+			}
+		})
+	}
+}
+
+func TestAdminMethodsRejectMissingAuthContext(t *testing.T) {
+	keys := &fakeAPIKeyStore{
+		itemsByHash: map[string]domain.APIKey{
+			"hash": {ID: "key_1", Name: "agent", TokenHash: "hash", TokenPrefix: "relay_live_abc"},
+		},
+	}
+	service := New(Dependencies{
+		Projects:      &fakeProjectStore{},
+		Notes:         &fakeNoteStore{},
+		Artifacts:     &fakeArtifactStore{},
+		Decisions:     &fakeDecisionStore{},
+		OpenQuestions: &fakeOpenQuestionStore{},
+		Packets:       &fakePacketStore{},
+		APIKeys:       keys,
+	})
+
+	tests := []struct {
+		name string
+		run  func(context.Context) error
+	}{
+		{
+			name: "issue",
+			run: func(ctx context.Context) error {
+				_, err := service.IssueAPIKey(ctx, IssueAPIKeyInput{Name: "agent"})
+				return err
+			},
+		},
+		{
+			name: "list",
+			run: func(ctx context.Context) error {
+				_, err := service.ListAPIKeys(ctx)
+				return err
+			},
+		},
+		{
+			name: "revoke",
+			run: func(ctx context.Context) error {
+				_, err := service.RevokeAPIKey(ctx, RevokeAPIKeyInput{KeyID: "key_1"})
+				return err
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.run(context.Background())
+			if err == nil {
+				t.Fatal("expected missing auth context to be rejected")
+			}
+			appErr, ok := err.(lib.AppError)
+			if !ok {
+				t.Fatalf("expected AppError, got %T", err)
+			}
+			if appErr.Code != "FORBIDDEN" {
+				t.Fatalf("expected FORBIDDEN, got %q", appErr.Code)
+			}
+		})
 	}
 }

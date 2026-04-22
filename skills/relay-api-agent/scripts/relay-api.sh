@@ -19,7 +19,7 @@ usage() {
   cat <<'EOF'
 Usage:
   relay-api.sh doctor
-  relay-api.sh issue-key <name> [--store-client]
+  relay-api.sh issue-key <name> [--scope global|project] [--project <name>] [--project-id <id>] [--store-client]
   relay-api.sh list-keys
   relay-api.sh revoke-key <key-id>
   relay-api.sh capture <json-file|->
@@ -31,7 +31,7 @@ Usage:
 Environment:
   RELAY_BASE_URL                          Override base URL
   RELAY_ADMIN_TOKEN / RELAY_API_TOKEN     Bootstrap admin token
-  RELAY_CLIENT_TOKEN / RELAY_TOKEN        Issued client token
+  RELAY_CLIENT_TOKEN / RELAY_MCP_TOKEN    Issued client token
   RELAY_KEYCHAIN_SERVICE                  macOS Keychain service name
   RELAY_KEYCHAIN_ADMIN_ACCOUNT            Keychain account for admin token
   RELAY_KEYCHAIN_CLIENT_ACCOUNT           Keychain account for client token
@@ -40,6 +40,7 @@ Environment:
 Examples:
   relay-api.sh doctor
   relay-api.sh issue-key codex-agent --store-client
+  relay-api.sh issue-key codex-agent --scope project --project relay
   relay-api.sh capture payload.json
   cat payload.json | relay-api.sh promote -
   relay-api.sh raw GET /v1/projects/proj_xxx
@@ -122,20 +123,15 @@ resolve_client_token() {
     CLIENT_TOKEN_SOURCE="env:RELAY_CLIENT_TOKEN"
     return 0
   fi
-  if [[ -n "${RELAY_TOKEN:-}" ]]; then
-    CLIENT_TOKEN="${RELAY_TOKEN}"
-    CLIENT_TOKEN_SOURCE="env:RELAY_TOKEN"
+  if [[ -n "${RELAY_MCP_TOKEN:-}" ]]; then
+    CLIENT_TOKEN="${RELAY_MCP_TOKEN}"
+    CLIENT_TOKEN_SOURCE="env:RELAY_MCP_TOKEN"
     return 0
   fi
   local keychain_token=""
   if keychain_token="$(read_keychain_secret "${KEYCHAIN_CLIENT_ACCOUNT}")"; then
     CLIENT_TOKEN="${keychain_token}"
     CLIENT_TOKEN_SOURCE="keychain:${KEYCHAIN_SERVICE}/${KEYCHAIN_CLIENT_ACCOUNT}"
-    return 0
-  fi
-  if resolve_admin_token; then
-    CLIENT_TOKEN="${ADMIN_TOKEN}"
-    CLIENT_TOKEN_SOURCE="fallback:${ADMIN_TOKEN_SOURCE}"
     return 0
   fi
   return 1
@@ -150,7 +146,7 @@ require_admin_token() {
 
 require_client_token() {
   if ! resolve_client_token; then
-    echo "Relay client token not found. Set RELAY_CLIENT_TOKEN/RELAY_TOKEN or store it with scripts/setup.sh or issue-key --store-client." >&2
+    echo "Relay client token not found. Set RELAY_CLIENT_TOKEN/RELAY_MCP_TOKEN or store it with scripts/setup.sh or issue-key --store-client." >&2
     exit 1
   fi
 }
@@ -228,7 +224,7 @@ doctor() {
     code="$(curl --silent --show-error --output "$body" --write-out '%{http_code}' \
       -H "Authorization: Bearer ${CLIENT_TOKEN}" \
       "${BASE_URL}/v1/projects/proj_doctor_missing")"
-    if [[ "$code" == "200" || "$code" == "404" ]]; then
+    if [[ "$code" == "200" || "$code" == "403" || "$code" == "404" ]]; then
       echo "client token usable (${CLIENT_TOKEN_SOURCE}, status=${code})"
     else
       echo "client token check failed (${CLIENT_TOKEN_SOURCE}, status=${code})" >&2
@@ -281,13 +277,43 @@ doctor() {
 
 issue_key() {
   local name="$1"
-  local store_client="${2:-0}"
+  local scope="${2:-}"
+  local project="${3:-}"
+  local project_id="${4:-}"
+  local store_client="${5:-0}"
   require_admin_token
-  local response
-  response="$(call_json "${ADMIN_TOKEN}" POST /v1/api-keys/issue - <<EOF
-{"name":"${name}"}
-EOF
+  if [[ -n "${project}" || -n "${project_id}" ]]; then
+    if [[ "${scope}" != "project" ]]; then
+      echo "project and project-id require --scope project" >&2
+      exit 1
+    fi
+  fi
+  if [[ "${scope}" == "project" && -z "${project}" && -z "${project_id}" ]]; then
+    echo "--scope project requires --project or --project-id" >&2
+    exit 1
+  fi
+  if [[ "${store_client}" == "1" && ( -n "${project}" || -n "${project_id}" || "${scope}" == "project" ) ]]; then
+    echo "--store-client only applies to global client tokens; omit it for project-scoped keys" >&2
+    exit 1
+  fi
+  local payload
+  payload="$(python3 - "$name" "$scope" "$project" "$project_id" <<'PY'
+import json
+import sys
+
+name, scope, project, project_id = sys.argv[1:]
+data = {"name": name}
+if scope:
+    data["scope"] = scope
+if project:
+    data["project"] = project
+if project_id:
+    data["project_id"] = project_id
+print(json.dumps(data))
+PY
 )"
+  local response
+  response="$(call_json "${ADMIN_TOKEN}" POST /v1/api-keys/issue - <<<"${payload}")"
   if [[ "$store_client" == "1" ]]; then
     local token
     token="$(printf '%s' "$response" | json_get_field "data.token")"
@@ -359,16 +385,49 @@ main() {
     issue-key)
       shift
       local store_client=0
+      local scope=""
+      local project=""
+      local project_id=""
       local name="${1:-}"
       if [[ -z "$name" ]]; then
         echo "issue-key requires <name>" >&2
         exit 1
       fi
       shift
-      if [[ "${1:-}" == "--store-client" ]]; then
-        store_client=1
-      fi
-      issue_key "$name" "$store_client"
+      while [[ $# -gt 0 ]]; do
+        case "$1" in
+          --store-client)
+            store_client=1
+            ;;
+          --scope)
+            shift
+            scope="${1:?--scope requires global or project}"
+            ;;
+          --project)
+            shift
+            project="${1:?--project requires a project name}"
+            ;;
+          --project-id)
+            shift
+            project_id="${1:?--project-id requires a project id}"
+            ;;
+          --scope=*)
+            scope="${1#*=}"
+            ;;
+          --project=*)
+            project="${1#*=}"
+            ;;
+          --project-id=*)
+            project_id="${1#*=}"
+            ;;
+          *)
+            echo "Unknown issue-key option: $1" >&2
+            exit 1
+            ;;
+        esac
+        shift
+      done
+      issue_key "$name" "$scope" "$project" "$project_id" "$store_client"
       ;;
     list-keys)
       list_keys

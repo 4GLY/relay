@@ -3,7 +3,7 @@ set -euo pipefail
 
 BASE_URL="${RELAY_BASE_URL:-https://relay.4gly.dev}"
 MCP_URL="${RELAY_MCP_URL:-${BASE_URL%/}/mcp}"
-CLIENT_TOKEN="${RELAY_CLIENT_TOKEN:-${RELAY_MCP_TOKEN:-${RELAY_TOKEN:-}}}"
+CLIENT_TOKEN="${RELAY_CLIENT_TOKEN:-${RELAY_MCP_TOKEN:-}}"
 ADMIN_TOKEN="${RELAY_ADMIN_TOKEN:-${RELAY_API_TOKEN:-}}"
 KEEP_ISSUED_KEY=0
 TEMP_KEY_ID=""
@@ -24,10 +24,25 @@ Checks Relay production canaries:
 Environment:
   RELAY_BASE_URL                       HTTP API base URL
   RELAY_MCP_URL                        MCP endpoint URL (default: \$RELAY_BASE_URL/mcp)
-  RELAY_CLIENT_TOKEN / RELAY_MCP_TOKEN / RELAY_TOKEN
+  RELAY_CLIENT_TOKEN / RELAY_MCP_TOKEN
                                        Normal issued API key
   RELAY_ADMIN_TOKEN / RELAY_API_TOKEN  Bootstrap admin token used only if a temporary key must be issued
 EOF
+}
+
+resolve_client_token() {
+  if [[ -n "${CLIENT_TOKEN}" ]]; then
+    return 0
+  fi
+  if [[ -n "${RELAY_CLIENT_TOKEN:-}" ]]; then
+    CLIENT_TOKEN="${RELAY_CLIENT_TOKEN}"
+    return 0
+  fi
+  if [[ -n "${RELAY_MCP_TOKEN:-}" ]]; then
+    CLIENT_TOKEN="${RELAY_MCP_TOKEN}"
+    return 0
+  fi
+  return 1
 }
 
 json_get() {
@@ -128,7 +143,7 @@ main() {
   health="$(curl_json "" GET "${BASE_URL%/}/healthz")"
   printf 'healthz ok: %s\n' "$(printf '%s' "$health" | json_get "data.status")"
 
-  if [[ -z "${CLIENT_TOKEN}" ]]; then
+  if ! resolve_client_token; then
     issue_temp_key
   else
     echo "using provided client token"
@@ -153,4 +168,6 @@ main() {
   printf 'relay_health ok: %s\n' "$(printf '%s' "$health_tool" | json_get "result.structuredContent.status")"
 }
 
-main "$@"
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  main "$@"
+fi

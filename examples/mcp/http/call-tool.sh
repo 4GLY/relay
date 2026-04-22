@@ -7,12 +7,12 @@ if [[ $# -lt 1 || $# -gt 2 ]]; then
 fi
 
 MCP_URL="${RELAY_MCP_URL:-https://relay.4gly.dev/mcp}"
-MCP_TOKEN="${RELAY_MCP_TOKEN:-${RELAY_API_TOKEN:-}}"
+MCP_TOKEN="${RELAY_CLIENT_TOKEN:-${RELAY_MCP_TOKEN:-}}"
 TOOL_NAME="$1"
 TOOL_ARGS="${2:-{}}"
 
 if [[ -z "${MCP_TOKEN}" ]]; then
-  echo "RELAY_MCP_TOKEN or RELAY_API_TOKEN is required" >&2
+  echo "RELAY_CLIENT_TOKEN or RELAY_MCP_TOKEN is required" >&2
   exit 1
 fi
 

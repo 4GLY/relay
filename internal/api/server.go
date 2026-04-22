@@ -6,11 +6,16 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
+	"time"
+
+	"github.com/modelcontextprotocol/go-sdk/auth"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"relay/internal/app"
 	"relay/internal/config"
 	"relay/internal/contracts"
 	"relay/internal/lib"
+	"relay/internal/mcpserver"
 	"relay/internal/services"
 	"relay/internal/storage/repositories"
 )
@@ -22,7 +27,7 @@ func ListenAndServe(cfg config.Config) error {
 	}
 
 	handler := Handler{services: runtime.Services}
-	mux := buildMux(handler, cfg, runtime.APIKeys)
+	mux := buildMux(handler, cfg, runtime)
 
 	server := &http.Server{
 		Addr:    cfg.Addr,
@@ -32,17 +37,29 @@ func ListenAndServe(cfg config.Config) error {
 	return server.ListenAndServe()
 }
 
-func buildMux(handler Handler, cfg config.Config, apiKeys repositories.APIKeyStore) *http.ServeMux {
+func buildMux(handler Handler, cfg config.Config, runtime app.Runtime) *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", handleHealth)
 	mux.HandleFunc("/v1/api-keys", requireAdminBearerToken(cfg.APIToken, handler.handleListAPIKeys))
 	mux.HandleFunc("/v1/api-keys/issue", requireAdminBearerToken(cfg.APIToken, handler.handleIssueAPIKey))
 	mux.HandleFunc("/v1/api-keys/revoke", requireAdminBearerToken(cfg.APIToken, handler.handleRevokeAPIKey))
-	mux.HandleFunc("/v1/capture", requireBearerToken(cfg.APIToken, apiKeys, handler.handleCapture))
-	mux.HandleFunc("/v1/promote", requireBearerToken(cfg.APIToken, apiKeys, handler.handlePromote))
-	mux.HandleFunc("/v1/packets/build", requireBearerToken(cfg.APIToken, apiKeys, handler.handlePacketBuild))
-	mux.HandleFunc("/v1/projects/", requireBearerToken(cfg.APIToken, apiKeys, handler.handleProjectShow))
+	mux.HandleFunc("/v1/capture", requireBearerToken(cfg.APIToken, runtime.APIKeys, handler.handleCapture))
+	mux.HandleFunc("/v1/promote", requireBearerToken(cfg.APIToken, runtime.APIKeys, handler.handlePromote))
+	mux.HandleFunc("/v1/packets/build", requireBearerToken(cfg.APIToken, runtime.APIKeys, handler.handlePacketBuild))
+	mux.HandleFunc("/v1/projects/", requireBearerToken(cfg.APIToken, runtime.APIKeys, handler.handleProjectShow))
+	mux.Handle("/mcp", buildMCPHandler(cfg, runtime))
 	return mux
+}
+
+func buildMCPHandler(cfg config.Config, runtime app.Runtime) http.Handler {
+	server := mcpserver.NewFromService(runtime.Services, cfg.BaseURL, cfg.APIToken != "")
+	handler := mcp.NewStreamableHTTPHandler(func(_ *http.Request) *mcp.Server {
+		return server.Server()
+	}, &mcp.StreamableHTTPOptions{
+		Stateless:    true,
+		JSONResponse: true,
+	})
+	return requireMCPBearerToken(cfg.MCPToken, handler)
 }
 
 type Handler struct {
@@ -107,6 +124,18 @@ func requireBearerToken(adminToken string, apiKeys repositories.APIKeyStore, nex
 
 		writeJSON(w, http.StatusUnauthorized, contracts.Failure("api auth", "UNAUTHORIZED", "missing or invalid bearer token", false, "Authorization"))
 	}
+}
+
+func requireMCPBearerToken(token string, next http.Handler) http.Handler {
+	if token == "" {
+		return next
+	}
+	return auth.RequireBearerToken(func(_ context.Context, provided string, _ *http.Request) (*auth.TokenInfo, error) {
+		if strings.TrimSpace(provided) == token {
+			return &auth.TokenInfo{Expiration: time.Now().Add(24 * time.Hour)}, nil
+		}
+		return nil, auth.ErrInvalidToken
+	}, nil)(next)
 }
 
 func (h Handler) handleCapture(w http.ResponseWriter, r *http.Request) {

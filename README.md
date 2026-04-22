@@ -26,8 +26,8 @@ The skill keeps `docs/openapi.yaml` as the canonical contract and gives agents a
 
 Relay also exposes an MCP surface above the same API contract.
 
-- `stdio`: local agent process integration
-- `http`: remote MCP integration for multiple remote environments sharing one Relay
+- `stdio`: local agent process integration through `cmd/relay-mcp`
+- `http`: remote MCP integration served by the main `relay-api` process at `/mcp`
 
 Run stdio MCP:
 
@@ -35,21 +35,18 @@ Run stdio MCP:
 go run ./cmd/relay-mcp
 ```
 
-Run HTTP MCP:
+Run the API with `/mcp` enabled:
 
 ```bash
-RELAY_MCP_TRANSPORT=http \
-RELAY_MCP_ADDR=:8091 \
-RELAY_MCP_PATH=/mcp \
-RELAY_MCP_TOKEN=replace-me \
-go run ./cmd/relay-mcp
+go run ./cmd/relay-api
 ```
 
 Notes:
 
-- HTTP MCP uses streamable HTTP.
-- The current HTTP mode is stateless, which fits Relay's request-response tools.
+- HTTP MCP uses streamable HTTP at `POST /mcp`.
+- The deployed `/mcp` endpoint is stateless, which fits Relay's request-response tools.
 - `RELAY_MCP_TOKEN` protects the remote MCP endpoint for multi-environment use.
+- If `RELAY_MCP_TOKEN` is unset, Relay falls back to `RELAY_API_TOKEN`.
 
 ## Status
 
@@ -93,8 +90,10 @@ Fill in:
 
 ```bash
 RELAY_ADDR=:8080
+RELAY_BASE_URL='https://relay.4gly.dev'
 RELAY_DATABASE_URL='postgresql://user:password@host/neondb?sslmode=require'
 RELAY_API_TOKEN='replace-with-a-long-random-token'
+RELAY_MCP_TOKEN='replace-with-a-separate-mcp-token'
 ```
 
 `.env` is ignored by git.
@@ -119,7 +118,7 @@ Start the API:
 go run ./cmd/relay-api
 ```
 
-The API also applies migrations automatically on startup.
+The API also applies migrations automatically on startup and serves `/mcp`.
 
 ## API Smoke Test
 

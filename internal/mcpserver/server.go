@@ -10,14 +10,27 @@ import (
 	"relay/internal/services"
 )
 
-type Server struct {
-	client *relayapi.Client
-	server *mcp.Server
+type Backend interface {
+	Health(ctx context.Context) (relayapi.HealthResult, error)
+	Capture(ctx context.Context, input services.CaptureInput) (services.CaptureResult, error)
+	Promote(ctx context.Context, input services.PromoteInput) (services.PromoteResult, error)
+	BuildPacket(ctx context.Context, input services.PacketBuildInput) (services.PacketBuildResult, error)
+	Show(ctx context.Context, projectID string) (services.ShowResult, error)
+	IssueAPIKey(ctx context.Context, input services.IssueAPIKeyInput) (services.IssueAPIKeyResult, error)
+	ListAPIKeys(ctx context.Context) (services.ListAPIKeysResult, error)
+	RevokeAPIKey(ctx context.Context, input services.RevokeAPIKeyInput) (services.RevokeAPIKeyResult, error)
+	HasAdminToken() bool
+	BaseURL() string
 }
 
-func New(client *relayapi.Client) *Server {
+type Server struct {
+	backend Backend
+	server  *mcp.Server
+}
+
+func New(backend Backend) *Server {
 	s := &Server{
-		client: client,
+		backend: backend,
 		server: mcp.NewServer(&mcp.Implementation{
 			Name:    "relay-mcp",
 			Version: "v1.0.0",
@@ -62,7 +75,7 @@ func (s *Server) registerTools() {
 		Description: "Inspect aggregate Relay project state by canonical project id.",
 	}, s.showProjectTool)
 
-	if s.client.HasAdminToken() {
+	if s.backend.HasAdminToken() {
 		mcp.AddTool(s.server, &mcp.Tool{
 			Name:        "relay_issue_api_key",
 			Title:       "Relay Issue API Key",
@@ -90,14 +103,14 @@ type healthOutput struct {
 }
 
 func (s *Server) healthTool(ctx context.Context, _ *mcp.CallToolRequest, _ healthInput) (*mcp.CallToolResult, healthOutput, error) {
-	result, err := s.client.Health(ctx)
+	result, err := s.backend.Health(ctx)
 	if err != nil {
 		return nil, healthOutput{}, err
 	}
 	return nil, healthOutput{
 		Status:       result.Status,
 		BaseURL:      s.clientBaseURL(),
-		AdminEnabled: s.client.HasAdminToken(),
+		AdminEnabled: s.backend.HasAdminToken(),
 	}, nil
 }
 
@@ -113,7 +126,7 @@ type captureInput struct {
 }
 
 func (s *Server) captureTool(ctx context.Context, _ *mcp.CallToolRequest, input captureInput) (*mcp.CallToolResult, services.CaptureResult, error) {
-	result, err := s.client.Capture(ctx, services.CaptureInput{
+	result, err := s.backend.Capture(ctx, services.CaptureInput{
 		Project:        input.Project,
 		RepoPath:       input.RepoPath,
 		HandoffPath:    input.HandoffPath,
@@ -137,7 +150,7 @@ type promoteInput struct {
 }
 
 func (s *Server) promoteTool(ctx context.Context, _ *mcp.CallToolRequest, input promoteInput) (*mcp.CallToolResult, services.PromoteResult, error) {
-	result, err := s.client.Promote(ctx, services.PromoteInput{
+	result, err := s.backend.Promote(ctx, services.PromoteInput{
 		Project:           input.Project,
 		Kind:              input.Kind,
 		Summary:           input.Summary,
@@ -164,7 +177,7 @@ func (s *Server) buildPacketTool(ctx context.Context, _ *mcp.CallToolRequest, in
 	if target == "" {
 		target = "codex"
 	}
-	result, err := s.client.BuildPacket(ctx, services.PacketBuildInput{
+	result, err := s.backend.BuildPacket(ctx, services.PacketBuildInput{
 		Project: input.Project,
 		Type:    packetType,
 		Target:  target,
@@ -177,7 +190,7 @@ type showProjectInput struct {
 }
 
 func (s *Server) showProjectTool(ctx context.Context, _ *mcp.CallToolRequest, input showProjectInput) (*mcp.CallToolResult, services.ShowResult, error) {
-	result, err := s.client.Show(ctx, input.ProjectID)
+	result, err := s.backend.Show(ctx, input.ProjectID)
 	return nil, result, err
 }
 
@@ -186,14 +199,14 @@ type issueAPIKeyInput struct {
 }
 
 func (s *Server) issueAPIKeyTool(ctx context.Context, _ *mcp.CallToolRequest, input issueAPIKeyInput) (*mcp.CallToolResult, services.IssueAPIKeyResult, error) {
-	result, err := s.client.IssueAPIKey(ctx, services.IssueAPIKeyInput{Name: input.Name})
+	result, err := s.backend.IssueAPIKey(ctx, services.IssueAPIKeyInput{Name: input.Name})
 	return nil, result, err
 }
 
 type listAPIKeysInput struct{}
 
 func (s *Server) listAPIKeysTool(ctx context.Context, _ *mcp.CallToolRequest, _ listAPIKeysInput) (*mcp.CallToolResult, services.ListAPIKeysResult, error) {
-	result, err := s.client.ListAPIKeys(ctx)
+	result, err := s.backend.ListAPIKeys(ctx)
 	return nil, result, err
 }
 
@@ -202,13 +215,67 @@ type revokeAPIKeyInput struct {
 }
 
 func (s *Server) revokeAPIKeyTool(ctx context.Context, _ *mcp.CallToolRequest, input revokeAPIKeyInput) (*mcp.CallToolResult, services.RevokeAPIKeyResult, error) {
-	result, err := s.client.RevokeAPIKey(ctx, services.RevokeAPIKeyInput{KeyID: input.KeyID})
+	result, err := s.backend.RevokeAPIKey(ctx, services.RevokeAPIKeyInput{KeyID: input.KeyID})
 	return nil, result, err
 }
 
 func (s *Server) clientBaseURL() string {
-	if s.client == nil {
+	if s.backend == nil {
 		return ""
 	}
-	return fmt.Sprintf("%s", s.client.BaseURL())
+	return fmt.Sprintf("%s", s.backend.BaseURL())
+}
+
+type serviceBackend struct {
+	service      services.Service
+	baseURL      string
+	adminEnabled bool
+}
+
+func NewFromService(service services.Service, baseURL string, adminEnabled bool) *Server {
+	return New(serviceBackend{
+		service:      service,
+		baseURL:      baseURL,
+		adminEnabled: adminEnabled,
+	})
+}
+
+func (b serviceBackend) Health(_ context.Context) (relayapi.HealthResult, error) {
+	return relayapi.HealthResult{Status: "ok"}, nil
+}
+
+func (b serviceBackend) Capture(ctx context.Context, input services.CaptureInput) (services.CaptureResult, error) {
+	return b.service.Capture(ctx, input)
+}
+
+func (b serviceBackend) Promote(ctx context.Context, input services.PromoteInput) (services.PromoteResult, error) {
+	return b.service.Promote(ctx, input)
+}
+
+func (b serviceBackend) BuildPacket(ctx context.Context, input services.PacketBuildInput) (services.PacketBuildResult, error) {
+	return b.service.BuildPacket(ctx, input)
+}
+
+func (b serviceBackend) Show(ctx context.Context, projectID string) (services.ShowResult, error) {
+	return b.service.Show(ctx, services.ShowInput{ProjectID: projectID})
+}
+
+func (b serviceBackend) IssueAPIKey(ctx context.Context, input services.IssueAPIKeyInput) (services.IssueAPIKeyResult, error) {
+	return b.service.IssueAPIKey(ctx, input)
+}
+
+func (b serviceBackend) ListAPIKeys(ctx context.Context) (services.ListAPIKeysResult, error) {
+	return b.service.ListAPIKeys(ctx)
+}
+
+func (b serviceBackend) RevokeAPIKey(ctx context.Context, input services.RevokeAPIKeyInput) (services.RevokeAPIKeyResult, error) {
+	return b.service.RevokeAPIKey(ctx, input)
+}
+
+func (b serviceBackend) HasAdminToken() bool {
+	return b.adminEnabled
+}
+
+func (b serviceBackend) BaseURL() string {
+	return b.baseURL
 }

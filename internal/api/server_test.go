@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"relay/internal/app"
 	"relay/internal/config"
 	"relay/internal/domain"
 	"relay/internal/lib"
@@ -128,6 +129,9 @@ func (s *fakeAPIKeyStore) CreateAPIKey(_ context.Context, key domain.APIKey) (do
 }
 
 func (s *fakeAPIKeyStore) GetByTokenHash(_ context.Context, tokenHash string) (domain.APIKey, error) {
+	if s.itemsByHash == nil {
+		return domain.APIKey{}, lib.NotFound("API_KEY_NOT_FOUND", "api key not found")
+	}
 	key, ok := s.itemsByHash[tokenHash]
 	if !ok || key.Revoked {
 		return domain.APIKey{}, lib.NotFound("API_KEY_NOT_FOUND", "api key not found")
@@ -203,7 +207,7 @@ func TestHandleProjectShowUsesProjectID(t *testing.T) {
 
 func TestProtectedRoutesRequireBearerToken(t *testing.T) {
 	projectID := lib.ProjectID("relay")
-	mux := buildMux(testHandler(projectID), config.Config{APIToken: "secret-token"}, &fakeAPIKeyStore{})
+	mux := buildMux(testHandler(projectID), config.Config{APIToken: "secret-token"}, testRuntime(projectID))
 
 	req := httptest.NewRequest(http.MethodGet, "/v1/projects/"+projectID, nil)
 	rec := httptest.NewRecorder()
@@ -217,7 +221,7 @@ func TestProtectedRoutesRequireBearerToken(t *testing.T) {
 
 func TestProtectedRoutesRejectWrongBearerToken(t *testing.T) {
 	projectID := lib.ProjectID("relay")
-	mux := buildMux(testHandler(projectID), config.Config{APIToken: "secret-token"}, &fakeAPIKeyStore{})
+	mux := buildMux(testHandler(projectID), config.Config{APIToken: "secret-token"}, testRuntime(projectID))
 
 	req := httptest.NewRequest(http.MethodGet, "/v1/projects/"+projectID, nil)
 	req.Header.Set("Authorization", "Bearer wrong-token")
@@ -232,7 +236,7 @@ func TestProtectedRoutesRejectWrongBearerToken(t *testing.T) {
 
 func TestProtectedRoutesAcceptCorrectBearerToken(t *testing.T) {
 	projectID := lib.ProjectID("relay")
-	mux := buildMux(testHandler(projectID), config.Config{APIToken: "secret-token"}, &fakeAPIKeyStore{})
+	mux := buildMux(testHandler(projectID), config.Config{APIToken: "secret-token"}, testRuntime(projectID))
 
 	req := httptest.NewRequest(http.MethodGet, "/v1/projects/"+projectID, nil)
 	req.Header.Set("Authorization", "Bearer secret-token")
@@ -246,7 +250,7 @@ func TestProtectedRoutesAcceptCorrectBearerToken(t *testing.T) {
 }
 
 func TestHealthzStaysOpenWhenBearerTokenConfigured(t *testing.T) {
-	mux := buildMux(testHandler(lib.ProjectID("relay")), config.Config{APIToken: "secret-token"}, &fakeAPIKeyStore{})
+	mux := buildMux(testHandler(lib.ProjectID("relay")), config.Config{APIToken: "secret-token"}, testRuntime(lib.ProjectID("relay")))
 
 	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
 	rec := httptest.NewRecorder()
@@ -266,7 +270,7 @@ func TestProtectedRoutesAcceptIssuedAPIKey(t *testing.T) {
 			lib.TokenHash(key): {ID: "key_1", Name: "agent", TokenHash: lib.TokenHash(key), TokenPrefix: lib.TokenPrefix(key)},
 		},
 	}
-	mux := buildMux(testHandler(projectID), config.Config{APIToken: "admin-token"}, keyStore)
+	mux := buildMux(testHandler(projectID), config.Config{APIToken: "admin-token"}, testRuntime(projectID, keyStore))
 
 	req := httptest.NewRequest(http.MethodGet, "/v1/projects/"+projectID, nil)
 	req.Header.Set("Authorization", "Bearer "+key)
@@ -281,7 +285,7 @@ func TestProtectedRoutesAcceptIssuedAPIKey(t *testing.T) {
 
 func TestIssueAPIKeyRouteRequiresAdminToken(t *testing.T) {
 	keyStore := &fakeAPIKeyStore{}
-	mux := buildMux(testHandler(lib.ProjectID("relay")), config.Config{APIToken: "admin-token"}, keyStore)
+	mux := buildMux(testHandler(lib.ProjectID("relay")), config.Config{APIToken: "admin-token"}, testRuntime(lib.ProjectID("relay"), keyStore))
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/api-keys/issue", bytes.NewReader([]byte(`{"name":"agent"}`)))
 	req.Header.Set("Content-Type", "application/json")
@@ -296,7 +300,7 @@ func TestIssueAPIKeyRouteRequiresAdminToken(t *testing.T) {
 
 func TestIssueAPIKeyRouteCreatesKey(t *testing.T) {
 	keyStore := &fakeAPIKeyStore{}
-	mux := buildMux(testHandler(lib.ProjectID("relay"), keyStore), config.Config{APIToken: "admin-token"}, keyStore)
+	mux := buildMux(testHandler(lib.ProjectID("relay"), keyStore), config.Config{APIToken: "admin-token"}, testRuntime(lib.ProjectID("relay"), keyStore))
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/api-keys/issue", bytes.NewReader([]byte(`{"name":"agent"}`)))
 	req.Header.Set("Content-Type", "application/json")
@@ -322,7 +326,7 @@ func TestListAPIKeysRouteReturnsItems(t *testing.T) {
 			"hash": {ID: "key_1", Name: "agent", TokenHash: "hash", TokenPrefix: "relay_live_abc", Revoked: false},
 		},
 	}
-	mux := buildMux(testHandler(lib.ProjectID("relay"), keyStore), config.Config{APIToken: "admin-token"}, keyStore)
+	mux := buildMux(testHandler(lib.ProjectID("relay"), keyStore), config.Config{APIToken: "admin-token"}, testRuntime(lib.ProjectID("relay"), keyStore))
 
 	req := httptest.NewRequest(http.MethodGet, "/v1/api-keys", nil)
 	req.Header.Set("Authorization", "Bearer admin-token")
@@ -345,7 +349,7 @@ func TestRevokeAPIKeyRouteRevokesIssuedKey(t *testing.T) {
 			lib.TokenHash(key): {ID: "key_1", Name: "agent", TokenHash: lib.TokenHash(key), TokenPrefix: lib.TokenPrefix(key)},
 		},
 	}
-	mux := buildMux(testHandler(lib.ProjectID("relay"), keyStore), config.Config{APIToken: "admin-token"}, keyStore)
+	mux := buildMux(testHandler(lib.ProjectID("relay"), keyStore), config.Config{APIToken: "admin-token"}, testRuntime(lib.ProjectID("relay"), keyStore))
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/api-keys/revoke", bytes.NewReader([]byte(`{"key_id":"key_1"}`)))
 	req.Header.Set("Content-Type", "application/json")
@@ -392,4 +396,18 @@ func testHandler(projectID string, apiKeyStores ...*fakeAPIKeyStore) Handler {
 			APIKeys:       apiKeys,
 		}),
 	}
+}
+
+func testRuntime(projectID string, apiKeyStores ...*fakeAPIKeyStore) app.Runtime {
+	var apiKeys *fakeAPIKeyStore
+	if len(apiKeyStores) > 0 {
+		apiKeys = apiKeyStores[0]
+	}
+	runtime := app.Runtime{
+		Services: testHandler(projectID, apiKeyStores...).services,
+	}
+	if apiKeys != nil {
+		runtime.APIKeys = apiKeys
+	}
+	return runtime
 }

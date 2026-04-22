@@ -9,11 +9,12 @@ import (
 	"relay/internal/services"
 	"relay/internal/storage"
 	"relay/internal/storage/postgres"
+	"relay/internal/storage/repositories"
 )
 
 type Runtime struct {
 	Services services.Service
-	APIKeys  apiKeyStore
+	APIKeys  repositories.APIKeyStore
 }
 
 func NewRuntime(ctx context.Context, cfg config.Config) (Runtime, error) {

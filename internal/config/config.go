@@ -4,8 +4,10 @@ import "os"
 
 type Config struct {
 	Addr        string
+	BaseURL     string
 	DatabaseURL string
 	APIToken    string
+	MCPToken    string
 }
 
 func Load() Config {
@@ -16,10 +18,17 @@ func Load() Config {
 
 	databaseURL := os.Getenv("RELAY_DATABASE_URL")
 	apiToken := os.Getenv("RELAY_API_TOKEN")
+	baseURL := os.Getenv("RELAY_BASE_URL")
+	mcpToken := os.Getenv("RELAY_MCP_TOKEN")
+	if mcpToken == "" {
+		mcpToken = apiToken
+	}
 
 	return Config{
 		Addr:        addr,
+		BaseURL:     baseURL,
 		DatabaseURL: databaseURL,
 		APIToken:    apiToken,
+		MCPToken:    mcpToken,
 	}
 }

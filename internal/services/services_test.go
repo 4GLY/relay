@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"relay/internal/domain"
@@ -836,6 +837,102 @@ func TestAdminMethodsRejectNonAdminAuthContext(t *testing.T) {
 			}
 			if appErr.Code != "FORBIDDEN" {
 				t.Fatalf("expected FORBIDDEN, got %q", appErr.Code)
+			}
+		})
+	}
+}
+
+func TestUserControlledStringFieldsRejectOverlongValues(t *testing.T) {
+	service := New(Dependencies{
+		Projects: &fakeProjectStore{
+			projects: map[string]domain.Project{
+				"relay": {ID: lib.ProjectID("relay"), Name: "relay"},
+			},
+		},
+		Notes:         &fakeNoteStore{},
+		Artifacts:     &fakeArtifactStore{},
+		Decisions:     &fakeDecisionStore{},
+		OpenQuestions: &fakeOpenQuestionStore{},
+		Packets:       &fakePacketStore{},
+		APIKeys:       &fakeAPIKeyStore{},
+	})
+
+	longText := strings.Repeat("a", maxCaptureTextLength+1)
+	longKey := strings.Repeat("k", maxAPIKeyIDLength+1)
+	longName := strings.Repeat("n", maxAPIKeyNameLength+1)
+	longTarget := strings.Repeat("t", maxPacketTargetLength+1)
+
+	tests := []struct {
+		name string
+		run  func() error
+	}{
+		{
+			name: "capture body",
+			run: func() error {
+				_, err := service.Capture(context.Background(), CaptureInput{
+					Project: "relay",
+					Source:  "chat",
+					Body:    longText,
+				})
+				return err
+			},
+		},
+		{
+			name: "promote summary",
+			run: func() error {
+				_, err := service.Promote(context.Background(), PromoteInput{
+					Project: "relay",
+					Kind:    "decision",
+					Summary: longText,
+					Reason:  "because",
+				})
+				return err
+			},
+		},
+		{
+			name: "packet target",
+			run: func() error {
+				_, err := service.BuildPacket(context.Background(), PacketBuildInput{
+					Project: "relay",
+					Type:    "resume",
+					Target:  longTarget,
+				})
+				return err
+			},
+		},
+		{
+			name: "api key name",
+			run: func() error {
+				ctx := ContextWithAuthInfo(context.Background(), AuthInfo{IsAdmin: true, Scope: APIKeyScopeGlobal})
+				_, err := service.IssueAPIKey(ctx, IssueAPIKeyInput{Name: longName})
+				return err
+			},
+		},
+		{
+			name: "revoke key id",
+			run: func() error {
+				ctx := ContextWithAuthInfo(context.Background(), AuthInfo{IsAdmin: true, Scope: APIKeyScopeGlobal})
+				_, err := service.RevokeAPIKey(ctx, RevokeAPIKeyInput{KeyID: longKey})
+				return err
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.run()
+			if err == nil {
+				t.Fatal("expected overlong input to be rejected")
+			}
+			appErr, ok := err.(lib.AppError)
+			if !ok {
+				t.Fatalf("expected AppError, got %T", err)
+			}
+			if appErr.Code != "FIELD_TOO_LONG" {
+				t.Fatalf("expected FIELD_TOO_LONG, got %q", appErr.Code)
+			}
+			if appErr.Message == "" {
+				t.Fatal("expected validation message")
 			}
 		})
 	}

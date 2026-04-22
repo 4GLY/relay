@@ -4,6 +4,8 @@ import (
 	"context"
 	"crypto/subtle"
 	"encoding/json"
+	"errors"
+	"io"
 	"net/http"
 	"strings"
 
@@ -17,6 +19,8 @@ import (
 	"relay/internal/services"
 	"relay/internal/storage/repositories"
 )
+
+const maxJSONRequestBodyBytes = 1 << 20
 
 func ListenAndServe(cfg config.Config) error {
 	if cfg.APIToken == "" {
@@ -161,8 +165,7 @@ func authorizeBearerToken(r *http.Request, adminToken string, apiKeys repositori
 
 func (h Handler) handleCapture(w http.ResponseWriter, r *http.Request) {
 	var input services.CaptureInput
-	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		writeJSON(w, http.StatusBadRequest, contracts.Failure("relay capture", "INVALID_JSON", err.Error(), false))
+	if !decodeStrictJSONBody(w, r, "relay capture", &input) {
 		return
 	}
 	result, err := h.services.Capture(r.Context(), input)
@@ -175,8 +178,7 @@ func (h Handler) handleCapture(w http.ResponseWriter, r *http.Request) {
 
 func (h Handler) handleIssueAPIKey(w http.ResponseWriter, r *http.Request) {
 	var input services.IssueAPIKeyInput
-	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		writeJSON(w, http.StatusBadRequest, contracts.Failure("relay api-key issue", "INVALID_JSON", err.Error(), false))
+	if !decodeStrictJSONBody(w, r, "relay api-key issue", &input) {
 		return
 	}
 	result, err := h.services.IssueAPIKey(r.Context(), input)
@@ -198,8 +200,7 @@ func (h Handler) handleListAPIKeys(w http.ResponseWriter, r *http.Request) {
 
 func (h Handler) handleRevokeAPIKey(w http.ResponseWriter, r *http.Request) {
 	var input services.RevokeAPIKeyInput
-	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		writeJSON(w, http.StatusBadRequest, contracts.Failure("relay api-key revoke", "INVALID_JSON", err.Error(), false))
+	if !decodeStrictJSONBody(w, r, "relay api-key revoke", &input) {
 		return
 	}
 	result, err := h.services.RevokeAPIKey(r.Context(), input)
@@ -212,8 +213,7 @@ func (h Handler) handleRevokeAPIKey(w http.ResponseWriter, r *http.Request) {
 
 func (h Handler) handlePromote(w http.ResponseWriter, r *http.Request) {
 	var input services.PromoteInput
-	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		writeJSON(w, http.StatusBadRequest, contracts.Failure("relay promote", "INVALID_JSON", err.Error(), false))
+	if !decodeStrictJSONBody(w, r, "relay promote", &input) {
 		return
 	}
 	result, err := h.services.Promote(r.Context(), input)
@@ -226,8 +226,7 @@ func (h Handler) handlePromote(w http.ResponseWriter, r *http.Request) {
 
 func (h Handler) handlePacketBuild(w http.ResponseWriter, r *http.Request) {
 	var input services.PacketBuildInput
-	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		writeJSON(w, http.StatusBadRequest, contracts.Failure("relay packet build", "INVALID_JSON", err.Error(), false))
+	if !decodeStrictJSONBody(w, r, "relay packet build", &input) {
 		return
 	}
 	result, err := h.services.BuildPacket(r.Context(), input)
@@ -256,6 +255,68 @@ func writeJSON(w http.ResponseWriter, status int, payload any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(payload)
+}
+
+func decodeStrictJSONBody(w http.ResponseWriter, r *http.Request, command string, dst any) bool {
+	r.Body = http.MaxBytesReader(w, r.Body, maxJSONRequestBodyBytes)
+
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+
+	if err := dec.Decode(dst); err != nil {
+		writeJSON(w, validationJSONStatus(err), contracts.Failure(command, validationJSONCode(err), validationJSONMessage(err), false))
+		return false
+	}
+
+	if err := dec.Decode(&struct{}{}); err != io.EOF {
+		writeJSON(w, http.StatusBadRequest, contracts.Failure(command, "INVALID_JSON", "request body must contain a single JSON object", false))
+		return false
+	}
+
+	return true
+}
+
+func validationJSONStatus(err error) int {
+	var maxBytesErr *http.MaxBytesError
+	if errors.As(err, &maxBytesErr) {
+		return http.StatusRequestEntityTooLarge
+	}
+	return http.StatusBadRequest
+}
+
+func validationJSONCode(err error) string {
+	var maxBytesErr *http.MaxBytesError
+	if errors.As(err, &maxBytesErr) {
+		return "REQUEST_TOO_LARGE"
+	}
+
+	if strings.HasPrefix(err.Error(), "json: unknown field ") {
+		return "UNKNOWN_JSON_FIELD"
+	}
+
+	return "INVALID_JSON"
+}
+
+func validationJSONMessage(err error) string {
+	var maxBytesErr *http.MaxBytesError
+	if errors.As(err, &maxBytesErr) {
+		return "request body exceeds 1 MiB"
+	}
+
+	if field, ok := unknownJSONField(err); ok {
+		return "unknown JSON field " + field
+	}
+
+	return err.Error()
+}
+
+func unknownJSONField(err error) (string, bool) {
+	const prefix = "json: unknown field "
+	msg := err.Error()
+	if !strings.HasPrefix(msg, prefix) {
+		return "", false
+	}
+	return strings.TrimPrefix(msg, prefix), true
 }
 
 func writeServiceError(w http.ResponseWriter, command string, err error) {

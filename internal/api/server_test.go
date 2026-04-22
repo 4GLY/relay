@@ -559,6 +559,45 @@ func TestRevokeAPIKeyRouteRevokesIssuedKey(t *testing.T) {
 	}
 }
 
+func TestCaptureRouteRejectsUnknownJSONField(t *testing.T) {
+	projectID := lib.ProjectID("relay")
+	mux := buildMux(testHandler(projectID), config.Config{APIToken: "admin-token"}, testRuntime(projectID))
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/capture", bytes.NewReader([]byte(`{"project":"relay","source":"chat","body":"hello","unexpected":"value"}`)))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer admin-token")
+	rec := httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d body=%s", rec.Code, rec.Body.String())
+	}
+	if !bytes.Contains(rec.Body.Bytes(), []byte(`"code":"UNKNOWN_JSON_FIELD"`)) {
+		t.Fatalf("expected unknown field error, got %s", rec.Body.String())
+	}
+}
+
+func TestCaptureRouteRejectsOversizedBody(t *testing.T) {
+	projectID := lib.ProjectID("relay")
+	mux := buildMux(testHandler(projectID), config.Config{APIToken: "admin-token"}, testRuntime(projectID))
+
+	oversized := []byte(`{"project":"relay","source":"chat","body":"` + strings.Repeat("a", maxJSONRequestBodyBytes) + `"}`)
+	req := httptest.NewRequest(http.MethodPost, "/v1/capture", bytes.NewReader(oversized))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer admin-token")
+	rec := httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusRequestEntityTooLarge {
+		t.Fatalf("expected 413, got %d body=%s", rec.Code, rec.Body.String())
+	}
+	if !bytes.Contains(rec.Body.Bytes(), []byte(`"code":"REQUEST_TOO_LARGE"`)) {
+		t.Fatalf("expected request too large error, got %s", rec.Body.String())
+	}
+}
+
 func TestMCPRouteRequiresBearerToken(t *testing.T) {
 	mux := buildMux(testHandler(lib.ProjectID("relay")), config.Config{APIToken: "admin-token"}, testRuntime(lib.ProjectID("relay")))
 

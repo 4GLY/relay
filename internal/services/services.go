@@ -30,6 +30,10 @@ func New(deps Dependencies) Service {
 }
 
 func (s Service) Capture(ctx context.Context, input CaptureInput) (CaptureResult, error) {
+	if err := validateCaptureInput(input); err != nil {
+		return CaptureResult{}, err
+	}
+
 	projectName := input.Project
 	if projectName == "" && input.RepoPath != "" {
 		projectName = filepath.Base(input.RepoPath)
@@ -104,6 +108,10 @@ func (s Service) Capture(ctx context.Context, input CaptureInput) (CaptureResult
 }
 
 func (s Service) Promote(ctx context.Context, input PromoteInput) (PromoteResult, error) {
+	if err := validatePromoteInput(input); err != nil {
+		return PromoteResult{}, err
+	}
+
 	if input.Project == "" {
 		return PromoteResult{}, lib.MissingFields("MISSING_REQUIRED_FIELDS", "project")
 	}
@@ -200,6 +208,10 @@ func (s Service) Show(ctx context.Context, input ShowInput) (ShowResult, error) 
 }
 
 func (s Service) BuildPacket(ctx context.Context, input PacketBuildInput) (PacketBuildResult, error) {
+	if err := validatePacketBuildInput(input); err != nil {
+		return PacketBuildResult{}, err
+	}
+
 	if input.Project == "" {
 		return PacketBuildResult{}, lib.MissingFields("MISSING_REQUIRED_FIELDS", "project")
 	}
@@ -269,6 +281,9 @@ func (s Service) BuildPacket(ctx context.Context, input PacketBuildInput) (Packe
 
 func (s Service) IssueAPIKey(ctx context.Context, input IssueAPIKeyInput) (IssueAPIKeyResult, error) {
 	if err := requireAdminAuth(ctx); err != nil {
+		return IssueAPIKeyResult{}, err
+	}
+	if err := validateIssueAPIKeyInput(input); err != nil {
 		return IssueAPIKeyResult{}, err
 	}
 	if input.Name == "" {
@@ -351,6 +366,9 @@ func (s Service) ListAPIKeys(ctx context.Context) (ListAPIKeysResult, error) {
 
 func (s Service) RevokeAPIKey(ctx context.Context, input RevokeAPIKeyInput) (RevokeAPIKeyResult, error) {
 	if err := requireAdminAuth(ctx); err != nil {
+		return RevokeAPIKeyResult{}, err
+	}
+	if err := validateRevokeAPIKeyInput(input); err != nil {
 		return RevokeAPIKeyResult{}, err
 	}
 	if input.KeyID == "" {

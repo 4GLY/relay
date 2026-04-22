@@ -17,8 +17,12 @@ func main() {
 		log.Fatal(err)
 	}
 
-	server := mcpserver.NewFromService(runtime.Services, cfg.BaseURL, cfg.APIToken != "")
+	server := mcpserver.NewFromService(runtime.Services, cfg.BaseURL, adminToolsEnabled(cfg))
 	if err := server.Run(context.Background(), &mcp.StdioTransport{}); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func adminToolsEnabled(cfg config.Config) bool {
+	return cfg.AdminToken != ""
 }

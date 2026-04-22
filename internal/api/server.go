@@ -161,6 +161,9 @@ func authorizeBearerToken(r *http.Request, adminToken string, apiKeys repositori
 			if !services.IsKnownAPIKeyScope(key.Scope) {
 				return services.AuthInfo{}, false
 			}
+			if services.NormalizeAPIKeyScope(key.Scope) == services.APIKeyScopeProject && key.ProjectID == "" {
+				return services.AuthInfo{}, false
+			}
 			return services.AuthInfo{
 				KeyID:     key.ID,
 				Scope:     services.NormalizeAPIKeyScope(key.Scope),

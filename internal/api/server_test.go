@@ -400,8 +400,8 @@ func TestProtectedRoutesRejectMalformedProjectScopedKey(t *testing.T) {
 
 	mux.ServeHTTP(rec, req)
 
-	if rec.Code != http.StatusForbidden {
-		t.Fatalf("expected 403, got %d body=%s", rec.Code, rec.Body.String())
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401, got %d body=%s", rec.Code, rec.Body.String())
 	}
 }
 

@@ -351,6 +351,33 @@ func TestProtectedRoutesRejectProjectScopedKeyForDifferentProject(t *testing.T) 
 	}
 }
 
+func TestProtectedRoutesRejectMalformedProjectScopedKey(t *testing.T) {
+	projectID := lib.ProjectID("relay")
+	key := "relay_live_testtoken"
+	keyStore := &fakeAPIKeyStore{
+		itemsByHash: map[string]domain.APIKey{
+			lib.TokenHash(key): {
+				ID:          "key_1",
+				Name:        "agent",
+				TokenHash:   lib.TokenHash(key),
+				TokenPrefix: lib.TokenPrefix(key),
+				Scope:       services.APIKeyScopeProject,
+			},
+		},
+	}
+	mux := buildMux(testHandler(projectID), config.Config{APIToken: "admin-token"}, testRuntime(projectID, keyStore))
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/projects/"+projectID, nil)
+	req.Header.Set("Authorization", "Bearer "+key)
+	rec := httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("expected 403, got %d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
 func TestProtectedRoutesAllowGlobalKeyAcrossProjects(t *testing.T) {
 	projectID := lib.ProjectID("relay")
 	otherID := lib.ProjectID("other")

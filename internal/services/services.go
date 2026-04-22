@@ -268,6 +268,9 @@ func (s Service) BuildPacket(ctx context.Context, input PacketBuildInput) (Packe
 }
 
 func (s Service) IssueAPIKey(ctx context.Context, input IssueAPIKeyInput) (IssueAPIKeyResult, error) {
+	if err := requireAdminAuth(ctx); err != nil {
+		return IssueAPIKeyResult{}, err
+	}
 	if input.Name == "" {
 		return IssueAPIKeyResult{}, lib.MissingFields("MISSING_REQUIRED_FIELDS", "name")
 	}
@@ -319,6 +322,9 @@ func (s Service) IssueAPIKey(ctx context.Context, input IssueAPIKeyInput) (Issue
 }
 
 func (s Service) ListAPIKeys(ctx context.Context) (ListAPIKeysResult, error) {
+	if err := requireAdminAuth(ctx); err != nil {
+		return ListAPIKeysResult{}, err
+	}
 	if s.deps.APIKeys == nil {
 		return ListAPIKeysResult{}, lib.Misconfigured("api key store is required")
 	}
@@ -344,6 +350,9 @@ func (s Service) ListAPIKeys(ctx context.Context) (ListAPIKeysResult, error) {
 }
 
 func (s Service) RevokeAPIKey(ctx context.Context, input RevokeAPIKeyInput) (RevokeAPIKeyResult, error) {
+	if err := requireAdminAuth(ctx); err != nil {
+		return RevokeAPIKeyResult{}, err
+	}
 	if input.KeyID == "" {
 		return RevokeAPIKeyResult{}, lib.MissingFields("MISSING_REQUIRED_FIELDS", "key_id")
 	}
@@ -439,10 +448,24 @@ func (s Service) enforceProjectAccess(ctx context.Context, projectID string) err
 	if NormalizeAPIKeyScope(auth.Scope) != APIKeyScopeProject {
 		return nil
 	}
-	if auth.ProjectID == "" || auth.ProjectID == projectID {
+	if auth.ProjectID == "" {
+		return lib.Forbidden("FORBIDDEN", "project-scoped api key is missing a project binding")
+	}
+	if auth.ProjectID != projectID {
+		return lib.Forbidden("FORBIDDEN", "api key is not authorized for this project")
+	}
+	return nil
+}
+
+func requireAdminAuth(ctx context.Context) error {
+	auth, ok := AuthInfoFromContext(ctx)
+	if !ok {
 		return nil
 	}
-	return lib.Forbidden("FORBIDDEN", "api key is not authorized for this project")
+	if auth.IsAdmin {
+		return nil
+	}
+	return lib.Forbidden("FORBIDDEN", "admin authorization is required")
 }
 
 func buildResumeBody(project domain.Project, notes []domain.Note, artifacts []domain.Artifact, decisions []domain.Decision, questions []domain.OpenQuestion) string {

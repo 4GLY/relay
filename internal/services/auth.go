@@ -9,6 +9,7 @@ const (
 
 type AuthInfo struct {
 	KeyID     string
+	IsAdmin   bool
 	Scope     string
 	ProjectID string
 }

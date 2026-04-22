@@ -575,6 +575,40 @@ func TestShowRejectsOtherProjectForProjectScopedKey(t *testing.T) {
 	}
 }
 
+func TestShowRejectsMalformedProjectScopedAuth(t *testing.T) {
+	projectID := lib.ProjectID("relay")
+	service := New(Dependencies{
+		Projects: &fakeProjectStore{
+			projects: map[string]domain.Project{
+				"relay": {ID: projectID, Name: "relay"},
+			},
+		},
+		Notes:         &fakeNoteStore{},
+		Artifacts:     &fakeArtifactStore{},
+		Decisions:     &fakeDecisionStore{},
+		OpenQuestions: &fakeOpenQuestionStore{},
+		Packets:       &fakePacketStore{},
+		APIKeys:       &fakeAPIKeyStore{},
+	})
+
+	ctx := ContextWithAuthInfo(context.Background(), AuthInfo{
+		KeyID: "key_1",
+		Scope: APIKeyScopeProject,
+	})
+
+	_, err := service.Show(ctx, ShowInput{ProjectID: projectID})
+	if err == nil {
+		t.Fatal("expected malformed project-scoped auth to be rejected")
+	}
+	appErr, ok := err.(lib.AppError)
+	if !ok {
+		t.Fatalf("expected AppError, got %T", err)
+	}
+	if appErr.Code != "FORBIDDEN" {
+		t.Fatalf("expected FORBIDDEN, got %q", appErr.Code)
+	}
+}
+
 func TestShowAllowsGlobalKeyAcrossProjects(t *testing.T) {
 	relayID := lib.ProjectID("relay")
 	otherID := lib.ProjectID("other")
@@ -719,5 +753,70 @@ func TestRevokeAPIKey(t *testing.T) {
 	}
 	if !result.Revoked {
 		t.Fatalf("expected revoked result")
+	}
+}
+
+func TestAdminMethodsRejectNonAdminAuthContext(t *testing.T) {
+	keys := &fakeAPIKeyStore{
+		itemsByHash: map[string]domain.APIKey{
+			"hash": {ID: "key_1", Name: "agent", TokenHash: "hash", TokenPrefix: "relay_live_abc"},
+		},
+	}
+	service := New(Dependencies{
+		Projects:      &fakeProjectStore{},
+		Notes:         &fakeNoteStore{},
+		Artifacts:     &fakeArtifactStore{},
+		Decisions:     &fakeDecisionStore{},
+		OpenQuestions: &fakeOpenQuestionStore{},
+		Packets:       &fakePacketStore{},
+		APIKeys:       keys,
+	})
+
+	ctx := ContextWithAuthInfo(context.Background(), AuthInfo{
+		KeyID: "key_1",
+		Scope: APIKeyScopeGlobal,
+	})
+
+	tests := []struct {
+		name string
+		run  func(context.Context) error
+	}{
+		{
+			name: "issue",
+			run: func(ctx context.Context) error {
+				_, err := service.IssueAPIKey(ctx, IssueAPIKeyInput{Name: "agent"})
+				return err
+			},
+		},
+		{
+			name: "list",
+			run: func(ctx context.Context) error {
+				_, err := service.ListAPIKeys(ctx)
+				return err
+			},
+		},
+		{
+			name: "revoke",
+			run: func(ctx context.Context) error {
+				_, err := service.RevokeAPIKey(ctx, RevokeAPIKeyInput{KeyID: "key_1"})
+				return err
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.run(ctx)
+			if err == nil {
+				t.Fatal("expected non-admin auth context to be rejected")
+			}
+			appErr, ok := err.(lib.AppError)
+			if !ok {
+				t.Fatalf("expected AppError, got %T", err)
+			}
+			if appErr.Code != "FORBIDDEN" {
+				t.Fatalf("expected FORBIDDEN, got %q", appErr.Code)
+			}
+		})
 	}
 }

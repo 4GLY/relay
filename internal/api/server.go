@@ -92,7 +92,10 @@ func requireAdminBearerToken(token string, next http.HandlerFunc) http.HandlerFu
 			return
 		}
 
-		next(w, r)
+		next(w, r.WithContext(services.ContextWithAuthInfo(r.Context(), services.AuthInfo{
+			IsAdmin: true,
+			Scope:   services.APIKeyScopeGlobal,
+		})))
 	}
 }
 
@@ -137,7 +140,10 @@ func authorizeBearerToken(r *http.Request, adminToken string, apiKeys repositori
 	}
 
 	if adminToken != "" && subtle.ConstantTimeCompare([]byte(provided), []byte(adminToken)) == 1 {
-		return services.AuthInfo{Scope: services.APIKeyScopeGlobal}, true
+		return services.AuthInfo{
+			IsAdmin: true,
+			Scope:   services.APIKeyScopeGlobal,
+		}, true
 	}
 
 	if apiKeys != nil {

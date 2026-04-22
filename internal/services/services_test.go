@@ -301,6 +301,45 @@ func TestCaptureRejectsOtherProjectForProjectScopedKey(t *testing.T) {
 	}
 }
 
+func TestCaptureUsesBoundProjectForRepoPathDerivedName(t *testing.T) {
+	relayID := lib.ProjectID("relay")
+	notes := &fakeNoteStore{}
+	service := New(Dependencies{
+		Projects: &fakeProjectStore{
+			projects: map[string]domain.Project{
+				"relay": {ID: relayID, Name: "relay"},
+			},
+		},
+		Notes:         notes,
+		Artifacts:     &fakeArtifactStore{},
+		Decisions:     &fakeDecisionStore{},
+		OpenQuestions: &fakeOpenQuestionStore{},
+		Packets:       &fakePacketStore{},
+		APIKeys:       &fakeAPIKeyStore{},
+	})
+
+	ctx := ContextWithAuthInfo(context.Background(), AuthInfo{
+		KeyID:     "key_1",
+		Scope:     APIKeyScopeProject,
+		ProjectID: relayID,
+	})
+
+	result, err := service.Capture(ctx, CaptureInput{
+		RepoPath: "/tmp/custom-alias",
+		Source:   "chat",
+		Body:     "hello",
+	})
+	if err != nil {
+		t.Fatalf("Capture returned error: %v", err)
+	}
+	if result.ProjectID != relayID {
+		t.Fatalf("expected bound project id %q, got %q", relayID, result.ProjectID)
+	}
+	if len(notes.items) != 1 || notes.items[0].ProjectID != relayID {
+		t.Fatalf("expected note to be stored against bound project, got %#v", notes.items)
+	}
+}
+
 func TestPromoteDecision(t *testing.T) {
 	projects := &fakeProjectStore{
 		projects: map[string]domain.Project{
@@ -474,6 +513,95 @@ func TestBuildPacketRejectsOtherProjectForProjectScopedKey(t *testing.T) {
 	}
 	if appErr.Code != "FORBIDDEN" {
 		t.Fatalf("expected FORBIDDEN, got %q", appErr.Code)
+	}
+}
+
+func TestProjectScopedAccessRejectsMissingAndOtherProjectsWithoutLeak(t *testing.T) {
+	relayID := lib.ProjectID("relay")
+	otherID := lib.ProjectID("other")
+	service := New(Dependencies{
+		Projects: &fakeProjectStore{
+			projects: map[string]domain.Project{
+				"relay": {ID: relayID, Name: "relay"},
+				"other": {ID: otherID, Name: "other"},
+			},
+		},
+		Notes:         &fakeNoteStore{},
+		Artifacts:     &fakeArtifactStore{},
+		Decisions:     &fakeDecisionStore{},
+		OpenQuestions: &fakeOpenQuestionStore{},
+		Packets:       &fakePacketStore{},
+		APIKeys:       &fakeAPIKeyStore{},
+	})
+
+	ctx := ContextWithAuthInfo(context.Background(), AuthInfo{
+		KeyID:     "key_1",
+		Scope:     APIKeyScopeProject,
+		ProjectID: relayID,
+	})
+
+	tests := []struct {
+		name string
+		run  func() error
+	}{
+		{
+			name: "show-other",
+			run: func() error {
+				_, err := service.Show(ctx, ShowInput{ProjectID: otherID})
+				return err
+			},
+		},
+		{
+			name: "show-missing",
+			run: func() error {
+				_, err := service.Show(ctx, ShowInput{ProjectID: lib.ProjectID("missing")})
+				return err
+			},
+		},
+		{
+			name: "promote-other",
+			run: func() error {
+				_, err := service.Promote(ctx, PromoteInput{Project: "other", Kind: "decision", Summary: "ship it", Reason: "because"})
+				return err
+			},
+		},
+		{
+			name: "promote-missing",
+			run: func() error {
+				_, err := service.Promote(ctx, PromoteInput{Project: "missing", Kind: "decision", Summary: "ship it", Reason: "because"})
+				return err
+			},
+		},
+		{
+			name: "packet-other",
+			run: func() error {
+				_, err := service.BuildPacket(ctx, PacketBuildInput{Project: "other", Type: "resume", Target: "codex"})
+				return err
+			},
+		},
+		{
+			name: "packet-missing",
+			run: func() error {
+				_, err := service.BuildPacket(ctx, PacketBuildInput{Project: "missing", Type: "resume", Target: "codex"})
+				return err
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.run()
+			if err == nil {
+				t.Fatal("expected error")
+			}
+			appErr, ok := err.(lib.AppError)
+			if !ok {
+				t.Fatalf("expected AppError, got %T", err)
+			}
+			if appErr.Code != "FORBIDDEN" {
+				t.Fatalf("expected FORBIDDEN, got %q", appErr.Code)
+			}
+		})
 	}
 }
 

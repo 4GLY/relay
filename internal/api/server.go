@@ -107,7 +107,9 @@ func requireAdminBearerToken(token string, next http.HandlerFunc) http.HandlerFu
 
 func requireBearerToken(adminToken string, apiKeys repositories.APIKeyStore, next http.HandlerFunc) http.HandlerFunc {
 	if adminToken == "" && apiKeys == nil {
-		return next
+		return func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(w, http.StatusInternalServerError, contracts.Failure("api auth", "MISCONFIGURED", "bearer auth is not configured", false, "RELAY_API_TOKEN"))
+		}
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -122,7 +124,9 @@ func requireBearerToken(adminToken string, apiKeys repositories.APIKeyStore, nex
 
 func requireBearerTokenHandler(adminToken string, apiKeys repositories.APIKeyStore, next http.Handler) http.Handler {
 	if adminToken == "" && apiKeys == nil {
-		return next
+		return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(w, http.StatusInternalServerError, contracts.Failure("mcp auth", "MISCONFIGURED", "bearer auth is not configured", false, "RELAY_API_TOKEN"))
+		})
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authInfo, ok := authorizeBearerToken(r, adminToken, apiKeys)

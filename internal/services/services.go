@@ -31,6 +31,7 @@ func New(deps Dependencies) Service {
 
 func (s Service) Capture(ctx context.Context, input CaptureInput) (CaptureResult, error) {
 	projectName := input.Project
+	explicitProject := projectName != ""
 	if projectName == "" && input.RepoPath != "" {
 		projectName = filepath.Base(input.RepoPath)
 	}
@@ -46,7 +47,7 @@ func (s Service) Capture(ctx context.Context, input CaptureInput) (CaptureResult
 
 	projectID := ""
 	if projectName != "" {
-		project, err := s.resolveCaptureProject(ctx, projectName, input.RepoPath)
+		project, err := s.resolveCaptureProject(ctx, projectName, input.RepoPath, explicitProject)
 		if err != nil {
 			return CaptureResult{}, err
 		}
@@ -424,6 +425,9 @@ func promotedID(prefix string, idempotencyKey string, summary string) string {
 }
 
 func (s Service) resolveProject(ctx context.Context, name string, id string) (domain.Project, error) {
+	if auth, ok := AuthInfoFromContext(ctx); ok && NormalizeAPIKeyScope(auth.Scope) == APIKeyScopeProject {
+		return s.resolveBoundProject(ctx, auth, name, id)
+	}
 	if id != "" {
 		project, err := s.deps.Projects.GetByID(ctx, id)
 		if err != nil {
@@ -444,14 +448,17 @@ func (s Service) resolveProject(ctx context.Context, name string, id string) (do
 	return s.deps.Projects.GetByName(ctx, name)
 }
 
-func (s Service) resolveCaptureProject(ctx context.Context, name string, repoPath string) (domain.Project, error) {
+func (s Service) resolveCaptureProject(ctx context.Context, name string, repoPath string, explicitProject bool) (domain.Project, error) {
 	if auth, ok := AuthInfoFromContext(ctx); ok && NormalizeAPIKeyScope(auth.Scope) == APIKeyScopeProject {
-		project, err := s.resolveProject(ctx, name, "")
+		if auth.ProjectID == "" {
+			return domain.Project{}, lib.Forbidden("FORBIDDEN", "project-scoped api key is missing a project binding")
+		}
+		project, err := s.deps.Projects.GetByID(ctx, auth.ProjectID)
 		if err != nil {
 			return domain.Project{}, err
 		}
-		if err := s.enforceProjectAccess(ctx, project.ID); err != nil {
-			return domain.Project{}, err
+		if explicitProject && name != "" && project.Name != name {
+			return domain.Project{}, lib.Forbidden("FORBIDDEN", "api key is not authorized for this project")
 		}
 		return project, nil
 	}
@@ -467,6 +474,24 @@ func (s Service) resolveCaptureProject(ctx context.Context, name string, repoPat
 	}
 	if err := s.enforceProjectAccess(ctx, project.ID); err != nil {
 		return domain.Project{}, err
+	}
+	return project, nil
+}
+
+func (s Service) resolveBoundProject(ctx context.Context, auth AuthInfo, name string, id string) (domain.Project, error) {
+	if auth.ProjectID == "" {
+		return domain.Project{}, lib.Forbidden("FORBIDDEN", "project-scoped api key is missing a project binding")
+	}
+
+	project, err := s.deps.Projects.GetByID(ctx, auth.ProjectID)
+	if err != nil {
+		return domain.Project{}, err
+	}
+	if id != "" && id != auth.ProjectID {
+		return domain.Project{}, lib.Forbidden("FORBIDDEN", "api key is not authorized for this project")
+	}
+	if name != "" && project.Name != name {
+		return domain.Project{}, lib.Forbidden("FORBIDDEN", "api key is not authorized for this project")
 	}
 	return project, nil
 }

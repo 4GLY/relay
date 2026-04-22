@@ -483,6 +483,22 @@ func TestAdminRoutesFailClosedWithoutAdminToken(t *testing.T) {
 	}
 }
 
+func TestBearerProtectedRoutesFailClosedWithoutBearerConfig(t *testing.T) {
+	mux := buildMux(testHandler(lib.ProjectID("relay")), config.Config{}, testRuntime(lib.ProjectID("relay")))
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/projects/relay", nil)
+	rec := httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("expected 500, got %d body=%s", rec.Code, rec.Body.String())
+	}
+	if !bytes.Contains(rec.Body.Bytes(), []byte("MISCONFIGURED")) {
+		t.Fatalf("expected misconfigured response, got %s", rec.Body.String())
+	}
+}
+
 func TestIssueAPIKeyRouteCreatesKey(t *testing.T) {
 	keyStore := &fakeAPIKeyStore{}
 	mux := buildMux(testHandler(lib.ProjectID("relay"), keyStore), config.Config{APIToken: "admin-token"}, testRuntime(lib.ProjectID("relay"), keyStore))
@@ -698,6 +714,24 @@ func TestMCPRouteRequiresBearerToken(t *testing.T) {
 
 	if rec.Code != http.StatusUnauthorized {
 		t.Fatalf("expected 401, got %d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestMCPRouteFailsClosedWithoutBearerConfig(t *testing.T) {
+	mux := buildMux(testHandler(lib.ProjectID("relay")), config.Config{}, testRuntime(lib.ProjectID("relay")))
+
+	req := httptest.NewRequest(http.MethodPost, "/mcp", bytes.NewReader(mcpInitializeBody()))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json, text/event-stream")
+	rec := httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("expected 500, got %d body=%s", rec.Code, rec.Body.String())
+	}
+	if !bytes.Contains(rec.Body.Bytes(), []byte("MISCONFIGURED")) {
+		t.Fatalf("expected misconfigured response, got %s", rec.Body.String())
 	}
 }
 

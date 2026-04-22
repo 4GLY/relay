@@ -5,6 +5,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"relay/internal/app"
@@ -188,6 +189,16 @@ func TestHealthz(t *testing.T) {
 	}
 }
 
+func TestListenAndServeFailsClosedWithoutAdminToken(t *testing.T) {
+	err := ListenAndServe(config.Config{Addr: "127.0.0.1:0"})
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if got := err.Error(); !strings.Contains(got, "RELAY_API_TOKEN is required for relay-api") {
+		t.Fatalf("expected missing admin token error, got %v", err)
+	}
+}
+
 func TestHandleProjectShowUsesProjectID(t *testing.T) {
 	projectID := lib.ProjectID("relay")
 	handler := testHandler(projectID)
@@ -295,6 +306,41 @@ func TestIssueAPIKeyRouteRequiresAdminToken(t *testing.T) {
 
 	if rec.Code != http.StatusUnauthorized {
 		t.Fatalf("expected 401, got %d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestAdminRoutesFailClosedWithoutAdminToken(t *testing.T) {
+	keyStore := &fakeAPIKeyStore{}
+	mux := buildMux(testHandler(lib.ProjectID("relay"), keyStore), config.Config{}, testRuntime(lib.ProjectID("relay"), keyStore))
+
+	tests := []struct {
+		name   string
+		method string
+		path   string
+		body   []byte
+	}{
+		{name: "list", method: http.MethodGet, path: "/v1/api-keys"},
+		{name: "issue", method: http.MethodPost, path: "/v1/api-keys/issue", body: []byte(`{"name":"agent"}`)},
+		{name: "revoke", method: http.MethodPost, path: "/v1/api-keys/revoke", body: []byte(`{"key_id":"key_1"}`)},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(tt.method, tt.path, bytes.NewReader(tt.body))
+			if tt.body != nil {
+				req.Header.Set("Content-Type", "application/json")
+			}
+			rec := httptest.NewRecorder()
+
+			mux.ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusInternalServerError {
+				t.Fatalf("expected 500, got %d body=%s", rec.Code, rec.Body.String())
+			}
+			if !bytes.Contains(rec.Body.Bytes(), []byte("MISCONFIGURED")) {
+				t.Fatalf("expected misconfigured response, got %s", rec.Body.String())
+			}
+		})
 	}
 }
 

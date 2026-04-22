@@ -10,6 +10,12 @@ Use it when you want to connect an agent to Relay over `stdio` or remote `HTTP`.
 - production: `https://relay.4gly.dev/mcp`
 - local: `http://127.0.0.1:8080/mcp`
 
+## Example Consumers
+
+- raw HTTP `tools/list`: [`examples/mcp/http/tools-list.sh`](../examples/mcp/http/tools-list.sh)
+- raw HTTP `tools/call`: [`examples/mcp/http/call-tool.sh`](../examples/mcp/http/call-tool.sh)
+- Go client with official `go-sdk`: [`examples/mcp/go/main.go`](../examples/mcp/go/main.go)
+
 ## Auth
 
 - remote `/mcp` requires `Authorization: Bearer <token>`
@@ -175,6 +181,20 @@ Behavior:
 - `POST /mcp`
 - streamable HTTP
 - stateless
+
+Quick raw example:
+
+```bash
+RELAY_MCP_TOKEN=... \
+./examples/mcp/http/tools-list.sh
+```
+
+Quick Go example:
+
+```bash
+RELAY_MCP_TOKEN=... \
+go run ./examples/mcp/go
+```
 
 ### Local stdio
 

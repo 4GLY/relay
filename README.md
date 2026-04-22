@@ -72,6 +72,10 @@ Start here:
 
 - Contract guide: [docs/api.md](docs/api.md)
 - MCP guide: [docs/mcp.md](docs/mcp.md)
+- MCP examples:
+  - [examples/mcp/http/tools-list.sh](examples/mcp/http/tools-list.sh)
+  - [examples/mcp/http/call-tool.sh](examples/mcp/http/call-tool.sh)
+  - [examples/mcp/go/main.go](examples/mcp/go/main.go)
 - OpenAPI spec: [docs/openapi.yaml](docs/openapi.yaml)
 
 Current production base URL:

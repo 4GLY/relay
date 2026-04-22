@@ -14,7 +14,7 @@ Relay is API-first. This skill is the fast agent-facing wrapper around the canon
 Run setup once:
 
 ```bash
-/Users/hoon-ch/repos/relay/skills/relay-api-agent/scripts/setup.sh
+./skills/relay-api-agent/scripts/setup.sh
 ```
 
 `setup.sh` is the intended operator path:
@@ -27,7 +27,7 @@ Run setup once:
 Then validate:
 
 ```bash
-/Users/hoon-ch/repos/relay/skills/relay-api-agent/scripts/relay-api.sh doctor
+./skills/relay-api-agent/scripts/relay-api.sh doctor
 ```
 
 `setup.sh` and `issue-key --store-client` write to macOS Keychain.
@@ -78,25 +78,25 @@ Client token:
 Validate health and auth:
 
 ```bash
-/Users/hoon-ch/repos/relay/skills/relay-api-agent/scripts/relay-api.sh doctor
+./skills/relay-api-agent/scripts/relay-api.sh doctor
 ```
 
 Issue a new client token and store it in Keychain:
 
 ```bash
-/Users/hoon-ch/repos/relay/skills/relay-api-agent/scripts/relay-api.sh issue-key codex-agent --store-client
+./skills/relay-api-agent/scripts/relay-api.sh issue-key codex-agent --store-client
 ```
 
 Issue a project-scoped key:
 
 ```bash
-/Users/hoon-ch/repos/relay/skills/relay-api-agent/scripts/relay-api.sh issue-key codex-agent --scope project --project relay
+./skills/relay-api-agent/scripts/relay-api.sh issue-key codex-agent --scope project --project relay
 ```
 
 Run setup with automatic client-key issuance:
 
 ```bash
-/Users/hoon-ch/repos/relay/skills/relay-api-agent/scripts/setup.sh --client-name codex-macbook
+./skills/relay-api-agent/scripts/setup.sh --client-name codex-macbook
 ```
 
 Capture a note:
@@ -111,7 +111,7 @@ cat <<'JSON' >/tmp/relay-capture.json
 }
 JSON
 
-/Users/hoon-ch/repos/relay/skills/relay-api-agent/scripts/relay-api.sh capture /tmp/relay-capture.json
+./skills/relay-api-agent/scripts/relay-api.sh capture /tmp/relay-capture.json
 ```
 
 Promote a decision:
@@ -127,7 +127,7 @@ cat <<'JSON' >/tmp/relay-promote.json
 }
 JSON
 
-/Users/hoon-ch/repos/relay/skills/relay-api-agent/scripts/relay-api.sh promote /tmp/relay-promote.json
+./skills/relay-api-agent/scripts/relay-api.sh promote /tmp/relay-promote.json
 ```
 
 Build a packet:
@@ -141,13 +141,13 @@ cat <<'JSON' >/tmp/relay-packet.json
 }
 JSON
 
-/Users/hoon-ch/repos/relay/skills/relay-api-agent/scripts/relay-api.sh build-packet /tmp/relay-packet.json
+./skills/relay-api-agent/scripts/relay-api.sh build-packet /tmp/relay-packet.json
 ```
 
 Show a project:
 
 ```bash
-/Users/hoon-ch/repos/relay/skills/relay-api-agent/scripts/relay-api.sh show proj_xxx
+./skills/relay-api-agent/scripts/relay-api.sh show proj_xxx
 ```
 
 ## Guidelines
@@ -161,7 +161,7 @@ Show a project:
 
 ## Files
 
-- [scripts/relay-api.sh](/Users/hoon-ch/repos/relay/skills/relay-api-agent/scripts/relay-api.sh)
-- [scripts/setup.sh](/Users/hoon-ch/repos/relay/skills/relay-api-agent/scripts/setup.sh)
-- [docs/api.md](/Users/hoon-ch/repos/relay/docs/api.md)
-- [docs/openapi.yaml](/Users/hoon-ch/repos/relay/docs/openapi.yaml)
+- [scripts/relay-api.sh](scripts/relay-api.sh)
+- [scripts/setup.sh](scripts/setup.sh)
+- [docs/api.md](../../docs/api.md)
+- [docs/openapi.yaml](../../docs/openapi.yaml)

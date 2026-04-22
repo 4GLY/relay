@@ -30,13 +30,18 @@ func New(deps Dependencies) Service {
 }
 
 func (s Service) Capture(ctx context.Context, input CaptureInput) (CaptureResult, error) {
-	if err := validateCaptureInput(input); err != nil {
-		return CaptureResult{}, err
-	}
-
 	projectName := input.Project
 	if projectName == "" && input.RepoPath != "" {
 		projectName = filepath.Base(input.RepoPath)
+	}
+
+	if err := validateCaptureInput(input); err != nil {
+		return CaptureResult{}, err
+	}
+	if projectName != "" {
+		if err := validateStringFieldLength("project", projectName, maxCaptureProjectLength); err != nil {
+			return CaptureResult{}, err
+		}
 	}
 
 	projectID := ""

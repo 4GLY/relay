@@ -938,6 +938,127 @@ func TestUserControlledStringFieldsRejectOverlongValues(t *testing.T) {
 	}
 }
 
+func TestValidateStringFieldLengthCountsUTF8Characters(t *testing.T) {
+	shortUTF8 := strings.Repeat("界", 3)
+	if err := validateStringFieldLength("name", shortUTF8, 4); err != nil {
+		t.Fatalf("expected rune-based validation to accept %q, got %v", shortUTF8, err)
+	}
+
+	longUTF8 := strings.Repeat("界", 5)
+	err := validateStringFieldLength("name", longUTF8, 4)
+	if err == nil {
+		t.Fatal("expected overlong UTF-8 input to be rejected")
+	}
+	appErr, ok := err.(lib.AppError)
+	if !ok {
+		t.Fatalf("expected AppError, got %T", err)
+	}
+	if appErr.Code != "FIELD_TOO_LONG" {
+		t.Fatalf("expected FIELD_TOO_LONG, got %q", appErr.Code)
+	}
+	if appErr.Message != "name exceeds maximum length of 4 characters" {
+		t.Fatalf("expected character-based message, got %q", appErr.Message)
+	}
+}
+
+func TestCaptureRejectsOverlongDerivedProjectName(t *testing.T) {
+	service := New(Dependencies{
+		Projects: &fakeProjectStore{
+			projects: map[string]domain.Project{},
+		},
+		Notes:         &fakeNoteStore{},
+		Artifacts:     &fakeArtifactStore{},
+		Decisions:     &fakeDecisionStore{},
+		OpenQuestions: &fakeOpenQuestionStore{},
+		Packets:       &fakePacketStore{},
+		APIKeys:       &fakeAPIKeyStore{},
+	})
+
+	_, err := service.Capture(context.Background(), CaptureInput{
+		RepoPath: strings.Repeat("a", maxCaptureProjectLength+1),
+		Source:   "chat",
+		Body:     "hello",
+	})
+	if err == nil {
+		t.Fatal("expected derived project name to be validated")
+	}
+	appErr, ok := err.(lib.AppError)
+	if !ok {
+		t.Fatalf("expected AppError, got %T", err)
+	}
+	if appErr.Code != "FIELD_TOO_LONG" {
+		t.Fatalf("expected FIELD_TOO_LONG, got %q", appErr.Code)
+	}
+}
+
+func TestPromoteRejectsTooManyOrTooLongSourceIDs(t *testing.T) {
+	service := New(Dependencies{
+		Projects: &fakeProjectStore{
+			projects: map[string]domain.Project{
+				"relay": {ID: lib.ProjectID("relay"), Name: "relay"},
+			},
+		},
+		Notes:         &fakeNoteStore{},
+		Artifacts:     &fakeArtifactStore{},
+		Decisions:     &fakeDecisionStore{},
+		OpenQuestions: &fakeOpenQuestionStore{},
+		Packets:       &fakePacketStore{},
+		APIKeys:       &fakeAPIKeyStore{},
+	})
+
+	tooManyNoteIDs := make([]string, maxPromoteSourceIDs+1)
+	for i := range tooManyNoteIDs {
+		tooManyNoteIDs[i] = "note_1"
+	}
+
+	tests := []struct {
+		name  string
+		input PromoteInput
+		code  string
+	}{
+		{
+			name: "note count",
+			input: PromoteInput{
+				Project:           "relay",
+				Kind:              "decision",
+				Summary:           "ship it",
+				Reason:            "because",
+				SourceNoteIDs:     tooManyNoteIDs,
+				SourceArtifactIDs: nil,
+			},
+			code: "FIELD_TOO_MANY_ITEMS",
+		},
+		{
+			name: "artifact id length",
+			input: PromoteInput{
+				Project:           "relay",
+				Kind:              "decision",
+				Summary:           "ship it",
+				Reason:            "because",
+				SourceNoteIDs:     nil,
+				SourceArtifactIDs: []string{strings.Repeat("a", maxPromoteSourceIDLength+1)},
+			},
+			code: "FIELD_TOO_LONG",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := service.Promote(context.Background(), tt.input)
+			if err == nil {
+				t.Fatal("expected promote input to be rejected")
+			}
+			appErr, ok := err.(lib.AppError)
+			if !ok {
+				t.Fatalf("expected AppError, got %T", err)
+			}
+			if appErr.Code != tt.code {
+				t.Fatalf("expected %s, got %q", tt.code, appErr.Code)
+			}
+		})
+	}
+}
+
 func TestAdminMethodsRejectMissingAuthContext(t *testing.T) {
 	keys := &fakeAPIKeyStore{
 		itemsByHash: map[string]domain.APIKey{

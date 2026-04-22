@@ -2,6 +2,7 @@ package services
 
 import (
 	"fmt"
+	"unicode/utf8"
 
 	"relay/internal/lib"
 )
@@ -18,6 +19,8 @@ const (
 	maxPromoteSummaryLength     = 8192
 	maxPromoteReasonLength      = 8192
 	maxPromoteIdempotencyLength = 128
+	maxPromoteSourceIDs         = 100
+	maxPromoteSourceIDLength    = 128
 
 	maxPacketProjectLength = 128
 	maxPacketTypeLength    = 32
@@ -31,7 +34,7 @@ const (
 )
 
 func validateStringFieldLength(field string, value string, max int) error {
-	if value == "" || len(value) <= max {
+	if value == "" || utf8.RuneCountInString(value) <= max {
 		return nil
 	}
 	return lib.AppError{
@@ -39,6 +42,24 @@ func validateStringFieldLength(field string, value string, max int) error {
 		Message:   fmt.Sprintf("%s exceeds maximum length of %d characters", field, max),
 		Retryable: false,
 	}
+}
+
+func validateStringSliceField(field string, values []string, maxItems int, maxItemLength int) error {
+	if len(values) > maxItems {
+		return lib.AppError{
+			Code:      "FIELD_TOO_MANY_ITEMS",
+			Message:   fmt.Sprintf("%s exceeds maximum item count of %d", field, maxItems),
+			Retryable: false,
+		}
+	}
+
+	for idx, value := range values {
+		if err := validateStringFieldLength(fmt.Sprintf("%s[%d]", field, idx), value, maxItemLength); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func validateCaptureInput(input CaptureInput) error {
@@ -79,7 +100,13 @@ func validatePromoteInput(input PromoteInput) error {
 	if err := validateStringFieldLength("reason", input.Reason, maxPromoteReasonLength); err != nil {
 		return err
 	}
-	return validateStringFieldLength("idempotency_key", input.IdempotencyKey, maxPromoteIdempotencyLength)
+	if err := validateStringFieldLength("idempotency_key", input.IdempotencyKey, maxPromoteIdempotencyLength); err != nil {
+		return err
+	}
+	if err := validateStringSliceField("source_note_ids", input.SourceNoteIDs, maxPromoteSourceIDs, maxPromoteSourceIDLength); err != nil {
+		return err
+	}
+	return validateStringSliceField("source_artifact_ids", input.SourceArtifactIDs, maxPromoteSourceIDs, maxPromoteSourceIDLength)
 }
 
 func validatePacketBuildInput(input PacketBuildInput) error {

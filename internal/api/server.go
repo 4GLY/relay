@@ -46,15 +46,16 @@ func ListenAndServe(cfg config.Config) error {
 }
 
 func buildMux(handler Handler, cfg config.Config, runtime app.Runtime) *http.ServeMux {
+	adminToken := effectiveAdminToken(cfg)
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", handleHealth)
-	mux.HandleFunc("/v1/api-keys", requireAdminBearerToken(cfg.APIToken, handler.handleListAPIKeys))
-	mux.HandleFunc("/v1/api-keys/issue", requireAdminBearerToken(cfg.APIToken, handler.handleIssueAPIKey))
-	mux.HandleFunc("/v1/api-keys/revoke", requireAdminBearerToken(cfg.APIToken, handler.handleRevokeAPIKey))
-	mux.HandleFunc("/v1/capture", requireBearerToken(cfg.APIToken, runtime.APIKeys, handler.handleCapture))
-	mux.HandleFunc("/v1/promote", requireBearerToken(cfg.APIToken, runtime.APIKeys, handler.handlePromote))
-	mux.HandleFunc("/v1/packets/build", requireBearerToken(cfg.APIToken, runtime.APIKeys, handler.handlePacketBuild))
-	mux.HandleFunc("/v1/projects/", requireBearerToken(cfg.APIToken, runtime.APIKeys, handler.handleProjectShow))
+	mux.HandleFunc("/v1/api-keys", requireAdminBearerToken(adminToken, handler.handleListAPIKeys))
+	mux.HandleFunc("/v1/api-keys/issue", requireAdminBearerToken(adminToken, handler.handleIssueAPIKey))
+	mux.HandleFunc("/v1/api-keys/revoke", requireAdminBearerToken(adminToken, handler.handleRevokeAPIKey))
+	mux.HandleFunc("/v1/capture", requireBearerToken(adminToken, runtime.APIKeys, handler.handleCapture))
+	mux.HandleFunc("/v1/promote", requireBearerToken(adminToken, runtime.APIKeys, handler.handlePromote))
+	mux.HandleFunc("/v1/packets/build", requireBearerToken(adminToken, runtime.APIKeys, handler.handlePacketBuild))
+	mux.HandleFunc("/v1/projects/", requireBearerToken(adminToken, runtime.APIKeys, handler.handleProjectShow))
 	mux.Handle("/mcp", buildMCPHandler(cfg, runtime))
 	return mux
 }
@@ -67,7 +68,7 @@ func buildMCPHandler(cfg config.Config, runtime app.Runtime) http.Handler {
 		Stateless:    true,
 		JSONResponse: true,
 	})
-	return limitRequestBody(requireBearerTokenHandler(cfg.APIToken, runtime.APIKeys, handler), maxJSONRequestBodyBytes)
+	return limitRequestBody(requireBearerTokenHandler(effectiveAdminToken(cfg), runtime.APIKeys, handler), maxJSONRequestBodyBytes)
 }
 
 type Handler struct {
@@ -136,6 +137,13 @@ func requireBearerTokenHandler(adminToken string, apiKeys repositories.APIKeySto
 		}
 		next.ServeHTTP(w, r.WithContext(services.ContextWithAuthInfo(r.Context(), authInfo)))
 	})
+}
+
+func effectiveAdminToken(cfg config.Config) string {
+	if cfg.AdminToken != "" {
+		return cfg.AdminToken
+	}
+	return cfg.APIToken
 }
 
 func authorizeBearerToken(r *http.Request, adminToken string, apiKeys repositories.APIKeyStore) (services.AuthInfo, bool) {

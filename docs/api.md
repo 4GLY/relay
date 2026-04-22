@@ -176,7 +176,6 @@ Request body:
 
 ```json
 {
-  "project": "relay",
   "repo_path": ".",
   "handoff_path": "docs/handoff.md",
   "design_path": "docs/design.md",
@@ -188,7 +187,8 @@ Request body:
 ```
 
 Contract notes:
-- `project`, `source`, `body` are the practical minimum
+- `source` and `body` are required
+- `project` is optional; when omitted, capture can infer from `repo_path` for normal flows or use the bound project for project-scoped keys
 - `idempotency_key` should be supplied by agents on writes
 
 ### `POST /v1/promote`

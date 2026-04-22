@@ -483,6 +483,34 @@ func TestAdminRoutesFailClosedWithoutAdminToken(t *testing.T) {
 	}
 }
 
+func TestAdminRoutesPreferConfiguredAdminToken(t *testing.T) {
+	keyStore := &fakeAPIKeyStore{}
+	mux := buildMux(testHandler(lib.ProjectID("relay"), keyStore), config.Config{
+		AdminToken: "admin-token",
+		APIToken:   "client-token",
+	}, testRuntime(lib.ProjectID("relay"), keyStore))
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/api-keys", nil)
+	req.Header.Set("Authorization", "Bearer admin-token")
+	rec := httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
+	}
+
+	req = httptest.NewRequest(http.MethodGet, "/v1/api-keys", nil)
+	req.Header.Set("Authorization", "Bearer client-token")
+	rec = httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401 for client token on admin route, got %d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
 func TestBearerProtectedRoutesFailClosedWithoutBearerConfig(t *testing.T) {
 	mux := buildMux(testHandler(lib.ProjectID("relay")), config.Config{}, testRuntime(lib.ProjectID("relay")))
 
@@ -737,6 +765,25 @@ func TestMCPRouteFailsClosedWithoutBearerConfig(t *testing.T) {
 
 func TestMCPRouteAcceptsAdminBearerToken(t *testing.T) {
 	mux := buildMux(testHandler(lib.ProjectID("relay")), config.Config{APIToken: "admin-token"}, testRuntime(lib.ProjectID("relay")))
+
+	req := httptest.NewRequest(http.MethodPost, "/mcp", bytes.NewReader(mcpInitializeBody()))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json, text/event-stream")
+	req.Header.Set("Authorization", "Bearer admin-token")
+	rec := httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestMCPRouteAcceptsConfiguredAdminToken(t *testing.T) {
+	mux := buildMux(testHandler(lib.ProjectID("relay")), config.Config{
+		AdminToken: "admin-token",
+		APIToken:   "client-token",
+	}, testRuntime(lib.ProjectID("relay")))
 
 	req := httptest.NewRequest(http.MethodPost, "/mcp", bytes.NewReader(mcpInitializeBody()))
 	req.Header.Set("Content-Type", "application/json")

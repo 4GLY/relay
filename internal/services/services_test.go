@@ -301,7 +301,7 @@ func TestCaptureRejectsOtherProjectForProjectScopedKey(t *testing.T) {
 	}
 }
 
-func TestCaptureUsesBoundProjectForRepoPathDerivedName(t *testing.T) {
+func TestCaptureUsesBoundProjectForMatchingRepoPathDerivedName(t *testing.T) {
 	relayID := lib.ProjectID("relay")
 	notes := &fakeNoteStore{}
 	service := New(Dependencies{
@@ -325,7 +325,7 @@ func TestCaptureUsesBoundProjectForRepoPathDerivedName(t *testing.T) {
 	})
 
 	result, err := service.Capture(ctx, CaptureInput{
-		RepoPath: "/tmp/custom-alias",
+		RepoPath: "/tmp/relay",
 		Source:   "chat",
 		Body:     "hello",
 	})
@@ -337,6 +337,45 @@ func TestCaptureUsesBoundProjectForRepoPathDerivedName(t *testing.T) {
 	}
 	if len(notes.items) != 1 || notes.items[0].ProjectID != relayID {
 		t.Fatalf("expected note to be stored against bound project, got %#v", notes.items)
+	}
+}
+
+func TestCaptureRejectsRepoPathAliasForProjectScopedKey(t *testing.T) {
+	relayID := lib.ProjectID("relay")
+	service := New(Dependencies{
+		Projects: &fakeProjectStore{
+			projects: map[string]domain.Project{
+				"relay": {ID: relayID, Name: "relay"},
+			},
+		},
+		Notes:         &fakeNoteStore{},
+		Artifacts:     &fakeArtifactStore{},
+		Decisions:     &fakeDecisionStore{},
+		OpenQuestions: &fakeOpenQuestionStore{},
+		Packets:       &fakePacketStore{},
+		APIKeys:       &fakeAPIKeyStore{},
+	})
+
+	ctx := ContextWithAuthInfo(context.Background(), AuthInfo{
+		KeyID:     "key_1",
+		Scope:     APIKeyScopeProject,
+		ProjectID: relayID,
+	})
+
+	_, err := service.Capture(ctx, CaptureInput{
+		RepoPath: "/tmp/custom-alias",
+		Source:   "chat",
+		Body:     "hello",
+	})
+	if err == nil {
+		t.Fatal("expected repo_path alias to be rejected for project-scoped capture")
+	}
+	appErr, ok := err.(lib.AppError)
+	if !ok {
+		t.Fatalf("expected AppError, got %T", err)
+	}
+	if appErr.Code != "FORBIDDEN" {
+		t.Fatalf("expected FORBIDDEN, got %q", appErr.Code)
 	}
 }
 

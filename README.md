@@ -90,7 +90,8 @@ Auth model:
 
 - `/healthz` is public
 - every `/v1/*` route requires `Authorization: Bearer <token>`
-- `RELAY_API_TOKEN` is the bootstrap admin token
+- `RELAY_ADMIN_TOKEN` is the preferred bootstrap admin token
+- `RELAY_API_TOKEN` remains a legacy fallback for bootstrap/admin compatibility
 - `RELAY_CLIENT_TOKEN` is the issued client token for normal `/v1/*` and `/mcp` use
 - issued API keys can be minted through `POST /v1/api-keys/issue`
 - issued API keys can be listed through `GET /v1/api-keys`
@@ -110,7 +111,8 @@ Fill in:
 RELAY_ADDR=:8080
 RELAY_BASE_URL='https://relay.4gly.dev'
 RELAY_DATABASE_URL='postgresql://user:password@host/neondb?sslmode=require'
-RELAY_API_TOKEN='replace-with-a-long-random-token'
+RELAY_ADMIN_TOKEN='replace-with-a-long-random-token'
+RELAY_API_TOKEN='legacy-bootstrap-fallback-only'
 RELAY_CLIENT_TOKEN='replace-with-an-issued-client-token'
 RELAY_MCP_TOKEN='optional compatibility alias for MCP consumers'
 ```

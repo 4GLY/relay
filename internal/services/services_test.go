@@ -300,7 +300,7 @@ func TestCaptureUsesBoundProjectForNoteOnlyProjectScopedKey(t *testing.T) {
 	service := New(Dependencies{
 		Projects: &fakeProjectStore{
 			projects: map[string]domain.Project{
-				"relay": {ID: relayID, Name: "relay"},
+				"relay": {ID: relayID, Name: "relay", RootPath: "/tmp/relay"},
 			},
 		},
 		Notes:         notes,
@@ -383,7 +383,7 @@ func TestCaptureUsesBoundProjectForMatchingRepoPathDerivedName(t *testing.T) {
 	service := New(Dependencies{
 		Projects: &fakeProjectStore{
 			projects: map[string]domain.Project{
-				"relay": {ID: relayID, Name: "relay"},
+				"relay": {ID: relayID, Name: "relay", RootPath: "/tmp/relay"},
 			},
 		},
 		Notes:         notes,
@@ -421,7 +421,7 @@ func TestCaptureRejectsRepoPathAliasForProjectScopedKey(t *testing.T) {
 	service := New(Dependencies{
 		Projects: &fakeProjectStore{
 			projects: map[string]domain.Project{
-				"relay": {ID: relayID, Name: "relay"},
+				"relay": {ID: relayID, Name: "relay", RootPath: "/tmp/relay"},
 			},
 		},
 		Notes:         &fakeNoteStore{},
@@ -445,6 +445,45 @@ func TestCaptureRejectsRepoPathAliasForProjectScopedKey(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatal("expected repo_path alias to be rejected for project-scoped capture")
+	}
+	appErr, ok := err.(lib.AppError)
+	if !ok {
+		t.Fatalf("expected AppError, got %T", err)
+	}
+	if appErr.Code != "FORBIDDEN" {
+		t.Fatalf("expected FORBIDDEN, got %q", appErr.Code)
+	}
+}
+
+func TestCaptureRejectsRepoPathWithoutBoundRootPathForProjectScopedKey(t *testing.T) {
+	relayID := lib.ProjectID("relay")
+	service := New(Dependencies{
+		Projects: &fakeProjectStore{
+			projects: map[string]domain.Project{
+				"relay": {ID: relayID, Name: "relay"},
+			},
+		},
+		Notes:         &fakeNoteStore{},
+		Artifacts:     &fakeArtifactStore{},
+		Decisions:     &fakeDecisionStore{},
+		OpenQuestions: &fakeOpenQuestionStore{},
+		Packets:       &fakePacketStore{},
+		APIKeys:       &fakeAPIKeyStore{},
+	})
+
+	ctx := ContextWithAuthInfo(context.Background(), AuthInfo{
+		KeyID:     "key_1",
+		Scope:     APIKeyScopeProject,
+		ProjectID: relayID,
+	})
+
+	_, err := service.Capture(ctx, CaptureInput{
+		RepoPath: "/tmp/relay",
+		Source:   "chat",
+		Body:     "hello",
+	})
+	if err == nil {
+		t.Fatal("expected repo_path to be rejected when the bound project has no stored root path")
 	}
 	appErr, ok := err.(lib.AppError)
 	if !ok {

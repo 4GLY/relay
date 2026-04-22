@@ -463,6 +463,9 @@ func (s Service) resolveCaptureProject(ctx context.Context, name string, repoPat
 		if name != "" && project.Name != name {
 			return domain.Project{}, lib.Forbidden("FORBIDDEN", "api key is not authorized for this project")
 		}
+		if repoPath != "" && !projectRootPathMatches(repoPath, project.RootPath) {
+			return domain.Project{}, lib.Forbidden("FORBIDDEN", "api key is not authorized for this project")
+		}
 		return project, nil
 	}
 
@@ -479,6 +482,13 @@ func (s Service) resolveCaptureProject(ctx context.Context, name string, repoPat
 		return domain.Project{}, err
 	}
 	return project, nil
+}
+
+func projectRootPathMatches(repoPath string, rootPath string) bool {
+	if strings.TrimSpace(repoPath) == "" || strings.TrimSpace(rootPath) == "" {
+		return false
+	}
+	return filepath.Clean(repoPath) == filepath.Clean(rootPath)
 }
 
 func (s Service) resolveBoundProject(ctx context.Context, auth AuthInfo, name string, id string) (domain.Project, error) {

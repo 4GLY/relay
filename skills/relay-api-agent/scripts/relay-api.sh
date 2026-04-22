@@ -31,7 +31,7 @@ Usage:
 Environment:
   RELAY_BASE_URL                          Override base URL
   RELAY_ADMIN_TOKEN / RELAY_API_TOKEN     Bootstrap admin token
-  RELAY_CLIENT_TOKEN / RELAY_TOKEN        Issued client token
+  RELAY_CLIENT_TOKEN / RELAY_MCP_TOKEN    Issued client token
   RELAY_KEYCHAIN_SERVICE                  macOS Keychain service name
   RELAY_KEYCHAIN_ADMIN_ACCOUNT            Keychain account for admin token
   RELAY_KEYCHAIN_CLIENT_ACCOUNT           Keychain account for client token
@@ -122,9 +122,9 @@ resolve_client_token() {
     CLIENT_TOKEN_SOURCE="env:RELAY_CLIENT_TOKEN"
     return 0
   fi
-  if [[ -n "${RELAY_TOKEN:-}" ]]; then
-    CLIENT_TOKEN="${RELAY_TOKEN}"
-    CLIENT_TOKEN_SOURCE="env:RELAY_TOKEN"
+  if [[ -n "${RELAY_MCP_TOKEN:-}" ]]; then
+    CLIENT_TOKEN="${RELAY_MCP_TOKEN}"
+    CLIENT_TOKEN_SOURCE="env:RELAY_MCP_TOKEN"
     return 0
   fi
   local keychain_token=""
@@ -145,7 +145,7 @@ require_admin_token() {
 
 require_client_token() {
   if ! resolve_client_token; then
-    echo "Relay client token not found. Set RELAY_CLIENT_TOKEN/RELAY_TOKEN or store it with scripts/setup.sh or issue-key --store-client." >&2
+    echo "Relay client token not found. Set RELAY_CLIENT_TOKEN/RELAY_MCP_TOKEN or store it with scripts/setup.sh or issue-key --store-client." >&2
     exit 1
   fi
 }

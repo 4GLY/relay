@@ -64,7 +64,7 @@ Client token:
 | Operation | Command |
 | --- | --- |
 | Health check | `relay-api.sh doctor` |
-| Issue API key | `relay-api.sh issue-key <name>` |
+| Issue API key | `relay-api.sh issue-key <name> [--scope project --project <name> [--project-id <id>]]` |
 | List API keys | `relay-api.sh list-keys` |
 | Revoke API key | `relay-api.sh revoke-key <key-id>` |
 | Capture memory | `relay-api.sh capture <json-file|->` |
@@ -85,6 +85,12 @@ Issue a new client token and store it in Keychain:
 
 ```bash
 /Users/hoon-ch/repos/relay/skills/relay-api-agent/scripts/relay-api.sh issue-key codex-agent --store-client
+```
+
+Issue a project-scoped key:
+
+```bash
+/Users/hoon-ch/repos/relay/skills/relay-api-agent/scripts/relay-api.sh issue-key codex-agent --scope project --project relay
 ```
 
 Run setup with automatic client-key issuance:

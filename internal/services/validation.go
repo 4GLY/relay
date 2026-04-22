@@ -126,6 +126,13 @@ func validateIssueAPIKeyInput(input IssueAPIKeyInput) error {
 	if err := validateStringFieldLength("scope", input.Scope, maxAPIKeyScopeLength); err != nil {
 		return err
 	}
+	if (input.Project != "" || input.ProjectID != "") && NormalizeAPIKeyScope(input.Scope) != APIKeyScopeProject {
+		return lib.AppError{
+			Code:      "INVALID_API_KEY_SCOPE",
+			Message:   "project and project_id require scope project",
+			Retryable: false,
+		}
+	}
 	if err := validateStringFieldLength("project", input.Project, maxAPIKeyProjectLength); err != nil {
 		return err
 	}

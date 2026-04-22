@@ -699,6 +699,38 @@ func TestIssueAPIKeyRejectsInvalidScope(t *testing.T) {
 	}
 }
 
+func TestIssueAPIKeyRejectsProjectBindingWithoutProjectScope(t *testing.T) {
+	service := New(Dependencies{
+		Projects:      &fakeProjectStore{},
+		Notes:         &fakeNoteStore{},
+		Artifacts:     &fakeArtifactStore{},
+		Decisions:     &fakeDecisionStore{},
+		OpenQuestions: &fakeOpenQuestionStore{},
+		Packets:       &fakePacketStore{},
+		APIKeys:       &fakeAPIKeyStore{},
+	})
+
+	ctx := ContextWithAuthInfo(context.Background(), AuthInfo{
+		IsAdmin: true,
+		Scope:   APIKeyScopeGlobal,
+	})
+
+	_, err := service.IssueAPIKey(ctx, IssueAPIKeyInput{
+		Name:    "agent",
+		Project: "relay",
+	})
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	appErr, ok := err.(lib.AppError)
+	if !ok {
+		t.Fatalf("expected AppError, got %T", err)
+	}
+	if appErr.Code != "INVALID_API_KEY_SCOPE" {
+		t.Fatalf("expected INVALID_API_KEY_SCOPE, got %q", appErr.Code)
+	}
+}
+
 func TestIssueAPIKeyPersistsProjectScopeBinding(t *testing.T) {
 	projectID := lib.ProjectID("relay")
 	keys := &fakeAPIKeyStore{}

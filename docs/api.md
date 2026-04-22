@@ -74,6 +74,7 @@ Response:
 
 Purpose:
 - mint a new reusable API key for agents or clients
+- optionally bind the key to a single project
 
 Auth:
 - bootstrap admin token only
@@ -82,7 +83,9 @@ Request body:
 
 ```json
 {
-  "name": "agent-smoke"
+  "name": "agent-smoke",
+  "scope": "project",
+  "project": "relay"
 }
 ```
 
@@ -96,7 +99,9 @@ Response body:
     "key_id": "key_xxx",
     "name": "agent-smoke",
     "token": "relay_live_xxx",
-    "token_prefix": "relay_live_xxx"
+    "token_prefix": "relay_live_xxx",
+    "scope": "project",
+    "project_id": "proj_xxx"
   },
   "warnings": []
 }
@@ -106,6 +111,9 @@ Contract notes:
 - plaintext token is returned once
 - only the hash is stored in Postgres
 - issued keys can be used on the normal `/v1/*` routes
+- `scope` defaults to `global`
+- `scope: project` requires `project` or `project_id`
+- `project` and `project_id` must resolve to the same project when both are present
 
 ### `GET /v1/api-keys`
 
@@ -127,6 +135,8 @@ Response body:
         "key_id": "key_xxx",
         "name": "agent-smoke",
         "token_prefix": "relay_live_xxx",
+        "scope": "project",
+        "project_id": "proj_xxx",
         "revoked": false
       }
     ]
@@ -154,6 +164,7 @@ Request body:
 Contract notes:
 - revoked keys stop working on normal `/v1/*` routes
 - bootstrap admin token is not affected
+- list and revoke responses include the key scope and project binding when present
 
 ### `POST /v1/capture`
 

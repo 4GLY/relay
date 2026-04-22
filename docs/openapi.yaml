@@ -207,9 +207,16 @@ components:
       properties:
         name:
           type: string
+        scope:
+          type: string
+          enum: [global, project]
+        project:
+          type: string
+        project_id:
+          type: string
     IssueAPIKeyResult:
       type: object
-      required: [key_id, name, token, token_prefix]
+      required: [key_id, name, token, token_prefix, scope]
       properties:
         key_id:
           type: string
@@ -219,15 +226,25 @@ components:
           type: string
         token_prefix:
           type: string
+        scope:
+          type: string
+          enum: [global, project]
+        project_id:
+          type: string
     APIKeySummary:
       type: object
-      required: [key_id, name, token_prefix, revoked]
+      required: [key_id, name, token_prefix, scope, revoked]
       properties:
         key_id:
           type: string
         name:
           type: string
         token_prefix:
+          type: string
+        scope:
+          type: string
+          enum: [global, project]
+        project_id:
           type: string
         revoked:
           type: boolean
@@ -247,13 +264,18 @@ components:
           type: string
     RevokeAPIKeyResult:
       type: object
-      required: [key_id, name, token_prefix, revoked]
+      required: [key_id, name, token_prefix, scope, revoked]
       properties:
         key_id:
           type: string
         name:
           type: string
         token_prefix:
+          type: string
+        scope:
+          type: string
+          enum: [global, project]
+        project_id:
           type: string
         revoked:
           type: boolean

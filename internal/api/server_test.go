@@ -578,6 +578,28 @@ func TestCaptureRouteRejectsUnknownJSONField(t *testing.T) {
 	}
 }
 
+func TestCaptureRouteRejectsMalformedUTF8(t *testing.T) {
+	projectID := lib.ProjectID("relay")
+	mux := buildMux(testHandler(projectID), config.Config{APIToken: "admin-token"}, testRuntime(projectID))
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/capture", bytes.NewReader([]byte("{\"project\":\"relay\",\"source\":\"chat\",\"body\":\"\xff\"}")))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer admin-token")
+	rec := httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d body=%s", rec.Code, rec.Body.String())
+	}
+	if !bytes.Contains(rec.Body.Bytes(), []byte(`"code":"INVALID_JSON"`)) {
+		t.Fatalf("expected invalid json error, got %s", rec.Body.String())
+	}
+	if !bytes.Contains(rec.Body.Bytes(), []byte("malformed UTF-8")) {
+		t.Fatalf("expected malformed utf-8 message, got %s", rec.Body.String())
+	}
+}
+
 func TestCaptureRouteRejectsOversizedBody(t *testing.T) {
 	projectID := lib.ProjectID("relay")
 	mux := buildMux(testHandler(projectID), config.Config{APIToken: "admin-token"}, testRuntime(projectID))
@@ -595,6 +617,25 @@ func TestCaptureRouteRejectsOversizedBody(t *testing.T) {
 	}
 	if !bytes.Contains(rec.Body.Bytes(), []byte(`"code":"REQUEST_TOO_LARGE"`)) {
 		t.Fatalf("expected request too large error, got %s", rec.Body.String())
+	}
+}
+
+func TestIssueAPIKeyRouteRejectsInvalidScopeWithForbidden(t *testing.T) {
+	keyStore := &fakeAPIKeyStore{}
+	mux := buildMux(testHandler(lib.ProjectID("relay"), keyStore), config.Config{APIToken: "admin-token"}, testRuntime(lib.ProjectID("relay"), keyStore))
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/api-keys/issue", bytes.NewReader([]byte(`{"name":"agent","scope":"invalid"}`)))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer admin-token")
+	rec := httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("expected 403, got %d body=%s", rec.Code, rec.Body.String())
+	}
+	if !bytes.Contains(rec.Body.Bytes(), []byte(`"code":"INVALID_API_KEY_SCOPE"`)) {
+		t.Fatalf("expected invalid scope code, got %s", rec.Body.String())
 	}
 }
 

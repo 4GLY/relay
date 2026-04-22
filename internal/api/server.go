@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bytes"
 	"context"
 	"crypto/subtle"
 	"encoding/json"
@@ -8,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
@@ -260,7 +262,17 @@ func writeJSON(w http.ResponseWriter, status int, payload any) {
 func decodeStrictJSONBody(w http.ResponseWriter, r *http.Request, command string, dst any) bool {
 	r.Body = http.MaxBytesReader(w, r.Body, maxJSONRequestBodyBytes)
 
-	dec := json.NewDecoder(r.Body)
+	raw, err := io.ReadAll(r.Body)
+	if err != nil {
+		writeJSON(w, validationJSONStatus(err), contracts.Failure(command, validationJSONCode(err), validationJSONMessage(err), false))
+		return false
+	}
+	if !utf8.Valid(raw) {
+		writeJSON(w, http.StatusBadRequest, contracts.Failure(command, "INVALID_JSON", "request body contains malformed UTF-8", false))
+		return false
+	}
+
+	dec := json.NewDecoder(bytes.NewReader(raw))
 	dec.DisallowUnknownFields()
 
 	if err := dec.Decode(dst); err != nil {
@@ -331,7 +343,7 @@ func writeServiceError(w http.ResponseWriter, command string, err error) {
 		if appErr.Code == "API_KEY_NOT_FOUND_BY_ID" {
 			status = http.StatusNotFound
 		}
-		if appErr.Code == "FORBIDDEN" {
+		if isForbiddenAppError(appErr) {
 			status = http.StatusForbidden
 		}
 		if appErr.Code == "MISCONFIGURED" {
@@ -341,4 +353,13 @@ func writeServiceError(w http.ResponseWriter, command string, err error) {
 		return
 	}
 	writeJSON(w, http.StatusInternalServerError, contracts.Failure(command, "INTERNAL_ERROR", err.Error(), true))
+}
+
+func isForbiddenAppError(err lib.AppError) bool {
+	switch err.Code {
+	case "FORBIDDEN", "INVALID_API_KEY_SCOPE", "PROJECT_MISMATCH":
+		return true
+	default:
+		return false
+	}
 }

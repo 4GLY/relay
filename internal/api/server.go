@@ -19,6 +19,10 @@ import (
 )
 
 func ListenAndServe(cfg config.Config) error {
+	if cfg.APIToken == "" {
+		return lib.Misconfigured("RELAY_API_TOKEN is required for relay-api")
+	}
+
 	runtime, err := app.NewRuntime(context.Background(), cfg)
 	if err != nil {
 		return err
@@ -70,7 +74,9 @@ func handleHealth(w http.ResponseWriter, _ *http.Request) {
 
 func requireAdminBearerToken(token string, next http.HandlerFunc) http.HandlerFunc {
 	if token == "" {
-		return next
+		return func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(w, http.StatusInternalServerError, contracts.Failure("api auth", "MISCONFIGURED", "admin token is not configured", false, "RELAY_API_TOKEN"))
+		}
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {

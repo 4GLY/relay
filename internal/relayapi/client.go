@@ -64,7 +64,7 @@ func LoadConfigFromEnv() Config {
 	return Config{
 		BaseURL:         os.Getenv("RELAY_BASE_URL"),
 		AdminToken:      firstNonEmpty(os.Getenv("RELAY_ADMIN_TOKEN"), os.Getenv("RELAY_API_TOKEN")),
-		ClientToken:     firstNonEmpty(os.Getenv("RELAY_CLIENT_TOKEN"), os.Getenv("RELAY_TOKEN")),
+		ClientToken:     firstNonEmpty(os.Getenv("RELAY_CLIENT_TOKEN"), os.Getenv("RELAY_MCP_TOKEN")),
 		KeychainService: firstNonEmpty(os.Getenv("RELAY_KEYCHAIN_SERVICE"), defaultKeychainService),
 		AdminAccount:    firstNonEmpty(os.Getenv("RELAY_KEYCHAIN_ADMIN_ACCOUNT"), defaultAdminAccount),
 		ClientAccount:   firstNonEmpty(os.Getenv("RELAY_KEYCHAIN_CLIENT_ACCOUNT"), defaultClientAccount),

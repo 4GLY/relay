@@ -13,7 +13,7 @@ func TestLoadConfigFromEnvKeepsAdminAndClientTokensSeparate(t *testing.T) {
 	t.Setenv("RELAY_ADMIN_TOKEN", "admin-token")
 	t.Setenv("RELAY_API_TOKEN", "legacy-admin-token")
 	t.Setenv("RELAY_CLIENT_TOKEN", "client-token")
-	t.Setenv("RELAY_TOKEN", "")
+	t.Setenv("RELAY_MCP_TOKEN", "")
 
 	cfg := LoadConfigFromEnv()
 	if cfg.AdminToken != "admin-token" {
@@ -28,7 +28,7 @@ func TestLoadConfigFromEnvDoesNotCopyAdminTokenIntoClientToken(t *testing.T) {
 	t.Setenv("RELAY_ADMIN_TOKEN", "")
 	t.Setenv("RELAY_API_TOKEN", "admin-token")
 	t.Setenv("RELAY_CLIENT_TOKEN", "")
-	t.Setenv("RELAY_TOKEN", "")
+	t.Setenv("RELAY_MCP_TOKEN", "")
 
 	cfg := LoadConfigFromEnv()
 	if cfg.AdminToken != "admin-token" {

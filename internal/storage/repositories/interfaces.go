@@ -44,4 +44,6 @@ type PacketStore interface {
 type APIKeyStore interface {
 	CreateAPIKey(ctx context.Context, key domain.APIKey) (domain.APIKey, error)
 	GetByTokenHash(ctx context.Context, tokenHash string) (domain.APIKey, error)
+	ListAPIKeys(ctx context.Context) ([]domain.APIKey, error)
+	RevokeAPIKey(ctx context.Context, keyID string) (domain.APIKey, error)
 }

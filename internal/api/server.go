@@ -35,7 +35,9 @@ func ListenAndServe(cfg config.Config) error {
 func buildMux(handler Handler, cfg config.Config, apiKeys repositories.APIKeyStore) *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", handleHealth)
+	mux.HandleFunc("/v1/api-keys", requireAdminBearerToken(cfg.APIToken, handler.handleListAPIKeys))
 	mux.HandleFunc("/v1/api-keys/issue", requireAdminBearerToken(cfg.APIToken, handler.handleIssueAPIKey))
+	mux.HandleFunc("/v1/api-keys/revoke", requireAdminBearerToken(cfg.APIToken, handler.handleRevokeAPIKey))
 	mux.HandleFunc("/v1/capture", requireBearerToken(cfg.APIToken, apiKeys, handler.handleCapture))
 	mux.HandleFunc("/v1/promote", requireBearerToken(cfg.APIToken, apiKeys, handler.handlePromote))
 	mux.HandleFunc("/v1/packets/build", requireBearerToken(cfg.APIToken, apiKeys, handler.handlePacketBuild))
@@ -135,6 +137,29 @@ func (h Handler) handleIssueAPIKey(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, contracts.Success("relay api-key issue", result))
 }
 
+func (h Handler) handleListAPIKeys(w http.ResponseWriter, r *http.Request) {
+	result, err := h.services.ListAPIKeys(r.Context())
+	if err != nil {
+		writeServiceError(w, "relay api-key list", err)
+		return
+	}
+	writeJSON(w, http.StatusOK, contracts.Success("relay api-key list", result))
+}
+
+func (h Handler) handleRevokeAPIKey(w http.ResponseWriter, r *http.Request) {
+	var input services.RevokeAPIKeyInput
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		writeJSON(w, http.StatusBadRequest, contracts.Failure("relay api-key revoke", "INVALID_JSON", err.Error(), false))
+		return
+	}
+	result, err := h.services.RevokeAPIKey(r.Context(), input)
+	if err != nil {
+		writeServiceError(w, "relay api-key revoke", err)
+		return
+	}
+	writeJSON(w, http.StatusOK, contracts.Success("relay api-key revoke", result))
+}
+
 func (h Handler) handlePromote(w http.ResponseWriter, r *http.Request) {
 	var input services.PromoteInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
@@ -191,6 +216,9 @@ func writeServiceError(w http.ResponseWriter, command string, err error) {
 		}
 		if appErr.Code == "API_KEY_NOT_FOUND" {
 			status = http.StatusUnauthorized
+		}
+		if appErr.Code == "API_KEY_NOT_FOUND_BY_ID" {
+			status = http.StatusNotFound
 		}
 		if appErr.Code == "MISCONFIGURED" {
 			status = http.StatusInternalServerError

@@ -294,6 +294,50 @@ func (s Service) IssueAPIKey(ctx context.Context, input IssueAPIKeyInput) (Issue
 	}, nil
 }
 
+func (s Service) ListAPIKeys(ctx context.Context) (ListAPIKeysResult, error) {
+	if s.deps.APIKeys == nil {
+		return ListAPIKeysResult{}, lib.Misconfigured("api key store is required")
+	}
+
+	keys, err := s.deps.APIKeys.ListAPIKeys(ctx)
+	if err != nil {
+		return ListAPIKeysResult{}, err
+	}
+
+	items := make([]APIKeySummary, 0, len(keys))
+	for _, key := range keys {
+		items = append(items, APIKeySummary{
+			KeyID:       key.ID,
+			Name:        key.Name,
+			TokenPrefix: key.TokenPrefix,
+			Revoked:     key.Revoked,
+		})
+	}
+
+	return ListAPIKeysResult{Items: items}, nil
+}
+
+func (s Service) RevokeAPIKey(ctx context.Context, input RevokeAPIKeyInput) (RevokeAPIKeyResult, error) {
+	if input.KeyID == "" {
+		return RevokeAPIKeyResult{}, lib.MissingFields("MISSING_REQUIRED_FIELDS", "key_id")
+	}
+	if s.deps.APIKeys == nil {
+		return RevokeAPIKeyResult{}, lib.Misconfigured("api key store is required")
+	}
+
+	key, err := s.deps.APIKeys.RevokeAPIKey(ctx, input.KeyID)
+	if err != nil {
+		return RevokeAPIKeyResult{}, err
+	}
+
+	return RevokeAPIKeyResult{
+		KeyID:       key.ID,
+		Name:        key.Name,
+		TokenPrefix: key.TokenPrefix,
+		Revoked:     key.Revoked,
+	}, nil
+}
+
 func noteIDFor(idempotencyKey string, body string) string {
 	if idempotencyKey != "" {
 		return lib.StableID("note", "capture:"+idempotencyKey+":note")

@@ -129,10 +129,48 @@ func (s *fakeAPIKeyStore) CreateAPIKey(_ context.Context, key domain.APIKey) (do
 
 func (s *fakeAPIKeyStore) GetByTokenHash(_ context.Context, tokenHash string) (domain.APIKey, error) {
 	key, ok := s.itemsByHash[tokenHash]
-	if !ok {
+	if !ok || key.Revoked {
 		return domain.APIKey{}, lib.NotFound("API_KEY_NOT_FOUND", "api key not found")
 	}
 	return key, nil
+}
+
+func (s *fakeAPIKeyStore) ListAPIKeys(_ context.Context) ([]domain.APIKey, error) {
+	var items []domain.APIKey
+	for _, item := range s.itemsByHash {
+		items = append(items, item)
+	}
+	for _, item := range s.created {
+		seen := false
+		for _, existing := range items {
+			if existing.ID == item.ID {
+				seen = true
+				break
+			}
+		}
+		if !seen {
+			items = append(items, item)
+		}
+	}
+	return items, nil
+}
+
+func (s *fakeAPIKeyStore) RevokeAPIKey(_ context.Context, keyID string) (domain.APIKey, error) {
+	for hash, item := range s.itemsByHash {
+		if item.ID == keyID {
+			item.Revoked = true
+			s.itemsByHash[hash] = item
+			return item, nil
+		}
+	}
+	for i, item := range s.created {
+		if item.ID == keyID {
+			item.Revoked = true
+			s.created[i] = item
+			return item, nil
+		}
+	}
+	return domain.APIKey{}, lib.NotFound("API_KEY_NOT_FOUND_BY_ID", "api key not found")
 }
 
 func TestHealthz(t *testing.T) {
@@ -275,6 +313,58 @@ func TestIssueAPIKeyRouteCreatesKey(t *testing.T) {
 	}
 	if !bytes.Contains(rec.Body.Bytes(), []byte(`"token"`)) {
 		t.Fatalf("expected token in response body, got %s", rec.Body.String())
+	}
+}
+
+func TestListAPIKeysRouteReturnsItems(t *testing.T) {
+	keyStore := &fakeAPIKeyStore{
+		itemsByHash: map[string]domain.APIKey{
+			"hash": {ID: "key_1", Name: "agent", TokenHash: "hash", TokenPrefix: "relay_live_abc", Revoked: false},
+		},
+	}
+	mux := buildMux(testHandler(lib.ProjectID("relay"), keyStore), config.Config{APIToken: "admin-token"}, keyStore)
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/api-keys", nil)
+	req.Header.Set("Authorization", "Bearer admin-token")
+	rec := httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
+	}
+	if !bytes.Contains(rec.Body.Bytes(), []byte(`"key_id":"key_1"`)) {
+		t.Fatalf("expected key listing in response, got %s", rec.Body.String())
+	}
+}
+
+func TestRevokeAPIKeyRouteRevokesIssuedKey(t *testing.T) {
+	key := "relay_live_testtoken"
+	keyStore := &fakeAPIKeyStore{
+		itemsByHash: map[string]domain.APIKey{
+			lib.TokenHash(key): {ID: "key_1", Name: "agent", TokenHash: lib.TokenHash(key), TokenPrefix: lib.TokenPrefix(key)},
+		},
+	}
+	mux := buildMux(testHandler(lib.ProjectID("relay"), keyStore), config.Config{APIToken: "admin-token"}, keyStore)
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/api-keys/revoke", bytes.NewReader([]byte(`{"key_id":"key_1"}`)))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer admin-token")
+	rec := httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
+	}
+
+	req2 := httptest.NewRequest(http.MethodGet, "/v1/projects/"+lib.ProjectID("relay"), nil)
+	req2.Header.Set("Authorization", "Bearer "+key)
+	rec2 := httptest.NewRecorder()
+	mux.ServeHTTP(rec2, req2)
+
+	if rec2.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401 after revoke, got %d body=%s", rec2.Code, rec2.Body.String())
 	}
 }
 

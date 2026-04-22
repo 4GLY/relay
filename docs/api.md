@@ -17,6 +17,8 @@ The CLI is only a local dev/debug wrapper.
 - `RELAY_API_TOKEN` is the bootstrap admin token
 - issued API keys are stored server-side as token hashes
 - `POST /v1/api-keys/issue` accepts only the bootstrap admin token
+- `GET /v1/api-keys` accepts only the bootstrap admin token
+- `POST /v1/api-keys/revoke` accepts only the bootstrap admin token
 
 Example:
 
@@ -103,6 +105,54 @@ Contract notes:
 - plaintext token is returned once
 - only the hash is stored in Postgres
 - issued keys can be used on the normal `/v1/*` routes
+
+### `GET /v1/api-keys`
+
+Purpose:
+- inspect issued API keys
+
+Auth:
+- bootstrap admin token only
+
+Response body:
+
+```json
+{
+  "ok": true,
+  "command": "relay api-key list",
+  "data": {
+    "items": [
+      {
+        "key_id": "key_xxx",
+        "name": "agent-smoke",
+        "token_prefix": "relay_live_xxx",
+        "revoked": false
+      }
+    ]
+  },
+  "warnings": []
+}
+```
+
+### `POST /v1/api-keys/revoke`
+
+Purpose:
+- revoke a previously issued API key
+
+Auth:
+- bootstrap admin token only
+
+Request body:
+
+```json
+{
+  "key_id": "key_xxx"
+}
+```
+
+Contract notes:
+- revoked keys stop working on normal `/v1/*` routes
+- bootstrap admin token is not affected
 
 ### `POST /v1/capture`
 

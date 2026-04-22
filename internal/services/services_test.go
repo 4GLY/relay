@@ -182,10 +182,48 @@ func (s *fakeAPIKeyStore) CreateAPIKey(_ context.Context, key domain.APIKey) (do
 
 func (s *fakeAPIKeyStore) GetByTokenHash(_ context.Context, tokenHash string) (domain.APIKey, error) {
 	key, ok := s.itemsByHash[tokenHash]
-	if !ok {
+	if !ok || key.Revoked {
 		return domain.APIKey{}, lib.NotFound("API_KEY_NOT_FOUND", "api key not found")
 	}
 	return key, nil
+}
+
+func (s *fakeAPIKeyStore) ListAPIKeys(_ context.Context) ([]domain.APIKey, error) {
+	var items []domain.APIKey
+	for _, item := range s.itemsByHash {
+		items = append(items, item)
+	}
+	for _, item := range s.created {
+		seen := false
+		for _, existing := range items {
+			if existing.ID == item.ID {
+				seen = true
+				break
+			}
+		}
+		if !seen {
+			items = append(items, item)
+		}
+	}
+	return items, nil
+}
+
+func (s *fakeAPIKeyStore) RevokeAPIKey(_ context.Context, keyID string) (domain.APIKey, error) {
+	for hash, item := range s.itemsByHash {
+		if item.ID == keyID {
+			item.Revoked = true
+			s.itemsByHash[hash] = item
+			return item, nil
+		}
+	}
+	for i, item := range s.created {
+		if item.ID == keyID {
+			item.Revoked = true
+			s.created[i] = item
+			return item, nil
+		}
+	}
+	return domain.APIKey{}, lib.NotFound("API_KEY_NOT_FOUND_BY_ID", "api key not found")
 }
 
 func TestCaptureCreatesProjectNoteAndArtifacts(t *testing.T) {
@@ -376,5 +414,55 @@ func TestIssueAPIKey(t *testing.T) {
 	}
 	if keys.created[0].TokenHash != lib.TokenHash(result.Token) {
 		t.Fatalf("expected stored hash to match returned token")
+	}
+}
+
+func TestListAPIKeys(t *testing.T) {
+	keys := &fakeAPIKeyStore{
+		itemsByHash: map[string]domain.APIKey{
+			"hash": {ID: "key_1", Name: "agent", TokenHash: "hash", TokenPrefix: "relay_live_abc"},
+		},
+	}
+	service := New(Dependencies{
+		Projects:      &fakeProjectStore{},
+		Notes:         &fakeNoteStore{},
+		Artifacts:     &fakeArtifactStore{},
+		Decisions:     &fakeDecisionStore{},
+		OpenQuestions: &fakeOpenQuestionStore{},
+		Packets:       &fakePacketStore{},
+		APIKeys:       keys,
+	})
+
+	result, err := service.ListAPIKeys(context.Background())
+	if err != nil {
+		t.Fatalf("ListAPIKeys returned error: %v", err)
+	}
+	if len(result.Items) != 1 {
+		t.Fatalf("expected 1 api key, got %d", len(result.Items))
+	}
+}
+
+func TestRevokeAPIKey(t *testing.T) {
+	keys := &fakeAPIKeyStore{
+		itemsByHash: map[string]domain.APIKey{
+			"hash": {ID: "key_1", Name: "agent", TokenHash: "hash", TokenPrefix: "relay_live_abc"},
+		},
+	}
+	service := New(Dependencies{
+		Projects:      &fakeProjectStore{},
+		Notes:         &fakeNoteStore{},
+		Artifacts:     &fakeArtifactStore{},
+		Decisions:     &fakeDecisionStore{},
+		OpenQuestions: &fakeOpenQuestionStore{},
+		Packets:       &fakePacketStore{},
+		APIKeys:       keys,
+	})
+
+	result, err := service.RevokeAPIKey(context.Background(), RevokeAPIKeyInput{KeyID: "key_1"})
+	if err != nil {
+		t.Fatalf("RevokeAPIKey returned error: %v", err)
+	}
+	if !result.Revoked {
+		t.Fatalf("expected revoked result")
 	}
 }

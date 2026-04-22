@@ -219,6 +219,44 @@ components:
           type: string
         token_prefix:
           type: string
+    APIKeySummary:
+      type: object
+      required: [key_id, name, token_prefix, revoked]
+      properties:
+        key_id:
+          type: string
+        name:
+          type: string
+        token_prefix:
+          type: string
+        revoked:
+          type: boolean
+    ListAPIKeysResult:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/APIKeySummary'
+    RevokeAPIKeyInput:
+      type: object
+      required: [key_id]
+      properties:
+        key_id:
+          type: string
+    RevokeAPIKeyResult:
+      type: object
+      required: [key_id, name, token_prefix, revoked]
+      properties:
+        key_id:
+          type: string
+        name:
+          type: string
+        token_prefix:
+          type: string
+        revoked:
+          type: boolean
     HealthResponse:
       allOf:
         - $ref: '#/components/schemas/SuccessEnvelope'
@@ -261,6 +299,20 @@ components:
           properties:
             data:
               $ref: '#/components/schemas/IssueAPIKeyResult'
+    ListAPIKeysResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/ListAPIKeysResult'
+    RevokeAPIKeyResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/RevokeAPIKeyResult'
 paths:
   /healthz:
     get:
@@ -274,6 +326,26 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HealthResponse'
+  /v1/api-keys:
+    get:
+      tags: [memory]
+      summary: List issued API keys
+      operationId: listApiKeys
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: API key list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListAPIKeysResponse'
+        '401':
+          description: Missing or invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
   /v1/api-keys/issue:
     post:
       tags: [memory]
@@ -308,6 +380,44 @@ paths:
                 $ref: '#/components/schemas/ErrorEnvelope'
         '500':
           description: Internal error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /v1/api-keys/revoke:
+    post:
+      tags: [memory]
+      summary: Revoke a previously issued API key
+      operationId: revokeApiKey
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RevokeAPIKeyInput'
+      responses:
+        '200':
+          description: API key revoked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RevokeAPIKeyResponse'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '401':
+          description: Missing or invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: API key not found
           content:
             application/json:
               schema:

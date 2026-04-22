@@ -274,12 +274,49 @@ func (s Stores) CreateAPIKey(ctx context.Context, key domain.APIKey) (domain.API
 func (s Stores) GetByTokenHash(ctx context.Context, tokenHash string) (domain.APIKey, error) {
 	var key domain.APIKey
 	err := s.db.QueryRow(ctx, `
-		SELECT id, name, token_hash, token_prefix
+		SELECT id, name, token_hash, token_prefix, revoked_at IS NOT NULL
 		FROM api_keys
 		WHERE token_hash = $1
-	`, tokenHash).Scan(&key.ID, &key.Name, &key.TokenHash, &key.TokenPrefix)
+		  AND revoked_at IS NULL
+	`, tokenHash).Scan(&key.ID, &key.Name, &key.TokenHash, &key.TokenPrefix, &key.Revoked)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return domain.APIKey{}, lib.NotFound("API_KEY_NOT_FOUND", "api key not found")
+	}
+	return key, err
+}
+
+func (s Stores) ListAPIKeys(ctx context.Context) ([]domain.APIKey, error) {
+	rows, err := s.db.Query(ctx, `
+		SELECT id, name, token_hash, token_prefix, revoked_at IS NOT NULL
+		FROM api_keys
+		ORDER BY created_at DESC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []domain.APIKey
+	for rows.Next() {
+		var item domain.APIKey
+		if err := rows.Scan(&item.ID, &item.Name, &item.TokenHash, &item.TokenPrefix, &item.Revoked); err != nil {
+			return nil, err
+		}
+		items = append(items, item)
+	}
+	return items, rows.Err()
+}
+
+func (s Stores) RevokeAPIKey(ctx context.Context, keyID string) (domain.APIKey, error) {
+	var key domain.APIKey
+	err := s.db.QueryRow(ctx, `
+		UPDATE api_keys
+		SET revoked_at = COALESCE(revoked_at, NOW())
+		WHERE id = $1
+		RETURNING id, name, token_hash, token_prefix, revoked_at IS NOT NULL
+	`, keyID).Scan(&key.ID, &key.Name, &key.TokenHash, &key.TokenPrefix, &key.Revoked)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return domain.APIKey{}, lib.NotFound("API_KEY_NOT_FOUND_BY_ID", "api key not found")
 	}
 	return key, err
 }

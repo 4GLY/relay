@@ -75,3 +75,25 @@ type IssueAPIKeyResult struct {
 	Token       string `json:"token"`
 	TokenPrefix string `json:"token_prefix"`
 }
+
+type APIKeySummary struct {
+	KeyID       string `json:"key_id"`
+	Name        string `json:"name"`
+	TokenPrefix string `json:"token_prefix"`
+	Revoked     bool   `json:"revoked"`
+}
+
+type ListAPIKeysResult struct {
+	Items []APIKeySummary `json:"items"`
+}
+
+type RevokeAPIKeyInput struct {
+	KeyID string `json:"key_id"`
+}
+
+type RevokeAPIKeyResult struct {
+	KeyID       string `json:"key_id"`
+	Name        string `json:"name"`
+	TokenPrefix string `json:"token_prefix"`
+	Revoked     bool   `json:"revoked"`
+}

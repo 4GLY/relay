@@ -38,6 +38,8 @@ Auth model:
 - every `/v1/*` route requires `Authorization: Bearer <token>`
 - `RELAY_API_TOKEN` is the bootstrap admin token
 - issued API keys can be minted through `POST /v1/api-keys/issue`
+- issued API keys can be listed through `GET /v1/api-keys`
+- issued API keys can be revoked through `POST /v1/api-keys/revoke`
 
 ## Environment
 
@@ -119,6 +121,22 @@ curl -sS -X POST "$RELAY_BASE_URL/v1/api-keys/issue" \
   -H "Authorization: Bearer $RELAY_API_TOKEN" \
   -H 'Content-Type: application/json' \
   -d '{"name":"agent-smoke"}'
+```
+
+List API keys:
+
+```bash
+curl -sS "$RELAY_BASE_URL/v1/api-keys" \
+  -H "Authorization: Bearer $RELAY_API_TOKEN"
+```
+
+Revoke an API key:
+
+```bash
+curl -sS -X POST "$RELAY_BASE_URL/v1/api-keys/revoke" \
+  -H "Authorization: Bearer $RELAY_API_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"key_id":"key_xxx"}'
 ```
 
 Build packet:

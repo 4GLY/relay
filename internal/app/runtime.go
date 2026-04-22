@@ -119,3 +119,11 @@ func (s apiKeyStore) CreateAPIKey(ctx context.Context, key domain.APIKey) (domai
 func (s apiKeyStore) GetByTokenHash(ctx context.Context, tokenHash string) (domain.APIKey, error) {
 	return s.Stores.GetByTokenHash(ctx, tokenHash)
 }
+
+func (s apiKeyStore) ListAPIKeys(ctx context.Context) ([]domain.APIKey, error) {
+	return s.Stores.ListAPIKeys(ctx)
+}
+
+func (s apiKeyStore) RevokeAPIKey(ctx context.Context, keyID string) (domain.APIKey, error) {
+	return s.Stores.RevokeAPIKey(ctx, keyID)
+}

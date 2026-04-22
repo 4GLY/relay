@@ -649,7 +649,12 @@ func TestIssueAPIKey(t *testing.T) {
 		APIKeys:       keys,
 	})
 
-	result, err := service.IssueAPIKey(context.Background(), IssueAPIKeyInput{Name: "agent"})
+	ctx := ContextWithAuthInfo(context.Background(), AuthInfo{
+		IsAdmin: true,
+		Scope:   APIKeyScopeGlobal,
+	})
+
+	result, err := service.IssueAPIKey(ctx, IssueAPIKeyInput{Name: "agent"})
 	if err != nil {
 		t.Fatalf("IssueAPIKey returned error: %v", err)
 	}
@@ -681,7 +686,12 @@ func TestIssueAPIKeyPersistsProjectScopeBinding(t *testing.T) {
 		APIKeys:       keys,
 	})
 
-	result, err := service.IssueAPIKey(context.Background(), IssueAPIKeyInput{
+	ctx := ContextWithAuthInfo(context.Background(), AuthInfo{
+		IsAdmin: true,
+		Scope:   APIKeyScopeGlobal,
+	})
+
+	result, err := service.IssueAPIKey(ctx, IssueAPIKeyInput{
 		Name:    "agent",
 		Scope:   APIKeyScopeProject,
 		Project: "relay",
@@ -722,7 +732,12 @@ func TestListAPIKeys(t *testing.T) {
 		APIKeys:       keys,
 	})
 
-	result, err := service.ListAPIKeys(context.Background())
+	ctx := ContextWithAuthInfo(context.Background(), AuthInfo{
+		IsAdmin: true,
+		Scope:   APIKeyScopeGlobal,
+	})
+
+	result, err := service.ListAPIKeys(ctx)
 	if err != nil {
 		t.Fatalf("ListAPIKeys returned error: %v", err)
 	}
@@ -747,7 +762,12 @@ func TestRevokeAPIKey(t *testing.T) {
 		APIKeys:       keys,
 	})
 
-	result, err := service.RevokeAPIKey(context.Background(), RevokeAPIKeyInput{KeyID: "key_1"})
+	ctx := ContextWithAuthInfo(context.Background(), AuthInfo{
+		IsAdmin: true,
+		Scope:   APIKeyScopeGlobal,
+	})
+
+	result, err := service.RevokeAPIKey(ctx, RevokeAPIKeyInput{KeyID: "key_1"})
 	if err != nil {
 		t.Fatalf("RevokeAPIKey returned error: %v", err)
 	}
@@ -809,6 +829,66 @@ func TestAdminMethodsRejectNonAdminAuthContext(t *testing.T) {
 			err := tt.run(ctx)
 			if err == nil {
 				t.Fatal("expected non-admin auth context to be rejected")
+			}
+			appErr, ok := err.(lib.AppError)
+			if !ok {
+				t.Fatalf("expected AppError, got %T", err)
+			}
+			if appErr.Code != "FORBIDDEN" {
+				t.Fatalf("expected FORBIDDEN, got %q", appErr.Code)
+			}
+		})
+	}
+}
+
+func TestAdminMethodsRejectMissingAuthContext(t *testing.T) {
+	keys := &fakeAPIKeyStore{
+		itemsByHash: map[string]domain.APIKey{
+			"hash": {ID: "key_1", Name: "agent", TokenHash: "hash", TokenPrefix: "relay_live_abc"},
+		},
+	}
+	service := New(Dependencies{
+		Projects:      &fakeProjectStore{},
+		Notes:         &fakeNoteStore{},
+		Artifacts:     &fakeArtifactStore{},
+		Decisions:     &fakeDecisionStore{},
+		OpenQuestions: &fakeOpenQuestionStore{},
+		Packets:       &fakePacketStore{},
+		APIKeys:       keys,
+	})
+
+	tests := []struct {
+		name string
+		run  func(context.Context) error
+	}{
+		{
+			name: "issue",
+			run: func(ctx context.Context) error {
+				_, err := service.IssueAPIKey(ctx, IssueAPIKeyInput{Name: "agent"})
+				return err
+			},
+		},
+		{
+			name: "list",
+			run: func(ctx context.Context) error {
+				_, err := service.ListAPIKeys(ctx)
+				return err
+			},
+		},
+		{
+			name: "revoke",
+			run: func(ctx context.Context) error {
+				_, err := service.RevokeAPIKey(ctx, RevokeAPIKeyInput{KeyID: "key_1"})
+				return err
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.run(context.Background())
+			if err == nil {
+				t.Fatal("expected missing auth context to be rejected")
 			}
 			appErr, ok := err.(lib.AppError)
 			if !ok {

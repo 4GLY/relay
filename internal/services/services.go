@@ -460,7 +460,7 @@ func (s Service) enforceProjectAccess(ctx context.Context, projectID string) err
 func requireAdminAuth(ctx context.Context) error {
 	auth, ok := AuthInfoFromContext(ctx)
 	if !ok {
-		return nil
+		return lib.Forbidden("FORBIDDEN", "admin authorization is required")
 	}
 	if auth.IsAdmin {
 		return nil

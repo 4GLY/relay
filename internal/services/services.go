@@ -52,7 +52,11 @@ func (s Service) Capture(ctx context.Context, input CaptureInput) (CaptureResult
 		}
 		projectID = project.ID
 	} else if auth, ok := AuthInfoFromContext(ctx); ok && NormalizeAPIKeyScope(auth.Scope) == APIKeyScopeProject {
-		return CaptureResult{}, lib.MissingFields("MISSING_REQUIRED_FIELDS", "project")
+		project, err := s.resolveCaptureProject(ctx, "", input.RepoPath)
+		if err != nil {
+			return CaptureResult{}, err
+		}
+		projectID = project.ID
 	}
 
 	result := CaptureResult{ProjectID: projectID}

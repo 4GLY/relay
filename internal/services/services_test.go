@@ -293,6 +293,50 @@ func TestCaptureUsesNoteAliasAndDefaultsSource(t *testing.T) {
 	}
 }
 
+func TestCaptureUsesBoundProjectForNoteOnlyProjectScopedKey(t *testing.T) {
+	relayID := lib.ProjectID("relay")
+	notes := &fakeNoteStore{}
+	artifacts := &fakeArtifactStore{}
+	service := New(Dependencies{
+		Projects: &fakeProjectStore{
+			projects: map[string]domain.Project{
+				"relay": {ID: relayID, Name: "relay"},
+			},
+		},
+		Notes:         notes,
+		Artifacts:     artifacts,
+		Decisions:     &fakeDecisionStore{},
+		OpenQuestions: &fakeOpenQuestionStore{},
+		Packets:       &fakePacketStore{},
+		APIKeys:       &fakeAPIKeyStore{},
+	})
+
+	ctx := ContextWithAuthInfo(context.Background(), AuthInfo{
+		KeyID:     "key_1",
+		Scope:     APIKeyScopeProject,
+		ProjectID: relayID,
+	})
+
+	result, err := service.Capture(ctx, CaptureInput{
+		Note: "Bound project note only",
+	})
+	if err != nil {
+		t.Fatalf("Capture returned error: %v", err)
+	}
+	if result.ProjectID != relayID {
+		t.Fatalf("expected bound project id %q, got %q", relayID, result.ProjectID)
+	}
+	if len(notes.items) != 1 {
+		t.Fatalf("expected 1 note, got %d", len(notes.items))
+	}
+	if notes.items[0].ProjectID != relayID {
+		t.Fatalf("expected note to be stored against bound project, got %#v", notes.items[0])
+	}
+	if len(artifacts.items) != 0 {
+		t.Fatalf("expected no artifacts without repo_path or document paths, got %#v", artifacts.items)
+	}
+}
+
 func TestCaptureRejectsOtherProjectForProjectScopedKey(t *testing.T) {
 	relayID := lib.ProjectID("relay")
 	service := New(Dependencies{

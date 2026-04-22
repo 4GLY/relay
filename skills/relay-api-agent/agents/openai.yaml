@@ -1,0 +1,4 @@
+interface:
+  display_name: "Relay API Agent"
+  short_description: "Scriptable Relay API wrapper for agents"
+  default_prompt: "Use $relay-api-agent to capture memory, promote decisions, or build a Relay packet."

@@ -22,6 +22,35 @@ For local agent workflows, use the repo-owned skill wrapper:
 
 The skill keeps `docs/openapi.yaml` as the canonical contract and gives agents a stable wrapper for key issuance, capture, promote, packet build, and project inspection.
 
+## MCP
+
+Relay also exposes an MCP surface above the same API contract.
+
+- `stdio`: local agent process integration
+- `http`: remote MCP integration for multiple remote environments sharing one Relay
+
+Run stdio MCP:
+
+```bash
+go run ./cmd/relay-mcp
+```
+
+Run HTTP MCP:
+
+```bash
+RELAY_MCP_TRANSPORT=http \
+RELAY_MCP_ADDR=:8091 \
+RELAY_MCP_PATH=/mcp \
+RELAY_MCP_TOKEN=replace-me \
+go run ./cmd/relay-mcp
+```
+
+Notes:
+
+- HTTP MCP uses streamable HTTP.
+- The current HTTP mode is stateless, which fits Relay's request-response tools.
+- `RELAY_MCP_TOKEN` protects the remote MCP endpoint for multi-environment use.
+
 ## Status
 
 This repo currently includes:

@@ -178,7 +178,7 @@ Issue an API key:
 
 ```bash
 curl -sS -X POST "$RELAY_BASE_URL/v1/api-keys/issue" \
-  -H "Authorization: Bearer $RELAY_API_TOKEN" \
+  -H "Authorization: Bearer $RELAY_ADMIN_TOKEN" \
   -H 'Content-Type: application/json' \
   -d '{"name":"agent-smoke"}'
 ```
@@ -187,14 +187,14 @@ List API keys:
 
 ```bash
 curl -sS "$RELAY_BASE_URL/v1/api-keys" \
-  -H "Authorization: Bearer $RELAY_API_TOKEN"
+  -H "Authorization: Bearer $RELAY_ADMIN_TOKEN"
 ```
 
 Revoke an API key:
 
 ```bash
 curl -sS -X POST "$RELAY_BASE_URL/v1/api-keys/revoke" \
-  -H "Authorization: Bearer $RELAY_API_TOKEN" \
+  -H "Authorization: Bearer $RELAY_ADMIN_TOKEN" \
   -H 'Content-Type: application/json' \
   -d '{"key_id":"key_xxx"}'
 ```

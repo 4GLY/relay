@@ -294,6 +294,91 @@ func TestProtectedRoutesAcceptIssuedAPIKey(t *testing.T) {
 	}
 }
 
+func TestProtectedRoutesAcceptProjectScopedKeyForBoundProject(t *testing.T) {
+	projectID := lib.ProjectID("relay")
+	key := "relay_live_testtoken"
+	keyStore := &fakeAPIKeyStore{
+		itemsByHash: map[string]domain.APIKey{
+			lib.TokenHash(key): {
+				ID:          "key_1",
+				Name:        "agent",
+				TokenHash:   lib.TokenHash(key),
+				TokenPrefix: lib.TokenPrefix(key),
+				Scope:       services.APIKeyScopeProject,
+				ProjectID:   projectID,
+			},
+		},
+	}
+	mux := buildMux(testHandler(projectID), config.Config{APIToken: "admin-token"}, testRuntime(projectID, keyStore))
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/projects/"+projectID, nil)
+	req.Header.Set("Authorization", "Bearer "+key)
+	rec := httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestProtectedRoutesRejectProjectScopedKeyForDifferentProject(t *testing.T) {
+	projectID := lib.ProjectID("relay")
+	otherID := lib.ProjectID("other")
+	key := "relay_live_testtoken"
+	keyStore := &fakeAPIKeyStore{
+		itemsByHash: map[string]domain.APIKey{
+			lib.TokenHash(key): {
+				ID:          "key_1",
+				Name:        "agent",
+				TokenHash:   lib.TokenHash(key),
+				TokenPrefix: lib.TokenPrefix(key),
+				Scope:       services.APIKeyScopeProject,
+				ProjectID:   projectID,
+			},
+		},
+	}
+	mux := buildMux(testHandler(projectID), config.Config{APIToken: "admin-token"}, testRuntime(projectID, keyStore))
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/projects/"+otherID, nil)
+	req.Header.Set("Authorization", "Bearer "+key)
+	rec := httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("expected 403, got %d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestProtectedRoutesAllowGlobalKeyAcrossProjects(t *testing.T) {
+	projectID := lib.ProjectID("relay")
+	otherID := lib.ProjectID("other")
+	key := "relay_live_testtoken"
+	keyStore := &fakeAPIKeyStore{
+		itemsByHash: map[string]domain.APIKey{
+			lib.TokenHash(key): {
+				ID:          "key_1",
+				Name:        "agent",
+				TokenHash:   lib.TokenHash(key),
+				TokenPrefix: lib.TokenPrefix(key),
+				Scope:       services.APIKeyScopeGlobal,
+			},
+		},
+	}
+	mux := buildMux(testHandler(projectID), config.Config{APIToken: "admin-token"}, testRuntime(projectID, keyStore))
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/projects/"+otherID, nil)
+	req.Header.Set("Authorization", "Bearer "+key)
+	rec := httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
 func TestIssueAPIKeyRouteRequiresAdminToken(t *testing.T) {
 	keyStore := &fakeAPIKeyStore{}
 	mux := buildMux(testHandler(lib.ProjectID("relay")), config.Config{APIToken: "admin-token"}, testRuntime(lib.ProjectID("relay"), keyStore))
@@ -363,6 +448,35 @@ func TestIssueAPIKeyRouteCreatesKey(t *testing.T) {
 	}
 	if !bytes.Contains(rec.Body.Bytes(), []byte(`"token"`)) {
 		t.Fatalf("expected token in response body, got %s", rec.Body.String())
+	}
+}
+
+func TestIssueAPIKeyRouteCreatesProjectScopedKey(t *testing.T) {
+	projectID := lib.ProjectID("relay")
+	keyStore := &fakeAPIKeyStore{}
+	mux := buildMux(testHandler(projectID, keyStore), config.Config{APIToken: "admin-token"}, testRuntime(projectID, keyStore))
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/api-keys/issue", bytes.NewReader([]byte(`{"name":"agent","scope":"project","project":"relay"}`)))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer admin-token")
+	rec := httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
+	}
+	if len(keyStore.created) != 1 {
+		t.Fatalf("expected one created key, got %d", len(keyStore.created))
+	}
+	if keyStore.created[0].Scope != services.APIKeyScopeProject {
+		t.Fatalf("expected project scope, got %q", keyStore.created[0].Scope)
+	}
+	if keyStore.created[0].ProjectID != projectID {
+		t.Fatalf("expected project id %q, got %q", projectID, keyStore.created[0].ProjectID)
+	}
+	if !bytes.Contains(rec.Body.Bytes(), []byte(`"scope":"project"`)) {
+		t.Fatalf("expected scope in response body, got %s", rec.Body.String())
 	}
 }
 
@@ -480,11 +594,13 @@ func testHandler(projectID string, apiKeyStores ...*fakeAPIKeyStore) Handler {
 	if len(apiKeyStores) > 0 {
 		apiKeys = apiKeyStores[0]
 	}
+	otherProjectID := lib.ProjectID("other")
 	return Handler{
 		services: services.New(services.Dependencies{
 			Projects: &fakeProjectStore{
 				projects: map[string]domain.Project{
 					"relay": {ID: projectID, Name: "relay"},
+					"other": {ID: otherProjectID, Name: "other"},
 				},
 			},
 			Notes: &fakeNoteStore{

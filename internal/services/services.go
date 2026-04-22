@@ -37,16 +37,13 @@ func (s Service) Capture(ctx context.Context, input CaptureInput) (CaptureResult
 
 	projectID := ""
 	if projectName != "" {
-		project, err := s.deps.Projects.EnsureProject(ctx, domain.Project{
-			ID:       lib.ProjectID(projectName),
-			Name:     projectName,
-			RootPath: input.RepoPath,
-			Status:   "active",
-		})
+		project, err := s.resolveCaptureProject(ctx, projectName, input.RepoPath)
 		if err != nil {
 			return CaptureResult{}, err
 		}
 		projectID = project.ID
+	} else if auth, ok := AuthInfoFromContext(ctx); ok && NormalizeAPIKeyScope(auth.Scope) == APIKeyScopeProject {
+		return CaptureResult{}, lib.MissingFields("MISSING_REQUIRED_FIELDS", "project")
 	}
 
 	result := CaptureResult{ProjectID: projectID}
@@ -121,6 +118,9 @@ func (s Service) Promote(ctx context.Context, input PromoteInput) (PromoteResult
 	if err != nil {
 		return PromoteResult{}, err
 	}
+	if err := s.enforceProjectAccess(ctx, project.ID); err != nil {
+		return PromoteResult{}, err
+	}
 
 	switch input.Kind {
 	case "decision":
@@ -164,6 +164,9 @@ func (s Service) Show(ctx context.Context, input ShowInput) (ShowResult, error) 
 	}
 	project, err := s.resolveProject(ctx, input.Project, input.ProjectID)
 	if err != nil {
+		return ShowResult{}, err
+	}
+	if err := s.enforceProjectAccess(ctx, project.ID); err != nil {
 		return ShowResult{}, err
 	}
 	notes, err := s.deps.Notes.CountByProject(ctx, project.ID)
@@ -212,6 +215,9 @@ func (s Service) BuildPacket(ctx context.Context, input PacketBuildInput) (Packe
 
 	project, err := s.resolveProject(ctx, input.Project, "")
 	if err != nil {
+		return PacketBuildResult{}, err
+	}
+	if err := s.enforceProjectAccess(ctx, project.ID); err != nil {
 		return PacketBuildResult{}, err
 	}
 
@@ -269,6 +275,20 @@ func (s Service) IssueAPIKey(ctx context.Context, input IssueAPIKeyInput) (Issue
 		return IssueAPIKeyResult{}, lib.Misconfigured("api key store is required")
 	}
 
+	scope := NormalizeAPIKeyScope(input.Scope)
+	if scope != APIKeyScopeGlobal && scope != APIKeyScopeProject {
+		return IssueAPIKeyResult{}, lib.Forbidden("INVALID_API_KEY_SCOPE", "api key scope must be global or project")
+	}
+
+	boundProjectID := ""
+	if scope == APIKeyScopeProject {
+		project, err := s.resolveProject(ctx, input.Project, input.ProjectID)
+		if err != nil {
+			return IssueAPIKeyResult{}, err
+		}
+		boundProjectID = project.ID
+	}
+
 	token, err := lib.NewSecretToken("relay_live")
 	if err != nil {
 		return IssueAPIKeyResult{}, err
@@ -279,6 +299,8 @@ func (s Service) IssueAPIKey(ctx context.Context, input IssueAPIKeyInput) (Issue
 		Name:        input.Name,
 		TokenHash:   lib.TokenHash(token),
 		TokenPrefix: lib.TokenPrefix(token),
+		Scope:       scope,
+		ProjectID:   boundProjectID,
 	}
 
 	created, err := s.deps.APIKeys.CreateAPIKey(ctx, key)
@@ -291,6 +313,8 @@ func (s Service) IssueAPIKey(ctx context.Context, input IssueAPIKeyInput) (Issue
 		Name:        created.Name,
 		Token:       token,
 		TokenPrefix: created.TokenPrefix,
+		Scope:       NormalizeAPIKeyScope(created.Scope),
+		ProjectID:   created.ProjectID,
 	}, nil
 }
 
@@ -310,6 +334,8 @@ func (s Service) ListAPIKeys(ctx context.Context) (ListAPIKeysResult, error) {
 			KeyID:       key.ID,
 			Name:        key.Name,
 			TokenPrefix: key.TokenPrefix,
+			Scope:       NormalizeAPIKeyScope(key.Scope),
+			ProjectID:   key.ProjectID,
 			Revoked:     key.Revoked,
 		})
 	}
@@ -334,6 +360,8 @@ func (s Service) RevokeAPIKey(ctx context.Context, input RevokeAPIKeyInput) (Rev
 		KeyID:       key.ID,
 		Name:        key.Name,
 		TokenPrefix: key.TokenPrefix,
+		Scope:       NormalizeAPIKeyScope(key.Scope),
+		ProjectID:   key.ProjectID,
 		Revoked:     key.Revoked,
 	}, nil
 }
@@ -361,12 +389,60 @@ func promotedID(prefix string, idempotencyKey string, summary string) string {
 
 func (s Service) resolveProject(ctx context.Context, name string, id string) (domain.Project, error) {
 	if id != "" {
-		return s.deps.Projects.GetByID(ctx, id)
+		project, err := s.deps.Projects.GetByID(ctx, id)
+		if err != nil {
+			return domain.Project{}, err
+		}
+		if name != "" && project.Name != name {
+			return domain.Project{}, lib.Forbidden("PROJECT_MISMATCH", "project and project_id do not match")
+		}
+		return project, nil
 	}
 	if name == "" {
 		return domain.Project{}, lib.MissingFields("MISSING_REQUIRED_FIELDS", "project")
 	}
 	return s.deps.Projects.GetByName(ctx, name)
+}
+
+func (s Service) resolveCaptureProject(ctx context.Context, name string, repoPath string) (domain.Project, error) {
+	if auth, ok := AuthInfoFromContext(ctx); ok && NormalizeAPIKeyScope(auth.Scope) == APIKeyScopeProject {
+		project, err := s.resolveProject(ctx, name, "")
+		if err != nil {
+			return domain.Project{}, err
+		}
+		if err := s.enforceProjectAccess(ctx, project.ID); err != nil {
+			return domain.Project{}, err
+		}
+		return project, nil
+	}
+
+	project, err := s.deps.Projects.EnsureProject(ctx, domain.Project{
+		ID:       lib.ProjectID(name),
+		Name:     name,
+		RootPath: repoPath,
+		Status:   "active",
+	})
+	if err != nil {
+		return domain.Project{}, err
+	}
+	if err := s.enforceProjectAccess(ctx, project.ID); err != nil {
+		return domain.Project{}, err
+	}
+	return project, nil
+}
+
+func (s Service) enforceProjectAccess(ctx context.Context, projectID string) error {
+	auth, ok := AuthInfoFromContext(ctx)
+	if !ok {
+		return nil
+	}
+	if NormalizeAPIKeyScope(auth.Scope) != APIKeyScopeProject {
+		return nil
+	}
+	if auth.ProjectID == "" || auth.ProjectID == projectID {
+		return nil
+	}
+	return lib.Forbidden("FORBIDDEN", "api key is not authorized for this project")
 }
 
 func buildResumeBody(project domain.Project, notes []domain.Note, artifacts []domain.Artifact, decisions []domain.Decision, questions []domain.OpenQuestion) string {

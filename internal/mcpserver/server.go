@@ -193,11 +193,19 @@ func (s *Server) showProjectTool(ctx context.Context, _ *mcp.CallToolRequest, in
 }
 
 type issueAPIKeyInput struct {
-	Name string `json:"name" jsonschema:"Human-readable key name"`
+	Name      string `json:"name" jsonschema:"Human-readable key name"`
+	Scope     string `json:"scope,omitempty" jsonschema:"Optional key scope. Valid values: global or project. Defaults to global"`
+	Project   string `json:"project,omitempty" jsonschema:"Optional project name for project-scoped keys"`
+	ProjectID string `json:"project_id,omitempty" jsonschema:"Optional canonical project id for project-scoped keys"`
 }
 
 func (s *Server) issueAPIKeyTool(ctx context.Context, _ *mcp.CallToolRequest, input issueAPIKeyInput) (*mcp.CallToolResult, services.IssueAPIKeyResult, error) {
-	result, err := s.backend.IssueAPIKey(ctx, services.IssueAPIKeyInput{Name: input.Name})
+	result, err := s.backend.IssueAPIKey(ctx, services.IssueAPIKeyInput{
+		Name:      input.Name,
+		Scope:     input.Scope,
+		Project:   input.Project,
+		ProjectID: input.ProjectID,
+	})
 	return nil, result, err
 }
 

@@ -260,6 +260,46 @@ func TestCaptureCreatesProjectNoteAndArtifacts(t *testing.T) {
 	}
 }
 
+func TestCaptureRejectsOtherProjectForProjectScopedKey(t *testing.T) {
+	relayID := lib.ProjectID("relay")
+	service := New(Dependencies{
+		Projects: &fakeProjectStore{
+			projects: map[string]domain.Project{
+				"relay": {ID: relayID, Name: "relay"},
+				"other": {ID: lib.ProjectID("other"), Name: "other"},
+			},
+		},
+		Notes:         &fakeNoteStore{},
+		Artifacts:     &fakeArtifactStore{},
+		Decisions:     &fakeDecisionStore{},
+		OpenQuestions: &fakeOpenQuestionStore{},
+		Packets:       &fakePacketStore{},
+		APIKeys:       &fakeAPIKeyStore{},
+	})
+
+	ctx := ContextWithAuthInfo(context.Background(), AuthInfo{
+		KeyID:     "key_1",
+		Scope:     APIKeyScopeProject,
+		ProjectID: relayID,
+	})
+
+	_, err := service.Capture(ctx, CaptureInput{
+		Project: "other",
+		Source:  "chat",
+		Body:    "hello",
+	})
+	if err == nil {
+		t.Fatal("expected project-scoped key to reject capture into a different project")
+	}
+	appErr, ok := err.(lib.AppError)
+	if !ok {
+		t.Fatalf("expected AppError, got %T", err)
+	}
+	if appErr.Code != "FORBIDDEN" {
+		t.Fatalf("expected FORBIDDEN, got %q", appErr.Code)
+	}
+}
+
 func TestPromoteDecision(t *testing.T) {
 	projects := &fakeProjectStore{
 		projects: map[string]domain.Project{
@@ -291,6 +331,47 @@ func TestPromoteDecision(t *testing.T) {
 	}
 	if len(decisions.items) != 1 {
 		t.Fatalf("expected 1 decision, got %d", len(decisions.items))
+	}
+}
+
+func TestPromoteRejectsOtherProjectForProjectScopedKey(t *testing.T) {
+	relayID := lib.ProjectID("relay")
+	service := New(Dependencies{
+		Projects: &fakeProjectStore{
+			projects: map[string]domain.Project{
+				"relay": {ID: relayID, Name: "relay"},
+				"other": {ID: lib.ProjectID("other"), Name: "other"},
+			},
+		},
+		Notes:         &fakeNoteStore{},
+		Artifacts:     &fakeArtifactStore{},
+		Decisions:     &fakeDecisionStore{},
+		OpenQuestions: &fakeOpenQuestionStore{},
+		Packets:       &fakePacketStore{},
+		APIKeys:       &fakeAPIKeyStore{},
+	})
+
+	ctx := ContextWithAuthInfo(context.Background(), AuthInfo{
+		KeyID:     "key_1",
+		Scope:     APIKeyScopeProject,
+		ProjectID: relayID,
+	})
+
+	_, err := service.Promote(ctx, PromoteInput{
+		Project: "other",
+		Kind:    "decision",
+		Summary: "ship it",
+		Reason:  "because",
+	})
+	if err == nil {
+		t.Fatal("expected project-scoped key to reject promote into a different project")
+	}
+	appErr, ok := err.(lib.AppError)
+	if !ok {
+		t.Fatalf("expected AppError, got %T", err)
+	}
+	if appErr.Code != "FORBIDDEN" {
+		t.Fatalf("expected FORBIDDEN, got %q", appErr.Code)
 	}
 }
 
@@ -355,6 +436,46 @@ func TestBuildPacket(t *testing.T) {
 	}
 }
 
+func TestBuildPacketRejectsOtherProjectForProjectScopedKey(t *testing.T) {
+	relayID := lib.ProjectID("relay")
+	service := New(Dependencies{
+		Projects: &fakeProjectStore{
+			projects: map[string]domain.Project{
+				"relay": {ID: relayID, Name: "relay"},
+				"other": {ID: lib.ProjectID("other"), Name: "other"},
+			},
+		},
+		Notes:         &fakeNoteStore{},
+		Artifacts:     &fakeArtifactStore{},
+		Decisions:     &fakeDecisionStore{},
+		OpenQuestions: &fakeOpenQuestionStore{},
+		Packets:       &fakePacketStore{},
+		APIKeys:       &fakeAPIKeyStore{},
+	})
+
+	ctx := ContextWithAuthInfo(context.Background(), AuthInfo{
+		KeyID:     "key_1",
+		Scope:     APIKeyScopeProject,
+		ProjectID: relayID,
+	})
+
+	_, err := service.BuildPacket(ctx, PacketBuildInput{
+		Project: "other",
+		Type:    "resume",
+		Target:  "codex",
+	})
+	if err == nil {
+		t.Fatal("expected project-scoped key to reject packet build for a different project")
+	}
+	appErr, ok := err.(lib.AppError)
+	if !ok {
+		t.Fatalf("expected AppError, got %T", err)
+	}
+	if appErr.Code != "FORBIDDEN" {
+		t.Fatalf("expected FORBIDDEN, got %q", appErr.Code)
+	}
+}
+
 func TestShowByProjectID(t *testing.T) {
 	projectID := lib.ProjectID("relay")
 	projects := &fakeProjectStore{
@@ -390,6 +511,98 @@ func TestShowByProjectID(t *testing.T) {
 	}
 }
 
+func TestShowAllowsBoundProjectForProjectScopedKey(t *testing.T) {
+	projectID := lib.ProjectID("relay")
+	service := New(Dependencies{
+		Projects: &fakeProjectStore{
+			projects: map[string]domain.Project{
+				"relay": {ID: projectID, Name: "relay"},
+			},
+		},
+		Notes:         &fakeNoteStore{},
+		Artifacts:     &fakeArtifactStore{},
+		Decisions:     &fakeDecisionStore{},
+		OpenQuestions: &fakeOpenQuestionStore{},
+		Packets:       &fakePacketStore{},
+		APIKeys:       &fakeAPIKeyStore{},
+	})
+
+	ctx := ContextWithAuthInfo(context.Background(), AuthInfo{
+		KeyID:     "key_1",
+		Scope:     APIKeyScopeProject,
+		ProjectID: projectID,
+	})
+
+	if _, err := service.Show(ctx, ShowInput{ProjectID: projectID}); err != nil {
+		t.Fatalf("Show returned error: %v", err)
+	}
+}
+
+func TestShowRejectsOtherProjectForProjectScopedKey(t *testing.T) {
+	relayID := lib.ProjectID("relay")
+	otherID := lib.ProjectID("other")
+	service := New(Dependencies{
+		Projects: &fakeProjectStore{
+			projects: map[string]domain.Project{
+				"relay": {ID: relayID, Name: "relay"},
+				"other": {ID: otherID, Name: "other"},
+			},
+		},
+		Notes:         &fakeNoteStore{},
+		Artifacts:     &fakeArtifactStore{},
+		Decisions:     &fakeDecisionStore{},
+		OpenQuestions: &fakeOpenQuestionStore{},
+		Packets:       &fakePacketStore{},
+		APIKeys:       &fakeAPIKeyStore{},
+	})
+
+	ctx := ContextWithAuthInfo(context.Background(), AuthInfo{
+		KeyID:     "key_1",
+		Scope:     APIKeyScopeProject,
+		ProjectID: relayID,
+	})
+
+	_, err := service.Show(ctx, ShowInput{ProjectID: otherID})
+	if err == nil {
+		t.Fatal("expected project-scoped key to reject a different project")
+	}
+	appErr, ok := err.(lib.AppError)
+	if !ok {
+		t.Fatalf("expected AppError, got %T", err)
+	}
+	if appErr.Code != "FORBIDDEN" {
+		t.Fatalf("expected FORBIDDEN, got %q", appErr.Code)
+	}
+}
+
+func TestShowAllowsGlobalKeyAcrossProjects(t *testing.T) {
+	relayID := lib.ProjectID("relay")
+	otherID := lib.ProjectID("other")
+	service := New(Dependencies{
+		Projects: &fakeProjectStore{
+			projects: map[string]domain.Project{
+				"relay": {ID: relayID, Name: "relay"},
+				"other": {ID: otherID, Name: "other"},
+			},
+		},
+		Notes:         &fakeNoteStore{},
+		Artifacts:     &fakeArtifactStore{},
+		Decisions:     &fakeDecisionStore{},
+		OpenQuestions: &fakeOpenQuestionStore{},
+		Packets:       &fakePacketStore{},
+		APIKeys:       &fakeAPIKeyStore{},
+	})
+
+	ctx := ContextWithAuthInfo(context.Background(), AuthInfo{
+		KeyID: "key_1",
+		Scope: APIKeyScopeGlobal,
+	})
+
+	if _, err := service.Show(ctx, ShowInput{ProjectID: otherID}); err != nil {
+		t.Fatalf("Show returned error: %v", err)
+	}
+}
+
 func TestIssueAPIKey(t *testing.T) {
 	keys := &fakeAPIKeyStore{}
 	service := New(Dependencies{
@@ -414,6 +627,48 @@ func TestIssueAPIKey(t *testing.T) {
 	}
 	if keys.created[0].TokenHash != lib.TokenHash(result.Token) {
 		t.Fatalf("expected stored hash to match returned token")
+	}
+}
+
+func TestIssueAPIKeyPersistsProjectScopeBinding(t *testing.T) {
+	projectID := lib.ProjectID("relay")
+	keys := &fakeAPIKeyStore{}
+	service := New(Dependencies{
+		Projects: &fakeProjectStore{
+			projects: map[string]domain.Project{
+				"relay": {ID: projectID, Name: "relay"},
+			},
+		},
+		Notes:         &fakeNoteStore{},
+		Artifacts:     &fakeArtifactStore{},
+		Decisions:     &fakeDecisionStore{},
+		OpenQuestions: &fakeOpenQuestionStore{},
+		Packets:       &fakePacketStore{},
+		APIKeys:       keys,
+	})
+
+	result, err := service.IssueAPIKey(context.Background(), IssueAPIKeyInput{
+		Name:    "agent",
+		Scope:   APIKeyScopeProject,
+		Project: "relay",
+	})
+	if err != nil {
+		t.Fatalf("IssueAPIKey returned error: %v", err)
+	}
+	if result.Scope != APIKeyScopeProject {
+		t.Fatalf("expected project scope, got %q", result.Scope)
+	}
+	if result.ProjectID != projectID {
+		t.Fatalf("expected project id %q, got %q", projectID, result.ProjectID)
+	}
+	if len(keys.created) != 1 {
+		t.Fatalf("expected one created key, got %d", len(keys.created))
+	}
+	if keys.created[0].Scope != APIKeyScopeProject {
+		t.Fatalf("expected stored project scope, got %q", keys.created[0].Scope)
+	}
+	if keys.created[0].ProjectID != projectID {
+		t.Fatalf("expected stored project id %q, got %q", projectID, keys.created[0].ProjectID)
 	}
 }
 

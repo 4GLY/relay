@@ -66,7 +66,10 @@ type PacketBuildResult struct {
 }
 
 type IssueAPIKeyInput struct {
-	Name string `json:"name"`
+	Name      string `json:"name"`
+	Scope     string `json:"scope,omitempty"`
+	Project   string `json:"project,omitempty"`
+	ProjectID string `json:"project_id,omitempty"`
 }
 
 type IssueAPIKeyResult struct {
@@ -74,12 +77,16 @@ type IssueAPIKeyResult struct {
 	Name        string `json:"name"`
 	Token       string `json:"token"`
 	TokenPrefix string `json:"token_prefix"`
+	Scope       string `json:"scope"`
+	ProjectID   string `json:"project_id,omitempty"`
 }
 
 type APIKeySummary struct {
 	KeyID       string `json:"key_id"`
 	Name        string `json:"name"`
 	TokenPrefix string `json:"token_prefix"`
+	Scope       string `json:"scope"`
+	ProjectID   string `json:"project_id,omitempty"`
 	Revoked     bool   `json:"revoked"`
 }
 
@@ -95,5 +102,7 @@ type RevokeAPIKeyResult struct {
 	KeyID       string `json:"key_id"`
 	Name        string `json:"name"`
 	TokenPrefix string `json:"token_prefix"`
+	Scope       string `json:"scope"`
+	ProjectID   string `json:"project_id,omitempty"`
 	Revoked     bool   `json:"revoked"`
 }

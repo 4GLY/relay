@@ -102,11 +102,12 @@ func requireBearerToken(adminToken string, apiKeys repositories.APIKeyStore, nex
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !isAuthorizedBearerToken(r, adminToken, apiKeys) {
+		authInfo, ok := authorizeBearerToken(r, adminToken, apiKeys)
+		if !ok {
 			writeJSON(w, http.StatusUnauthorized, contracts.Failure("api auth", "UNAUTHORIZED", "missing or invalid bearer token", false, "Authorization"))
 			return
 		}
-		next(w, r)
+		next(w, r.WithContext(services.ContextWithAuthInfo(r.Context(), authInfo)))
 	}
 }
 
@@ -115,36 +116,41 @@ func requireBearerTokenHandler(adminToken string, apiKeys repositories.APIKeySto
 		return next
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !isAuthorizedBearerToken(r, adminToken, apiKeys) {
+		authInfo, ok := authorizeBearerToken(r, adminToken, apiKeys)
+		if !ok {
 			writeJSON(w, http.StatusUnauthorized, contracts.Failure("mcp auth", "UNAUTHORIZED", "missing or invalid bearer token", false, "Authorization"))
 			return
 		}
-		next.ServeHTTP(w, r)
+		next.ServeHTTP(w, r.WithContext(services.ContextWithAuthInfo(r.Context(), authInfo)))
 	})
 }
 
-func isAuthorizedBearerToken(r *http.Request, adminToken string, apiKeys repositories.APIKeyStore) bool {
+func authorizeBearerToken(r *http.Request, adminToken string, apiKeys repositories.APIKeyStore) (services.AuthInfo, bool) {
 	header := r.Header.Get("Authorization")
 	if !strings.HasPrefix(header, "Bearer ") {
-		return false
+		return services.AuthInfo{}, false
 	}
 
 	provided := strings.TrimSpace(strings.TrimPrefix(header, "Bearer "))
 	if provided == "" {
-		return false
+		return services.AuthInfo{}, false
 	}
 
 	if adminToken != "" && subtle.ConstantTimeCompare([]byte(provided), []byte(adminToken)) == 1 {
-		return true
+		return services.AuthInfo{Scope: services.APIKeyScopeGlobal}, true
 	}
 
 	if apiKeys != nil {
-		if _, err := apiKeys.GetByTokenHash(r.Context(), lib.TokenHash(provided)); err == nil {
-			return true
+		if key, err := apiKeys.GetByTokenHash(r.Context(), lib.TokenHash(provided)); err == nil {
+			return services.AuthInfo{
+				KeyID:     key.ID,
+				Scope:     services.NormalizeAPIKeyScope(key.Scope),
+				ProjectID: key.ProjectID,
+			}, true
 		}
 	}
 
-	return false
+	return services.AuthInfo{}, false
 }
 
 func (h Handler) handleCapture(w http.ResponseWriter, r *http.Request) {
@@ -257,6 +263,9 @@ func writeServiceError(w http.ResponseWriter, command string, err error) {
 		}
 		if appErr.Code == "API_KEY_NOT_FOUND_BY_ID" {
 			status = http.StatusNotFound
+		}
+		if appErr.Code == "FORBIDDEN" {
+			status = http.StatusForbidden
 		}
 		if appErr.Code == "MISCONFIGURED" {
 			status = http.StatusInternalServerError

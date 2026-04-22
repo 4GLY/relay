@@ -55,5 +55,7 @@ type APIKey struct {
 	Name        string
 	TokenHash   string
 	TokenPrefix string
+	Scope       string
+	ProjectID   string
 	Revoked     bool
 }

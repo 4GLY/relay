@@ -670,6 +670,35 @@ func TestIssueAPIKey(t *testing.T) {
 	}
 }
 
+func TestIssueAPIKeyRejectsInvalidScope(t *testing.T) {
+	service := New(Dependencies{
+		Projects:      &fakeProjectStore{},
+		Notes:         &fakeNoteStore{},
+		Artifacts:     &fakeArtifactStore{},
+		Decisions:     &fakeDecisionStore{},
+		OpenQuestions: &fakeOpenQuestionStore{},
+		Packets:       &fakePacketStore{},
+		APIKeys:       &fakeAPIKeyStore{},
+	})
+
+	ctx := ContextWithAuthInfo(context.Background(), AuthInfo{
+		IsAdmin: true,
+		Scope:   APIKeyScopeGlobal,
+	})
+
+	_, err := service.IssueAPIKey(ctx, IssueAPIKeyInput{Name: "agent", Scope: "invalid"})
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	appErr, ok := err.(lib.AppError)
+	if !ok {
+		t.Fatalf("expected AppError, got %T", err)
+	}
+	if appErr.Code != "INVALID_API_KEY_SCOPE" {
+		t.Fatalf("expected INVALID_API_KEY_SCOPE, got %q", appErr.Code)
+	}
+}
+
 func TestIssueAPIKeyPersistsProjectScopeBinding(t *testing.T) {
 	projectID := lib.ProjectID("relay")
 	keys := &fakeAPIKeyStore{}
@@ -714,6 +743,45 @@ func TestIssueAPIKeyPersistsProjectScopeBinding(t *testing.T) {
 	}
 	if keys.created[0].ProjectID != projectID {
 		t.Fatalf("expected stored project id %q, got %q", projectID, keys.created[0].ProjectID)
+	}
+}
+
+func TestIssueAPIKeyRejectsProjectMismatch(t *testing.T) {
+	service := New(Dependencies{
+		Projects: &fakeProjectStore{
+			projects: map[string]domain.Project{
+				"relay": {ID: lib.ProjectID("proj_relay"), Name: "relay"},
+				"other": {ID: lib.ProjectID("proj_other"), Name: "other"},
+			},
+		},
+		Notes:         &fakeNoteStore{},
+		Artifacts:     &fakeArtifactStore{},
+		Decisions:     &fakeDecisionStore{},
+		OpenQuestions: &fakeOpenQuestionStore{},
+		Packets:       &fakePacketStore{},
+		APIKeys:       &fakeAPIKeyStore{},
+	})
+
+	ctx := ContextWithAuthInfo(context.Background(), AuthInfo{
+		IsAdmin: true,
+		Scope:   APIKeyScopeGlobal,
+	})
+
+	_, err := service.IssueAPIKey(ctx, IssueAPIKeyInput{
+		Name:      "agent",
+		Scope:     APIKeyScopeProject,
+		Project:   "relay",
+		ProjectID: lib.ProjectID("proj_other"),
+	})
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	appErr, ok := err.(lib.AppError)
+	if !ok {
+		t.Fatalf("expected AppError, got %T", err)
+	}
+	if appErr.Code != "PROJECT_MISMATCH" {
+		t.Fatalf("expected PROJECT_MISMATCH, got %q", appErr.Code)
 	}
 }
 

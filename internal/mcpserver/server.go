@@ -267,15 +267,15 @@ func (b serviceBackend) Show(ctx context.Context, projectID string) (services.Sh
 }
 
 func (b serviceBackend) IssueAPIKey(ctx context.Context, input services.IssueAPIKeyInput) (services.IssueAPIKeyResult, error) {
-	return b.service.IssueAPIKey(ctx, input)
+	return b.service.IssueAPIKey(b.adminContext(ctx), input)
 }
 
 func (b serviceBackend) ListAPIKeys(ctx context.Context) (services.ListAPIKeysResult, error) {
-	return b.service.ListAPIKeys(ctx)
+	return b.service.ListAPIKeys(b.adminContext(ctx))
 }
 
 func (b serviceBackend) RevokeAPIKey(ctx context.Context, input services.RevokeAPIKeyInput) (services.RevokeAPIKeyResult, error) {
-	return b.service.RevokeAPIKey(ctx, input)
+	return b.service.RevokeAPIKey(b.adminContext(ctx), input)
 }
 
 func (b serviceBackend) HasAdminToken() bool {
@@ -284,4 +284,14 @@ func (b serviceBackend) HasAdminToken() bool {
 
 func (b serviceBackend) BaseURL() string {
 	return b.baseURL
+}
+
+func (b serviceBackend) adminContext(ctx context.Context) context.Context {
+	if !b.adminEnabled {
+		return ctx
+	}
+	return services.ContextWithAuthInfo(ctx, services.AuthInfo{
+		IsAdmin: true,
+		Scope:   services.APIKeyScopeGlobal,
+	})
 }

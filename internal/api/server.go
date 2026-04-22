@@ -67,7 +67,7 @@ func buildMCPHandler(cfg config.Config, runtime app.Runtime) http.Handler {
 		Stateless:    true,
 		JSONResponse: true,
 	})
-	return requireBearerTokenHandler(cfg.APIToken, runtime.APIKeys, handler)
+	return limitRequestBody(requireBearerTokenHandler(cfg.APIToken, runtime.APIKeys, handler), maxJSONRequestBodyBytes)
 }
 
 type Handler struct {
@@ -343,7 +343,7 @@ func writeServiceError(w http.ResponseWriter, command string, err error) {
 		if appErr.Code == "API_KEY_NOT_FOUND_BY_ID" {
 			status = http.StatusNotFound
 		}
-		if isForbiddenAppError(appErr) {
+		if appErr.Code == "FORBIDDEN" {
 			status = http.StatusForbidden
 		}
 		if appErr.Code == "MISCONFIGURED" {
@@ -355,11 +355,24 @@ func writeServiceError(w http.ResponseWriter, command string, err error) {
 	writeJSON(w, http.StatusInternalServerError, contracts.Failure(command, "INTERNAL_ERROR", err.Error(), true))
 }
 
-func isForbiddenAppError(err lib.AppError) bool {
-	switch err.Code {
-	case "FORBIDDEN", "INVALID_API_KEY_SCOPE", "PROJECT_MISMATCH":
-		return true
-	default:
-		return false
-	}
+func limitRequestBody(next http.Handler, max int64) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Body == nil {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		raw, err := io.ReadAll(io.LimitReader(r.Body, max+1))
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, contracts.Failure("mcp transport", "INVALID_JSON", err.Error(), false))
+			return
+		}
+		if int64(len(raw)) > max {
+			writeJSON(w, http.StatusRequestEntityTooLarge, contracts.Failure("mcp transport", "REQUEST_TOO_LARGE", "request body exceeds 1 MiB", false))
+			return
+		}
+
+		r.Body = io.NopCloser(bytes.NewReader(raw))
+		next.ServeHTTP(w, r)
+	})
 }

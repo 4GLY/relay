@@ -620,7 +620,7 @@ func TestCaptureRouteRejectsOversizedBody(t *testing.T) {
 	}
 }
 
-func TestIssueAPIKeyRouteRejectsInvalidScopeWithForbidden(t *testing.T) {
+func TestIssueAPIKeyRouteRejectsInvalidScopeWithValidationError(t *testing.T) {
 	keyStore := &fakeAPIKeyStore{}
 	mux := buildMux(testHandler(lib.ProjectID("relay"), keyStore), config.Config{APIToken: "admin-token"}, testRuntime(lib.ProjectID("relay"), keyStore))
 
@@ -631,11 +631,31 @@ func TestIssueAPIKeyRouteRejectsInvalidScopeWithForbidden(t *testing.T) {
 
 	mux.ServeHTTP(rec, req)
 
-	if rec.Code != http.StatusForbidden {
-		t.Fatalf("expected 403, got %d body=%s", rec.Code, rec.Body.String())
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d body=%s", rec.Code, rec.Body.String())
 	}
 	if !bytes.Contains(rec.Body.Bytes(), []byte(`"code":"INVALID_API_KEY_SCOPE"`)) {
 		t.Fatalf("expected invalid scope code, got %s", rec.Body.String())
+	}
+}
+
+func TestMCPRouteRejectsOversizedBody(t *testing.T) {
+	mux := buildMux(testHandler(lib.ProjectID("relay")), config.Config{APIToken: "admin-token"}, testRuntime(lib.ProjectID("relay")))
+
+	oversized := []byte(strings.Repeat("a", maxJSONRequestBodyBytes+1))
+	req := httptest.NewRequest(http.MethodPost, "/mcp", bytes.NewReader(oversized))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json, text/event-stream")
+	req.Header.Set("Authorization", "Bearer admin-token")
+	rec := httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusRequestEntityTooLarge {
+		t.Fatalf("expected 413, got %d body=%s", rec.Code, rec.Body.String())
+	}
+	if !bytes.Contains(rec.Body.Bytes(), []byte(`"code":"REQUEST_TOO_LARGE"`)) {
+		t.Fatalf("expected request too large error, got %s", rec.Body.String())
 	}
 }
 

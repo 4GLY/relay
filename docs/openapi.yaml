@@ -214,6 +214,16 @@ components:
           type: string
         project_id:
           type: string
+      allOf:
+        - if:
+            properties:
+              scope:
+                const: project
+            required: [scope]
+          then:
+            anyOf:
+              - required: [project]
+              - required: [project_id]
     IssueAPIKeyResult:
       type: object
       required: [key_id, name, token, token_prefix, scope]

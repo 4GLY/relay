@@ -300,7 +300,11 @@ func (s Service) IssueAPIKey(ctx context.Context, input IssueAPIKeyInput) (Issue
 
 	scope := NormalizeAPIKeyScope(input.Scope)
 	if scope != APIKeyScopeGlobal && scope != APIKeyScopeProject {
-		return IssueAPIKeyResult{}, lib.Forbidden("INVALID_API_KEY_SCOPE", "api key scope must be global or project")
+		return IssueAPIKeyResult{}, lib.AppError{
+			Code:      "INVALID_API_KEY_SCOPE",
+			Message:   "api key scope must be global or project",
+			Retryable: false,
+		}
 	}
 
 	boundProjectID := ""
@@ -426,7 +430,11 @@ func (s Service) resolveProject(ctx context.Context, name string, id string) (do
 			return domain.Project{}, err
 		}
 		if name != "" && project.Name != name {
-			return domain.Project{}, lib.Forbidden("PROJECT_MISMATCH", "project and project_id do not match")
+			return domain.Project{}, lib.AppError{
+				Code:      "PROJECT_MISMATCH",
+				Message:   "project and project_id do not match",
+				Retryable: false,
+			}
 		}
 		return project, nil
 	}

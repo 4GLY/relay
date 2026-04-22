@@ -154,6 +154,9 @@ func authorizeBearerToken(r *http.Request, adminToken string, apiKeys repositori
 
 	if apiKeys != nil {
 		if key, err := apiKeys.GetByTokenHash(r.Context(), lib.TokenHash(provided)); err == nil {
+			if !services.IsKnownAPIKeyScope(key.Scope) {
+				return services.AuthInfo{}, false
+			}
 			return services.AuthInfo{
 				KeyID:     key.ID,
 				Scope:     services.NormalizeAPIKeyScope(key.Scope),

@@ -40,3 +40,12 @@ func NormalizeAPIKeyScope(scope string) string {
 		return scope
 	}
 }
+
+func IsKnownAPIKeyScope(scope string) bool {
+	switch NormalizeAPIKeyScope(scope) {
+	case APIKeyScopeGlobal, APIKeyScopeProject:
+		return true
+	default:
+		return false
+	}
+}

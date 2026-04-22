@@ -47,6 +47,14 @@ Notes:
 - The deployed `/mcp` endpoint is stateless, which fits Relay's request-response tools.
 - `RELAY_MCP_TOKEN` protects the remote MCP endpoint for multi-environment use.
 - If `RELAY_MCP_TOKEN` is unset, Relay falls back to `RELAY_API_TOKEN`.
+- The public `/mcp` surface is intentionally narrow:
+  - `relay_health`
+  - `relay_capture`
+  - `relay_promote`
+  - `relay_build_packet`
+  - `relay_show_project`
+- API key issue/list/revoke stays on the HTTP API and local skill, not the public MCP surface.
+- Local `cmd/relay-mcp` can still expose admin tools for operator/debug workflows.
 
 ## Status
 

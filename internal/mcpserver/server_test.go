@@ -12,7 +12,52 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"relay/internal/relayapi"
+	"relay/internal/services"
 )
+
+type stubBackend struct {
+	adminEnabled bool
+}
+
+func (b stubBackend) Health(_ context.Context) (relayapi.HealthResult, error) {
+	return relayapi.HealthResult{Status: "ok"}, nil
+}
+
+func (b stubBackend) Capture(_ context.Context, _ services.CaptureInput) (services.CaptureResult, error) {
+	return services.CaptureResult{}, nil
+}
+
+func (b stubBackend) Promote(_ context.Context, _ services.PromoteInput) (services.PromoteResult, error) {
+	return services.PromoteResult{}, nil
+}
+
+func (b stubBackend) BuildPacket(_ context.Context, _ services.PacketBuildInput) (services.PacketBuildResult, error) {
+	return services.PacketBuildResult{}, nil
+}
+
+func (b stubBackend) Show(_ context.Context, _ string) (services.ShowResult, error) {
+	return services.ShowResult{}, nil
+}
+
+func (b stubBackend) IssueAPIKey(_ context.Context, _ services.IssueAPIKeyInput) (services.IssueAPIKeyResult, error) {
+	return services.IssueAPIKeyResult{}, nil
+}
+
+func (b stubBackend) ListAPIKeys(_ context.Context) (services.ListAPIKeysResult, error) {
+	return services.ListAPIKeysResult{}, nil
+}
+
+func (b stubBackend) RevokeAPIKey(_ context.Context, _ services.RevokeAPIKeyInput) (services.RevokeAPIKeyResult, error) {
+	return services.RevokeAPIKeyResult{}, nil
+}
+
+func (b stubBackend) HasAdminToken() bool {
+	return b.adminEnabled
+}
+
+func (b stubBackend) BaseURL() string {
+	return "https://relay.4gly.dev"
+}
 
 func TestListToolsDeterministicWithoutAdmin(t *testing.T) {
 	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -70,6 +115,43 @@ func TestListToolsDeterministicWithoutAdmin(t *testing.T) {
 	for i, name := range expected {
 		if names[i] != name {
 			t.Fatalf("tool order mismatch at %d: got %q want %q", i, names[i], name)
+		}
+	}
+}
+
+func TestListToolsIncludesAdminWhenEnabled(t *testing.T) {
+	server := New(stubBackend{adminEnabled: true})
+
+	serverTransport, clientTransport := mcp.NewInMemoryTransports()
+	ctx := context.Background()
+	go func() {
+		_ = server.Run(ctx, serverTransport)
+	}()
+
+	client := mcp.NewClient(&mcp.Implementation{Name: "relay-mcp-test-client", Version: "v1.0.0"}, nil)
+	session, err := client.Connect(ctx, clientTransport, nil)
+	if err != nil {
+		t.Fatalf("connect: %v", err)
+	}
+	defer session.Close()
+
+	result, err := session.ListTools(ctx, nil)
+	if err != nil {
+		t.Fatalf("list tools: %v", err)
+	}
+
+	names := map[string]bool{}
+	for _, tool := range result.Tools {
+		names[tool.Name] = true
+	}
+
+	for _, want := range []string{
+		"relay_issue_api_key",
+		"relay_list_api_keys",
+		"relay_revoke_api_key",
+	} {
+		if !names[want] {
+			t.Fatalf("expected admin tool %q in tool list: %#v", want, names)
 		}
 	}
 }

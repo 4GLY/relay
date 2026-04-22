@@ -52,7 +52,7 @@ func buildMux(handler Handler, cfg config.Config, runtime app.Runtime) *http.Ser
 }
 
 func buildMCPHandler(cfg config.Config, runtime app.Runtime) http.Handler {
-	server := mcpserver.NewFromService(runtime.Services, cfg.BaseURL, cfg.APIToken != "")
+	server := mcpserver.NewFromService(runtime.Services, cfg.BaseURL, false)
 	handler := mcp.NewStreamableHTTPHandler(func(_ *http.Request) *mcp.Server {
 		return server.Server()
 	}, &mcp.StreamableHTTPOptions{

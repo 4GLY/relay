@@ -15,6 +15,7 @@ The CLI is only a local dev/debug wrapper.
 - `GET /healthz` is public
 - every `/v1/*` route requires `Authorization: Bearer <token>`
 - `RELAY_API_TOKEN` is the bootstrap admin token
+- `RELAY_CLIENT_TOKEN` is the issued client token for normal API use
 - issued API keys are stored server-side as token hashes
 - `POST /v1/api-keys/issue` accepts only the bootstrap admin token
 - `GET /v1/api-keys` accepts only the bootstrap admin token
@@ -24,7 +25,7 @@ Example:
 
 ```bash
 curl -sS \
-  -H "Authorization: Bearer $RELAY_API_TOKEN" \
+  -H "Authorization: Bearer $RELAY_CLIENT_TOKEN" \
   https://relay.4gly.dev/v1/projects/<project_id>
 ```
 

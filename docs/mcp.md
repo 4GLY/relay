@@ -30,7 +30,7 @@ Example with the bundled raw HTTP helper:
 ```bash
 set -euo pipefail
 
-export RELAY_MCP_TOKEN=...
+export RELAY_CLIENT_TOKEN=...
 PROJECT="relay-mcp-e2e-docs"
 
 CAPTURE_JSON="$(
@@ -118,8 +118,8 @@ Expected shape:
 - remote `/mcp` requires `Authorization: Bearer <token>`
 - remote `/mcp` accepts the same bearer policy as `/v1/*`
 - use an issued API key for normal remote agent access
-- `RELAY_MCP_TOKEN` is the preferred local env var name for MCP consumers
-- if `RELAY_MCP_TOKEN` is unset, the bundled examples fall back to `RELAY_API_TOKEN`
+- `RELAY_CLIENT_TOKEN` is the issued client token for normal MCP access
+- `RELAY_MCP_TOKEN` remains a compatibility alias, but it must also be an issued client token
 
 ## Public Tool Surface
 
@@ -284,14 +284,14 @@ Behavior:
 Quick raw example:
 
 ```bash
-RELAY_MCP_TOKEN=... \
+RELAY_CLIENT_TOKEN=... \
 ./examples/mcp/http/tools-list.sh
 ```
 
 Quick Go example:
 
 ```bash
-RELAY_MCP_TOKEN=... \
+RELAY_CLIENT_TOKEN=... \
 go run ./examples/mcp/go
 ```
 

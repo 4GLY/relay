@@ -49,8 +49,8 @@ Notes:
 - The deployed `/mcp` endpoint is stateless, which fits Relay's request-response tools.
 - Remote `/mcp` accepts the same bearer policy as `/v1/*`.
 - Use an issued API key for normal remote agents.
-- `RELAY_MCP_TOKEN` is just the preferred client env var name for MCP consumers.
-- If `RELAY_MCP_TOKEN` is unset, local examples fall back to `RELAY_API_TOKEN`.
+- `RELAY_CLIENT_TOKEN` is the issued client token for normal MCP and API use.
+- `RELAY_MCP_TOKEN` remains a compatible alias for MCP consumers, but it must also be an issued client token.
 - The public `/mcp` surface is intentionally narrow:
   - `relay_health`
   - `relay_capture`
@@ -91,6 +91,7 @@ Auth model:
 - `/healthz` is public
 - every `/v1/*` route requires `Authorization: Bearer <token>`
 - `RELAY_API_TOKEN` is the bootstrap admin token
+- `RELAY_CLIENT_TOKEN` is the issued client token for normal `/v1/*` and `/mcp` use
 - issued API keys can be minted through `POST /v1/api-keys/issue`
 - issued API keys can be listed through `GET /v1/api-keys`
 - issued API keys can be revoked through `POST /v1/api-keys/revoke`
@@ -110,7 +111,8 @@ RELAY_ADDR=:8080
 RELAY_BASE_URL='https://relay.4gly.dev'
 RELAY_DATABASE_URL='postgresql://user:password@host/neondb?sslmode=require'
 RELAY_API_TOKEN='replace-with-a-long-random-token'
-RELAY_MCP_TOKEN='optional client-side MCP token env var'
+RELAY_CLIENT_TOKEN='replace-with-an-issued-client-token'
+RELAY_MCP_TOKEN='optional compatibility alias for MCP consumers'
 ```
 
 `.env` is ignored by git.
@@ -143,7 +145,7 @@ Set a shell helper:
 
 ```bash
 export RELAY_BASE_URL="${RELAY_BASE_URL:-http://127.0.0.1:8080}"
-export RELAY_API_TOKEN="${RELAY_API_TOKEN:?missing RELAY_API_TOKEN}"
+export RELAY_CLIENT_TOKEN="${RELAY_CLIENT_TOKEN:?missing RELAY_CLIENT_TOKEN}"
 ```
 
 Health check:
@@ -156,7 +158,7 @@ Capture:
 
 ```bash
 curl -sS -X POST "$RELAY_BASE_URL/v1/capture" \
-  -H "Authorization: Bearer $RELAY_API_TOKEN" \
+  -H "Authorization: Bearer $RELAY_CLIENT_TOKEN" \
   -H 'Content-Type: application/json' \
   -d '{"project":"relay-api-smoke","source":"chat","body":"api smoke test","idempotency_key":"api-capture-1"}'
 ```
@@ -165,7 +167,7 @@ Promote:
 
 ```bash
 curl -sS -X POST "$RELAY_BASE_URL/v1/promote" \
-  -H "Authorization: Bearer $RELAY_API_TOKEN" \
+  -H "Authorization: Bearer $RELAY_CLIENT_TOKEN" \
   -H 'Content-Type: application/json' \
   -d '{"project":"relay-api-smoke","kind":"decision","summary":"Keep Neon as initial PG provider","reason":"Fastest path for Relay validation","idempotency_key":"api-promote-1"}'
 ```
@@ -199,7 +201,7 @@ Build packet:
 
 ```bash
 curl -sS -X POST "$RELAY_BASE_URL/v1/packets/build" \
-  -H "Authorization: Bearer $RELAY_API_TOKEN" \
+  -H "Authorization: Bearer $RELAY_CLIENT_TOKEN" \
   -H 'Content-Type: application/json' \
   -d '{"project":"relay-api-smoke","type":"resume","target":"codex"}'
 ```
@@ -208,7 +210,7 @@ Show by project id:
 
 ```bash
 curl -sS \
-  -H "Authorization: Bearer $RELAY_API_TOKEN" \
+  -H "Authorization: Bearer $RELAY_CLIENT_TOKEN" \
   "$RELAY_BASE_URL/v1/projects/<project_id>"
 ```
 

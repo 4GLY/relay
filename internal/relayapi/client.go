@@ -103,9 +103,6 @@ func NewClient(cfg Config) *Client {
 			cfg.ClientToken = v
 		}
 	}
-	if cfg.ClientToken == "" {
-		cfg.ClientToken = cfg.AdminToken
-	}
 	if cfg.HTTPClient == nil {
 		cfg.HTTPClient = &http.Client{Timeout: 15 * time.Second}
 	}

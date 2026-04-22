@@ -133,11 +133,6 @@ resolve_client_token() {
     CLIENT_TOKEN_SOURCE="keychain:${KEYCHAIN_SERVICE}/${KEYCHAIN_CLIENT_ACCOUNT}"
     return 0
   fi
-  if resolve_admin_token; then
-    CLIENT_TOKEN="${ADMIN_TOKEN}"
-    CLIENT_TOKEN_SOURCE="fallback:${ADMIN_TOKEN_SOURCE}"
-    return 0
-  fi
   return 1
 }
 

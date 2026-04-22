@@ -49,7 +49,6 @@ Client token:
 1. `RELAY_CLIENT_TOKEN`
 2. `RELAY_TOKEN`
 3. macOS Keychain entry `codex.relay-api/client-token`
-4. admin token fallback for bootstrap or recovery only
 
 ## When To Use
 

@@ -20,9 +20,6 @@ func Load() Config {
 	apiToken := os.Getenv("RELAY_API_TOKEN")
 	baseURL := os.Getenv("RELAY_BASE_URL")
 	mcpToken := os.Getenv("RELAY_MCP_TOKEN")
-	if mcpToken == "" {
-		mcpToken = apiToken
-	}
 
 	return Config{
 		Addr:        addr,

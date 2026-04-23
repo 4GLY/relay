@@ -158,6 +158,96 @@ func TestListToolsIncludesAdminWhenEnabled(t *testing.T) {
 	}
 }
 
+func TestPublicMCPRejectsStyleMemoryMutationTools(t *testing.T) {
+	server := New(stubBackend{})
+
+	serverTransport, clientTransport := mcp.NewInMemoryTransports()
+	ctx := context.Background()
+	go func() {
+		_ = server.Run(ctx, serverTransport)
+	}()
+
+	client := mcp.NewClient(&mcp.Implementation{Name: "relay-mcp-test-client", Version: "v1.0.0"}, nil)
+	session, err := client.Connect(ctx, clientTransport, nil)
+	if err != nil {
+		t.Fatalf("connect: %v", err)
+	}
+	defer session.Close()
+
+	for _, name := range []string{
+		"relay_write_judgment_trace",
+		"relay_create_heuristic_proposal",
+		"relay_review_heuristic_proposal",
+		"relay_update_approved_heuristic",
+	} {
+		result, err := session.CallTool(ctx, &mcp.CallToolParams{
+			Name:      name,
+			Arguments: map[string]any{},
+		})
+		if err == nil && (result == nil || !result.IsError) {
+			t.Fatalf("expected public MCP to reject style-memory mutation tool %q, result=%#v", name, result)
+		}
+	}
+}
+
+func TestBuildPacketToolForwardsStyleSelectors(t *testing.T) {
+	backend := &packetInputBackend{}
+	server := New(backend)
+
+	serverTransport, clientTransport := mcp.NewInMemoryTransports()
+	ctx := context.Background()
+	go func() {
+		_ = server.Run(ctx, serverTransport)
+	}()
+
+	client := mcp.NewClient(&mcp.Implementation{Name: "relay-mcp-test-client", Version: "v1.0.0"}, nil)
+	session, err := client.Connect(ctx, clientTransport, nil)
+	if err != nil {
+		t.Fatalf("connect: %v", err)
+	}
+	defer session.Close()
+
+	result, err := session.CallTool(ctx, &mcp.CallToolParams{
+		Name: "relay_build_packet",
+		Arguments: map[string]any{
+			"project":            "relay",
+			"workflow":           "design_handoff",
+			"artifact_type":      "design_doc",
+			"task_summary":       "continue the V1 handoff proof",
+			"disable_style_cues": true,
+			"persist_snapshot":   true,
+			"idempotency_key":    "packet-1",
+		},
+	})
+	if err != nil {
+		t.Fatalf("call build packet tool: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("unexpected tool error: %#v", result)
+	}
+	if backend.input.Project != "relay" ||
+		backend.input.Type != "resume" ||
+		backend.input.Target != "codex" ||
+		backend.input.Workflow != "design_handoff" ||
+		backend.input.ArtifactType != "design_doc" ||
+		backend.input.TaskSummary != "continue the V1 handoff proof" ||
+		!backend.input.DisableStyleCues ||
+		!backend.input.PersistSnapshot ||
+		backend.input.IdempotencyKey != "packet-1" {
+		t.Fatalf("unexpected packet input: %#v", backend.input)
+	}
+}
+
+type packetInputBackend struct {
+	stubBackend
+	input services.PacketBuildInput
+}
+
+func (b *packetInputBackend) BuildPacket(_ context.Context, input services.PacketBuildInput) (services.PacketBuildResult, error) {
+	b.input = input
+	return services.PacketBuildResult{ProjectID: lib.ProjectID(input.Project), Type: input.Type, Target: input.Target}, nil
+}
+
 func TestServiceBackedStdIOAdminToolIssuesAPIKey(t *testing.T) {
 	keys := &fakeAPIKeyStore{}
 	service := services.New(services.Dependencies{

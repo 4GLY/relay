@@ -22,6 +22,32 @@ The CLI is only a local dev/debug wrapper.
 - `GET /v1/api-keys` accepts only the bootstrap admin token
 - `POST /v1/api-keys/revoke` accepts only the bootstrap admin token
 
+## Curator Worker
+
+Relay's V1 curator is a separate proposal-only worker process.
+
+Run:
+
+```bash
+go run ./cmd/relay-worker
+```
+
+Environment:
+- `RELAY_DATABASE_URL`: required
+- `RELAY_CURATOR_WORKER_ID`: optional worker lease owner, defaults to `relay-curator`
+- `RELAY_CURATOR_PROVIDER`: optional provider, currently `rule-based`
+- `RELAY_CURATOR_BATCH_SIZE`: optional claim batch size, defaults to `5`
+- `RELAY_CURATOR_POLL_INTERVAL`: optional poll interval, defaults to `5s`
+- `RELAY_CURATOR_LEASE_DURATION`: optional queue lease duration, defaults to `30s`
+- `RELAY_CURATOR_RETRY_BACKOFF`: optional retry base backoff, defaults to `30s`
+- `RELAY_CURATOR_MAX_ATTEMPTS`: optional max attempts before `failed`, defaults to `5`
+
+Contract notes:
+- writing a `judgment_trace` enqueues curator work when the queue store is available
+- the worker can only emit `heuristic_proposals`
+- the worker never creates or mutates `approved_heuristics`
+- API and MCP packet building remain usable when the worker is down
+
 Example:
 
 ```bash
@@ -215,6 +241,118 @@ Contract notes:
 - `summary` is the durable statement
 - `reason` is why it was chosen
 
+### `POST /v1/judgment-traces`
+
+Purpose:
+- record a concrete user/agent judgment that can later become a reusable style heuristic
+- preserve why a decision was made, not only what was decided
+
+Request body:
+
+```json
+{
+  "project": "relay",
+  "task_id": "task-001",
+  "agent_id": "codex",
+  "workflow": "design_handoff",
+  "artifact_type": "design_doc",
+  "decision": "Prefer explicit contracts over implicit inference.",
+  "rationale": "Keeps model-to-model handoff deterministic.",
+  "alternatives": ["Let agents infer the contract from chat history"],
+  "constraints": ["Same-project V1 proof first"],
+  "source_refs": ["docs/research/context-graph-and-semantic-retrieval.md"],
+  "language": "en",
+  "idempotency_key": "trace-001"
+}
+```
+
+Response fields:
+- `trace_id`
+- `project_id`
+- `curator_job_id`
+
+Contract notes:
+- `task_id`, `agent_id`, `decision`, and `rationale` are required
+- `workflow` defaults to `design_handoff`
+- `artifact_type` defaults to `design_doc`
+- `idempotency_key` should be supplied by agents on writes
+
+### `POST /v1/heuristic-proposals`
+
+Purpose:
+- propose a reusable style heuristic from one or more judgment traces
+- keep proposal creation separate from approval
+
+Request body:
+
+```json
+{
+  "project": "relay",
+  "origin_trace_id": "trace_xxx",
+  "workflow": "design_handoff",
+  "artifact_type": "design_doc",
+  "heuristic_key": "explicit_contracts_over_magic",
+  "canonical_text": "Prefer explicit contracts over magic inference.",
+  "source_trace_ids": ["trace_xxx"],
+  "source_refs": ["docs/design.md"],
+  "proposed_by": "manual",
+  "idempotency_key": "proposal-001"
+}
+```
+
+Response fields:
+- `proposal_id`
+- `project_id`
+- `state`
+
+Contract notes:
+- new proposals start as `pending`
+- approval is a separate review step
+- `origin_trace_id` is added to `source_trace_ids` when omitted there
+
+### `POST /v1/heuristic-proposals/review`
+
+Purpose:
+- approve, reject, or archive a heuristic proposal
+- create an approved heuristic only on `approve`
+
+Request body:
+
+```json
+{
+  "project": "relay",
+  "proposal_id": "hprop_xxx",
+  "action": "approve",
+  "review_notes": "Matches the V1 handoff contract."
+}
+```
+
+Contract notes:
+- bootstrap admin token is required
+- `action` is `approve`, `reject`, or `archive`
+- `approve` returns `approved_heuristic_id`
+- `reject` and `archive` update only proposal state
+
+### `POST /v1/approved-heuristics/update`
+
+Purpose:
+- disable, archive, re-enable, or re-approve an approved heuristic
+
+Request body:
+
+```json
+{
+  "project": "relay",
+  "heuristic_id": "heur_xxx",
+  "action": "disable"
+}
+```
+
+Contract notes:
+- bootstrap admin token is required
+- `action` is `disable`, `archive`, `approve`, or `enable`
+- issued client keys cannot approve or mutate approved heuristics
+
 ### `POST /v1/packets/build`
 
 Purpose:
@@ -226,13 +364,21 @@ Request body:
 {
   "project": "relay",
   "type": "resume",
-  "target": "codex"
+  "target": "codex",
+  "workflow": "design_handoff",
+  "artifact_type": "design_doc",
+  "task_summary": "continue the same-project model-to-model handoff proof",
+  "persist_snapshot": true,
+  "idempotency_key": "packet-001"
 }
 ```
 
 Contract notes:
 - current `type` is effectively `resume`
 - current `target` is free-form, but `codex` is the primary path
+- approved style heuristics are returned as `style_cues` unless `disable_style_cues` is true
+- `persist_snapshot` writes an immutable packet snapshot and returns `snapshot_id`
+- packet output includes `schema_version`, `rendered_body`, `approved_heuristic_ids`, and `missing_context`
 
 ### `GET /v1/projects/{project_id}`
 
@@ -256,8 +402,13 @@ Current known codes:
 
 - `INVALID_JSON`
 - `UNAUTHORIZED`
+- `FORBIDDEN`
 - `PROJECT_ID_REQUIRED`
 - `PROJECT_NOT_FOUND`
+- `MISSING_REQUIRED_FIELDS`
+- `IDEMPOTENCY_CONFLICT`
+- `INVALID_HEURISTIC_REVIEW_ACTION`
+- `INVALID_HEURISTIC_ACTION`
 - `MISCONFIGURED`
 - `INTERNAL_ERROR`
 

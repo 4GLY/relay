@@ -1,15 +1,10 @@
 package api
 
 import (
-	"bytes"
 	"context"
 	"crypto/subtle"
-	"encoding/json"
-	"errors"
-	"io"
 	"net/http"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
@@ -59,6 +54,10 @@ func buildMux(handler Handler, cfg config.Config, runtime app.Runtime) *http.Ser
 	mux.HandleFunc("/v1/api-keys/issue", requireAdminBearerToken(adminToken, handler.handleIssueAPIKey))
 	mux.HandleFunc("/v1/api-keys/revoke", requireAdminBearerToken(adminToken, handler.handleRevokeAPIKey))
 	mux.HandleFunc("/v1/capture", requireBearerToken(adminToken, runtime.APIKeys, handler.handleCapture))
+	mux.HandleFunc("/v1/judgment-traces", requireBearerToken(adminToken, runtime.APIKeys, handler.handleJudgmentTraceWrite))
+	mux.HandleFunc("/v1/heuristic-proposals", requireBearerToken(adminToken, runtime.APIKeys, handler.handleHeuristicProposalCreate))
+	mux.HandleFunc("/v1/heuristic-proposals/review", requireAdminBearerToken(adminToken, handler.handleHeuristicProposalReview))
+	mux.HandleFunc("/v1/approved-heuristics/update", requireAdminBearerToken(adminToken, handler.handleApprovedHeuristicUpdate))
 	mux.HandleFunc("/v1/promote", requireBearerToken(adminToken, runtime.APIKeys, handler.handlePromote))
 	mux.HandleFunc("/v1/packets/build", requireBearerToken(adminToken, runtime.APIKeys, handler.handlePacketBuild))
 	mux.HandleFunc("/v1/projects/", requireBearerToken(adminToken, runtime.APIKeys, handler.handleProjectShow))
@@ -187,216 +186,4 @@ func authorizeBearerToken(r *http.Request, adminToken string, apiKeys repositori
 	}
 
 	return services.AuthInfo{}, false
-}
-
-func (h Handler) handleCapture(w http.ResponseWriter, r *http.Request) {
-	var input services.CaptureInput
-	if !decodeStrictJSONBody(w, r, "relay capture", &input) {
-		return
-	}
-	result, err := h.services.Capture(r.Context(), input)
-	if err != nil {
-		writeServiceError(w, "relay capture", err)
-		return
-	}
-	writeJSON(w, http.StatusOK, contracts.Success("relay capture", result))
-}
-
-func (h Handler) handleIssueAPIKey(w http.ResponseWriter, r *http.Request) {
-	var input services.IssueAPIKeyInput
-	if !decodeStrictJSONBody(w, r, "relay api-key issue", &input) {
-		return
-	}
-	result, err := h.services.IssueAPIKey(r.Context(), input)
-	if err != nil {
-		writeServiceError(w, "relay api-key issue", err)
-		return
-	}
-	writeJSON(w, http.StatusOK, contracts.Success("relay api-key issue", result))
-}
-
-func (h Handler) handleListAPIKeys(w http.ResponseWriter, r *http.Request) {
-	result, err := h.services.ListAPIKeys(r.Context())
-	if err != nil {
-		writeServiceError(w, "relay api-key list", err)
-		return
-	}
-	writeJSON(w, http.StatusOK, contracts.Success("relay api-key list", result))
-}
-
-func (h Handler) handleRevokeAPIKey(w http.ResponseWriter, r *http.Request) {
-	var input services.RevokeAPIKeyInput
-	if !decodeStrictJSONBody(w, r, "relay api-key revoke", &input) {
-		return
-	}
-	result, err := h.services.RevokeAPIKey(r.Context(), input)
-	if err != nil {
-		writeServiceError(w, "relay api-key revoke", err)
-		return
-	}
-	writeJSON(w, http.StatusOK, contracts.Success("relay api-key revoke", result))
-}
-
-func (h Handler) handlePromote(w http.ResponseWriter, r *http.Request) {
-	var input services.PromoteInput
-	if !decodeStrictJSONBody(w, r, "relay promote", &input) {
-		return
-	}
-	result, err := h.services.Promote(r.Context(), input)
-	if err != nil {
-		writeServiceError(w, "relay promote", err)
-		return
-	}
-	writeJSON(w, http.StatusOK, contracts.Success("relay promote", result))
-}
-
-func (h Handler) handlePacketBuild(w http.ResponseWriter, r *http.Request) {
-	var input services.PacketBuildInput
-	if !decodeStrictJSONBody(w, r, "relay packet build", &input) {
-		return
-	}
-	result, err := h.services.BuildPacket(r.Context(), input)
-	if err != nil {
-		writeServiceError(w, "relay packet build", err)
-		return
-	}
-	writeJSON(w, http.StatusOK, contracts.Success("relay packet build", result))
-}
-
-func (h Handler) handleProjectShow(w http.ResponseWriter, r *http.Request) {
-	projectID := strings.TrimPrefix(r.URL.Path, "/v1/projects/")
-	if projectID == "" {
-		writeJSON(w, http.StatusBadRequest, contracts.Failure("relay show", "PROJECT_ID_REQUIRED", "missing project id in path", false, "project_id"))
-		return
-	}
-	result, err := h.services.Show(r.Context(), services.ShowInput{ProjectID: projectID})
-	if err != nil {
-		writeServiceError(w, "relay show", err)
-		return
-	}
-	writeJSON(w, http.StatusOK, contracts.Success("relay show", result))
-}
-
-func writeJSON(w http.ResponseWriter, status int, payload any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(payload)
-}
-
-func decodeStrictJSONBody(w http.ResponseWriter, r *http.Request, command string, dst any) bool {
-	r.Body = http.MaxBytesReader(w, r.Body, maxJSONRequestBodyBytes)
-
-	raw, err := io.ReadAll(r.Body)
-	if err != nil {
-		writeJSON(w, validationJSONStatus(err), contracts.Failure(command, validationJSONCode(err), validationJSONMessage(err), false))
-		return false
-	}
-	if !utf8.Valid(raw) {
-		writeJSON(w, http.StatusBadRequest, contracts.Failure(command, "INVALID_JSON", "request body contains malformed UTF-8", false))
-		return false
-	}
-
-	dec := json.NewDecoder(bytes.NewReader(raw))
-	dec.DisallowUnknownFields()
-
-	if err := dec.Decode(dst); err != nil {
-		writeJSON(w, validationJSONStatus(err), contracts.Failure(command, validationJSONCode(err), validationJSONMessage(err), false))
-		return false
-	}
-
-	if err := dec.Decode(&struct{}{}); err != io.EOF {
-		writeJSON(w, http.StatusBadRequest, contracts.Failure(command, "INVALID_JSON", "request body must contain a single JSON object", false))
-		return false
-	}
-
-	return true
-}
-
-func validationJSONStatus(err error) int {
-	var maxBytesErr *http.MaxBytesError
-	if errors.As(err, &maxBytesErr) {
-		return http.StatusRequestEntityTooLarge
-	}
-	return http.StatusBadRequest
-}
-
-func validationJSONCode(err error) string {
-	var maxBytesErr *http.MaxBytesError
-	if errors.As(err, &maxBytesErr) {
-		return "REQUEST_TOO_LARGE"
-	}
-
-	if strings.HasPrefix(err.Error(), "json: unknown field ") {
-		return "UNKNOWN_JSON_FIELD"
-	}
-
-	return "INVALID_JSON"
-}
-
-func validationJSONMessage(err error) string {
-	var maxBytesErr *http.MaxBytesError
-	if errors.As(err, &maxBytesErr) {
-		return "request body exceeds 1 MiB"
-	}
-
-	if field, ok := unknownJSONField(err); ok {
-		return "unknown JSON field " + field
-	}
-
-	return err.Error()
-}
-
-func unknownJSONField(err error) (string, bool) {
-	const prefix = "json: unknown field "
-	msg := err.Error()
-	if !strings.HasPrefix(msg, prefix) {
-		return "", false
-	}
-	return strings.TrimPrefix(msg, prefix), true
-}
-
-func writeServiceError(w http.ResponseWriter, command string, err error) {
-	if appErr, ok := err.(lib.AppError); ok {
-		status := http.StatusBadRequest
-		if appErr.Code == "PROJECT_NOT_FOUND" {
-			status = http.StatusNotFound
-		}
-		if appErr.Code == "API_KEY_NOT_FOUND" {
-			status = http.StatusUnauthorized
-		}
-		if appErr.Code == "API_KEY_NOT_FOUND_BY_ID" {
-			status = http.StatusNotFound
-		}
-		if appErr.Code == "FORBIDDEN" {
-			status = http.StatusForbidden
-		}
-		if appErr.Code == "MISCONFIGURED" {
-			status = http.StatusInternalServerError
-		}
-		writeJSON(w, status, contracts.Failure(command, appErr.Code, appErr.Message, appErr.Retryable, appErr.MissingFields...))
-		return
-	}
-	writeJSON(w, http.StatusInternalServerError, contracts.Failure(command, "INTERNAL_ERROR", err.Error(), true))
-}
-
-func limitRequestBody(next http.Handler, max int64) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Body == nil {
-			next.ServeHTTP(w, r)
-			return
-		}
-
-		raw, err := io.ReadAll(io.LimitReader(r.Body, max+1))
-		if err != nil {
-			writeJSON(w, http.StatusBadRequest, contracts.Failure("mcp transport", "INVALID_JSON", err.Error(), false))
-			return
-		}
-		if int64(len(raw)) > max {
-			writeJSON(w, http.StatusRequestEntityTooLarge, contracts.Failure("mcp transport", "REQUEST_TOO_LARGE", "request body exceeds 1 MiB", false))
-			return
-		}
-
-		r.Body = io.NopCloser(bytes.NewReader(raw))
-		next.ServeHTTP(w, r)
-	})
 }

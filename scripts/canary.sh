@@ -63,7 +63,7 @@ curl_json() {
   local method="$2"
   local url="$3"
   local body="${4:-}"
-  local -a cmd=(curl --fail --silent --show-error -X "$method" "$url")
+  local -a cmd=(curl --fail --silent --show-error -X "$method" "$url" -H "Accept: application/json, text/event-stream")
   if [[ -n "$token" ]]; then
     cmd+=(-H "Authorization: Bearer ${token}")
   fi

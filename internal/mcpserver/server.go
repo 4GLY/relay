@@ -163,9 +163,15 @@ func (s *Server) promoteTool(ctx context.Context, _ *mcp.CallToolRequest, input 
 }
 
 type buildPacketInput struct {
-	Project string `json:"project" jsonschema:"Required project name to build the packet from"`
-	Type    string `json:"type,omitempty" jsonschema:"Optional packet type. Defaults to resume"`
-	Target  string `json:"target,omitempty" jsonschema:"Optional packet target. Defaults to codex in MCP flows"`
+	Project          string `json:"project" jsonschema:"Required project name to build the packet from"`
+	Type             string `json:"type,omitempty" jsonschema:"Optional packet type. Defaults to resume"`
+	Target           string `json:"target,omitempty" jsonschema:"Optional packet target. Defaults to codex in MCP flows"`
+	Workflow         string `json:"workflow,omitempty" jsonschema:"Optional workflow selector for style-memory cues"`
+	ArtifactType     string `json:"artifact_type,omitempty" jsonschema:"Optional artifact selector for style-memory cues"`
+	TaskSummary      string `json:"task_summary,omitempty" jsonschema:"Optional current task summary to bind into the packet"`
+	DisableStyleCues bool   `json:"disable_style_cues,omitempty" jsonschema:"When true, build the packet without approved style-memory cues"`
+	PersistSnapshot  bool   `json:"persist_snapshot,omitempty" jsonschema:"When true, persist an immutable packet snapshot for deterministic replay"`
+	IdempotencyKey   string `json:"idempotency_key,omitempty" jsonschema:"Optional but recommended key when persist_snapshot is true"`
 }
 
 func (s *Server) buildPacketTool(ctx context.Context, _ *mcp.CallToolRequest, input buildPacketInput) (*mcp.CallToolResult, services.PacketBuildResult, error) {
@@ -178,9 +184,15 @@ func (s *Server) buildPacketTool(ctx context.Context, _ *mcp.CallToolRequest, in
 		target = "codex"
 	}
 	result, err := s.backend.BuildPacket(ctx, services.PacketBuildInput{
-		Project: input.Project,
-		Type:    packetType,
-		Target:  target,
+		Project:          input.Project,
+		Type:             packetType,
+		Target:           target,
+		Workflow:         input.Workflow,
+		ArtifactType:     input.ArtifactType,
+		TaskSummary:      input.TaskSummary,
+		DisableStyleCues: input.DisableStyleCues,
+		PersistSnapshot:  input.PersistSnapshot,
+		IdempotencyKey:   input.IdempotencyKey,
 	})
 	return nil, result, err
 }

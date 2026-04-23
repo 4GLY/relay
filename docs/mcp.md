@@ -101,10 +101,20 @@ Expected shape:
   - `project_id`
 - `relay_build_packet`
   - `packet_id`
+  - `snapshot_id` when `persist_snapshot` is true
   - `project_id`
+  - `schema_version`
+  - `type`
+  - `target`
+  - `task_summary`
   - `body`
+  - `rendered_body`
+  - `style_cues`
   - `decision_ids`
   - `open_question_ids`
+  - `source_artifact_ids`
+  - `approved_heuristic_ids`
+  - `missing_context`
 - `relay_show_project`
   - `project_id`
   - `note_count`
@@ -133,6 +143,9 @@ Expected shape:
 
 API key issue, list, and revoke are not part of the public MCP surface.
 Use the HTTP API or the local skill for those operator tasks.
+
+Style-memory mutation is also intentionally not part of the public MCP surface.
+Agents consume approved style memory through `relay_build_packet`; proposal creation, approval, and heuristic updates stay on the HTTP API/operator path.
 
 ## Tool Guide
 
@@ -233,20 +246,38 @@ Minimum input:
 Optional fields:
 - `type`
 - `target`
+- `workflow`
+- `artifact_type`
+- `task_summary`
+- `disable_style_cues`
+- `persist_snapshot`
+- `idempotency_key`
 
 Defaults:
 - `type`: `resume`
 - `target`: `codex`
 
+Style-memory behavior:
+- approved heuristics can be returned as `style_cues`
+- `workflow` and `artifact_type` narrow style-cue selection
+- `disable_style_cues` builds a normal packet without style cues
+- `persist_snapshot` returns a `snapshot_id` for deterministic replay
+
 Output:
 - `packet_id`
+- `snapshot_id`
 - `project_id`
+- `schema_version`
 - `type`
 - `target`
+- `task_summary`
 - `body`
+- `rendered_body`
+- `style_cues`
 - `decision_ids`
 - `open_question_ids`
 - `source_artifact_ids`
+- `approved_heuristic_ids`
 - `missing_context`
 
 ### `relay_show_project`

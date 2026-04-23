@@ -22,6 +22,29 @@ Relay를 `API-first second-brain backend`에서 더 나아가, 장기 작업을 
   하지만 graph 조회, retrieval, ranking, eval 계층은 아직 거의 없습니다.
 - 현재 Relay와 최근 연구의 갭은 `개념적으로는 중간`, `기능적으로는 큽니다`.
 
+## 현재 제품 방향과의 연결
+
+이 문서는 기술 베이스라인을 정리하는 문서입니다.
+제품 wedge 자체를 정의하는 문서는 아닙니다.
+
+현재 Relay의 더 날카로운 제품 방향은 다음과 같이 보는 편이 맞습니다.
+
+- Relay의 목표는 generic memory backend가 아니라 `cross-agent style continuity`입니다.
+- 더 정확히는, 같은 프로젝트 안에서 한 모델이나 세션이 하던 설계를 다른 모델 또는 다음 세션이 이어받을 때
+  `사용자의 평소 판단 방식`까지 같이 이어지는 경험을 만드는 것입니다.
+- 따라서 `context graph`, `semantic retrieval`, `packet composer`는 제품 그 자체가 아니라
+  그 경험을 가능하게 하는 하부 구조입니다.
+
+이 기준에서 보면:
+
+- graph는 `무엇이 무엇에서 나왔는가`를 보존하는 층
+- semantic retrieval은 `직접 연결은 없지만 지금 필요한 관련 맥락`을 찾는 층
+- style memory는 `이 사용자가 보통 어떻게 판단하는가`를 보존하는 층
+- handoff packet은 이 셋을 묶어 다음 agent에 전달하는 층
+
+즉, Relay를 지금 시점에 가장 잘 설명하는 문장은
+`context graph + semantic retrieval + style-aware handoff packet`에 더 가깝습니다.
+
 ## 1. GraphRAG와 graph 기반 retrieval
 
 ### 1.1. GraphRAG의 출발점
@@ -172,6 +195,14 @@ Packet
   -> includes -> Artifact
 ```
 
+하지만 중요한 공백도 분명합니다.
+
+현재 Relay에는 아직 아래 층이 없습니다.
+
+- 사용자의 판단 습관을 담는 `heuristic` 또는 `preference` 계층
+- 판단이 어떤 근거에서 나왔는지 남기는 `judgment trace`
+- 다음 agent에게 style cue를 함께 넘기는 `style-aware handoff packet`
+
 ## 6. 현재 Relay와 리서치 사이의 갭
 
 ### 한 줄 평가
@@ -193,6 +224,7 @@ Relay는 이미 좋은 도메인 명사와 일부 관계를 갖고 있습니다.
 | Packet generation | 프로젝트 전체 요약에 가까움 | query-conditioned evidence selection과 ranking | 큼 | packet composer를 retrieval-aware로 분리 |
 | Global/local search | 구분 없음 | GraphRAG, DRIFT처럼 질의 유형별 모드 분리 | 큼 | local/global query planner 설계 |
 | Memory hierarchy | 프로젝트 단일 레벨 | short/mid/long-term, episodic/semantic 분리 | 중간 | session layer와 long-term layer 분리 검토 |
+| Judgment continuity | 없음 | A-MEM류 memory evolution, user heuristic 축적, style-aware handoff | 큼 | `judgment_traces`, `heuristics`, `style-aware packet` 추가 |
 | Evaluation | 사실상 수동 smoke test 중심 | local/global query benchmark, LLM judge, win rate | 큼 | 작은 내부 benchmark 세트 추가 |
 | Explainability | 일부 source id만 있음 | retrieval 경로, edge provenance, why-this-context | 중간 | packet에 `why included` 필드 추가 |
 
@@ -200,6 +232,20 @@ Relay는 이미 좋은 도메인 명사와 일부 관계를 갖고 있습니다.
 
 최근 논문을 다 따라가려 하면 과합니다.
 현재 Relay 기준으로는 아래 순서가 가장 현실적입니다.
+
+### 0단계. 제품 계약을 먼저 고정하기
+
+지금 Relay에서 제일 먼저 필요한 것은 graph DB가 아니라
+`같은 프로젝트 안에서 model-to-model 또는 session-to-session handoff를 어떻게 증명할 것인가`에 대한 계약입니다.
+
+최소 목표:
+
+- approved heuristics
+- same-project style-aware handoff packet
+- 하나의 instrumented demo flow
+
+이 계약이 먼저 고정돼야 그 뒤의 graph와 retrieval도
+`무엇을 더 잘 찾기 위한 구조인지`가 분명해집니다.
 
 ### 1단계. Canonical graph를 먼저 드러내기
 
@@ -217,6 +263,7 @@ Relay는 이미 좋은 도메인 명사와 일부 관계를 갖고 있습니다.
 - `note`, `artifact`, 필요하면 `decision` 본문을 chunking합니다.
 - embedding만 넣지 말고 BM25나 lexical fallback도 같이 둡니다.
 - 가능하면 contextual retrieval 또는 late chunking을 적용합니다.
+- 다만 첫 demo에서는 artifact 크기가 작다면 whole-artifact handling도 허용할 수 있습니다.
 
 이 단계의 목표는 `비슷한 맥락 찾기`입니다.
 아직 graph의 공식 edge를 늘리는 단계는 아닙니다.
@@ -237,13 +284,22 @@ Relay는 이미 좋은 도메인 명사와 일부 관계를 갖고 있습니다.
 - 현재 질문 또는 작업 목표
 - 직접 연결된 canonical node
 - semantic retrieval로 찾은 관련 node
+- approved heuristic
 - recency, trust, importance ranking
+
+여기서 packet은 단순 resume가 아니라
+`state + evidence + style cue`를 함께 담는 handoff packet으로 진화해야 합니다.
 
 ### 5단계. 작은 eval 세트를 만들기
 
 - 최소 20~50개 정도의 local/global query를 준비합니다.
 - packet 품질과 retrieval 품질을 따로 봅니다.
 - `정답을 찾았는가`만 보지 말고 `재개 가능성`, `근거 추적 가능성`도 같이 봅니다.
+- Relay의 현재 wedge를 생각하면 `style continuity` eval도 별도로 둬야 합니다.
+  예:
+  - handoff 후 manual summary 없이 이어졌는가
+  - approved heuristic이 실제로 packet에 재사용됐는가
+  - 사용자가 continuation을 보고 `내 방식과 맞다`고 판단했는가
 
 ## 8. Relay 기준으로 보면 갭이 정말 큰가
 
@@ -255,7 +311,9 @@ Relay는 이미 좋은 도메인 명사와 일부 관계를 갖고 있습니다.
 - 도메인 모델의 방향은 좋습니다.
 - graph의 seed도 이미 있습니다.
 - 하지만 retrieval engine과 query planner는 아직 거의 없습니다.
-- 그래서 지금 Relay는 `memory backend v0`에는 가깝지만, `graph-aware memory system`이라고 부르기에는 이릅니다.
+- 그리고 `사용자 판단 스타일`을 명시적으로 다루는 층도 아직 없습니다.
+- 그래서 지금 Relay는 `memory backend v0`에는 가깝지만,
+  `graph-aware memory system`이나 `personal operating system`이라고 부르기에는 아직 이릅니다.
 
 실무 감각으로 정리하면:
 

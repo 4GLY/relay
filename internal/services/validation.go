@@ -25,6 +25,20 @@ const (
 	maxPacketProjectLength = 128
 	maxPacketTypeLength    = 32
 	maxPacketTargetLength  = 128
+	maxPacketTaskLength    = 8192
+
+	maxStyleProjectLength      = 128
+	maxStyleIDLength           = 128
+	maxStyleWorkflowLength     = 64
+	maxStyleArtifactTypeLength = 64
+	maxStyleTextLength         = 8192
+	maxStyleLanguageLength     = 32
+	maxStyleIdempotencyLength  = 128
+	maxStyleSourceRefs         = 100
+	maxStyleSourceRefLength    = 512
+	maxStyleHeuristicKeyLength = 128
+	maxStyleReviewNotesLength  = 8192
+	maxStyleReviewActionLength = 32
 
 	maxAPIKeyNameLength      = 128
 	maxAPIKeyScopeLength     = 32
@@ -116,7 +130,125 @@ func validatePacketBuildInput(input PacketBuildInput) error {
 	if err := validateStringFieldLength("type", input.Type, maxPacketTypeLength); err != nil {
 		return err
 	}
-	return validateStringFieldLength("target", input.Target, maxPacketTargetLength)
+	if err := validateStringFieldLength("target", input.Target, maxPacketTargetLength); err != nil {
+		return err
+	}
+	if err := validateStringFieldLength("workflow", input.Workflow, maxStyleWorkflowLength); err != nil {
+		return err
+	}
+	if err := validateStringFieldLength("artifact_type", input.ArtifactType, maxStyleArtifactTypeLength); err != nil {
+		return err
+	}
+	if err := validateStringFieldLength("task_summary", input.TaskSummary, maxPacketTaskLength); err != nil {
+		return err
+	}
+	return validateStringFieldLength("idempotency_key", input.IdempotencyKey, maxStyleIdempotencyLength)
+}
+
+func validateJudgmentTraceWriteInput(input JudgmentTraceWriteInput) error {
+	if err := validateStringFieldLength("project", input.Project, maxStyleProjectLength); err != nil {
+		return err
+	}
+	if err := validateStringFieldLength("project_id", input.ProjectID, maxStyleIDLength); err != nil {
+		return err
+	}
+	if err := validateStringFieldLength("task_id", input.TaskID, maxStyleIDLength); err != nil {
+		return err
+	}
+	if err := validateStringFieldLength("agent_id", input.AgentID, maxStyleIDLength); err != nil {
+		return err
+	}
+	if err := validateStringFieldLength("workflow", input.Workflow, maxStyleWorkflowLength); err != nil {
+		return err
+	}
+	if err := validateStringFieldLength("artifact_type", input.ArtifactType, maxStyleArtifactTypeLength); err != nil {
+		return err
+	}
+	if err := validateStringFieldLength("decision", input.Decision, maxStyleTextLength); err != nil {
+		return err
+	}
+	if err := validateStringFieldLength("rationale", input.Rationale, maxStyleTextLength); err != nil {
+		return err
+	}
+	if err := validateStringFieldLength("language", input.Language, maxStyleLanguageLength); err != nil {
+		return err
+	}
+	if err := validateStringSliceField("alternatives", input.Alternatives, maxStyleSourceRefs, maxStyleTextLength); err != nil {
+		return err
+	}
+	if err := validateStringSliceField("constraints", input.Constraints, maxStyleSourceRefs, maxStyleTextLength); err != nil {
+		return err
+	}
+	if err := validateStringSliceField("source_refs", input.SourceRefs, maxStyleSourceRefs, maxStyleSourceRefLength); err != nil {
+		return err
+	}
+	return validateStringFieldLength("idempotency_key", input.IdempotencyKey, maxStyleIdempotencyLength)
+}
+
+func validateHeuristicProposalCreateInput(input HeuristicProposalCreateInput) error {
+	if err := validateStringFieldLength("project", input.Project, maxStyleProjectLength); err != nil {
+		return err
+	}
+	if err := validateStringFieldLength("project_id", input.ProjectID, maxStyleIDLength); err != nil {
+		return err
+	}
+	if err := validateStringFieldLength("origin_trace_id", input.OriginTraceID, maxStyleIDLength); err != nil {
+		return err
+	}
+	if err := validateStringFieldLength("workflow", input.Workflow, maxStyleWorkflowLength); err != nil {
+		return err
+	}
+	if err := validateStringFieldLength("artifact_type", input.ArtifactType, maxStyleArtifactTypeLength); err != nil {
+		return err
+	}
+	if err := validateStringFieldLength("heuristic_key", input.HeuristicKey, maxStyleHeuristicKeyLength); err != nil {
+		return err
+	}
+	if err := validateStringFieldLength("canonical_text", input.CanonicalText, maxStyleTextLength); err != nil {
+		return err
+	}
+	if err := validateStringFieldLength("normalized_text", input.NormalizedText, maxStyleTextLength); err != nil {
+		return err
+	}
+	if err := validateStringSliceField("source_trace_ids", input.SourceTraceIDs, maxStyleSourceRefs, maxStyleIDLength); err != nil {
+		return err
+	}
+	if err := validateStringSliceField("source_refs", input.SourceRefs, maxStyleSourceRefs, maxStyleSourceRefLength); err != nil {
+		return err
+	}
+	if err := validateStringFieldLength("proposed_by", input.ProposedBy, maxStyleIDLength); err != nil {
+		return err
+	}
+	return validateStringFieldLength("idempotency_key", input.IdempotencyKey, maxStyleIdempotencyLength)
+}
+
+func validateHeuristicProposalReviewInput(input HeuristicProposalReviewInput) error {
+	if err := validateStringFieldLength("project", input.Project, maxStyleProjectLength); err != nil {
+		return err
+	}
+	if err := validateStringFieldLength("project_id", input.ProjectID, maxStyleIDLength); err != nil {
+		return err
+	}
+	if err := validateStringFieldLength("proposal_id", input.ProposalID, maxStyleIDLength); err != nil {
+		return err
+	}
+	if err := validateStringFieldLength("action", input.Action, maxStyleReviewActionLength); err != nil {
+		return err
+	}
+	return validateStringFieldLength("review_notes", input.ReviewNotes, maxStyleReviewNotesLength)
+}
+
+func validateApprovedHeuristicUpdateInput(input ApprovedHeuristicUpdateInput) error {
+	if err := validateStringFieldLength("project", input.Project, maxStyleProjectLength); err != nil {
+		return err
+	}
+	if err := validateStringFieldLength("project_id", input.ProjectID, maxStyleIDLength); err != nil {
+		return err
+	}
+	if err := validateStringFieldLength("heuristic_id", input.HeuristicID, maxStyleIDLength); err != nil {
+		return err
+	}
+	return validateStringFieldLength("action", input.Action, maxStyleReviewActionLength)
 }
 
 func validateIssueAPIKeyInput(input IssueAPIKeyInput) error {

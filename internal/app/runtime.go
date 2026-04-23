@@ -33,13 +33,19 @@ func NewRuntime(ctx context.Context, cfg config.Config) (Runtime, error) {
 
 	stores := postgres.New(db)
 	svc := services.New(services.Dependencies{
-		Projects:      stores,
-		Notes:         noteStore{stores},
-		Artifacts:     artifactStore{stores},
-		Decisions:     decisionStore{stores},
-		OpenQuestions: openQuestionStore{stores},
-		Packets:       packetStore{stores},
-		APIKeys:       apiKeyStore{stores},
+		Projects:           stores,
+		Notes:              noteStore{stores},
+		Artifacts:          artifactStore{stores},
+		Decisions:          decisionStore{stores},
+		OpenQuestions:      openQuestionStore{stores},
+		Packets:            packetStore{stores},
+		APIKeys:            apiKeyStore{stores},
+		JudgmentTraces:     stores,
+		HeuristicProposals: stores,
+		ApprovedHeuristics: stores,
+		PacketSnapshots:    stores,
+		Idempotency:        stores,
+		CuratorJobs:        stores,
 	})
 
 	return Runtime{Services: svc, APIKeys: apiKeyStore{stores}}, nil

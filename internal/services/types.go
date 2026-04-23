@@ -1,5 +1,7 @@
 package services
 
+import "time"
+
 type CaptureInput struct {
 	Project        string `json:"project"`
 	RepoPath       string `json:"repo_path"`
@@ -48,21 +50,110 @@ type ShowResult struct {
 }
 
 type PacketBuildInput struct {
-	Project string `json:"project"`
-	Type    string `json:"type"`
-	Target  string `json:"target"`
+	Project          string `json:"project"`
+	Type             string `json:"type"`
+	Target           string `json:"target"`
+	Workflow         string `json:"workflow,omitempty"`
+	ArtifactType     string `json:"artifact_type,omitempty"`
+	TaskSummary      string `json:"task_summary,omitempty"`
+	DisableStyleCues bool   `json:"disable_style_cues,omitempty"`
+	PersistSnapshot  bool   `json:"persist_snapshot,omitempty"`
+	IdempotencyKey   string `json:"idempotency_key,omitempty"`
 }
 
 type PacketBuildResult struct {
-	PacketID          string   `json:"packet_id"`
-	ProjectID         string   `json:"project_id"`
-	Type              string   `json:"type"`
-	Target            string   `json:"target"`
-	Body              string   `json:"body"`
-	DecisionIDs       []string `json:"decision_ids"`
-	OpenQuestionIDs   []string `json:"open_question_ids"`
-	SourceArtifactIDs []string `json:"source_artifact_ids"`
-	MissingContext    []string `json:"missing_context"`
+	PacketID             string           `json:"packet_id"`
+	SnapshotID           string           `json:"snapshot_id,omitempty"`
+	ProjectID            string           `json:"project_id"`
+	SchemaVersion        string           `json:"schema_version,omitempty"`
+	Type                 string           `json:"type"`
+	Target               string           `json:"target"`
+	TaskSummary          string           `json:"task_summary,omitempty"`
+	Body                 string           `json:"body"`
+	RenderedBody         string           `json:"rendered_body,omitempty"`
+	StyleCues            []PacketStyleCue `json:"style_cues,omitempty"`
+	DecisionIDs          []string         `json:"decision_ids"`
+	OpenQuestionIDs      []string         `json:"open_question_ids"`
+	SourceArtifactIDs    []string         `json:"source_artifact_ids"`
+	ApprovedHeuristicIDs []string         `json:"approved_heuristic_ids,omitempty"`
+	MissingContext       []string         `json:"missing_context"`
+}
+
+type PacketStyleCue struct {
+	HeuristicID   string `json:"heuristic_id"`
+	WhySelected   string `json:"why_selected"`
+	SourceSummary string `json:"source_summary"`
+}
+
+type JudgmentTraceWriteInput struct {
+	Project        string   `json:"project"`
+	ProjectID      string   `json:"project_id,omitempty"`
+	TaskID         string   `json:"task_id"`
+	AgentID        string   `json:"agent_id"`
+	Workflow       string   `json:"workflow"`
+	ArtifactType   string   `json:"artifact_type"`
+	Decision       string   `json:"decision"`
+	Alternatives   []string `json:"alternatives,omitempty"`
+	Rationale      string   `json:"rationale"`
+	Constraints    []string `json:"constraints,omitempty"`
+	SourceRefs     []string `json:"source_refs,omitempty"`
+	Language       string   `json:"language,omitempty"`
+	IdempotencyKey string   `json:"idempotency_key,omitempty"`
+}
+
+type JudgmentTraceWriteResult struct {
+	TraceID      string `json:"trace_id"`
+	ProjectID    string `json:"project_id"`
+	CuratorJobID string `json:"curator_job_id,omitempty"`
+}
+
+type HeuristicProposalCreateInput struct {
+	Project        string   `json:"project"`
+	ProjectID      string   `json:"project_id,omitempty"`
+	OriginTraceID  string   `json:"origin_trace_id,omitempty"`
+	Workflow       string   `json:"workflow,omitempty"`
+	ArtifactType   string   `json:"artifact_type,omitempty"`
+	HeuristicKey   string   `json:"heuristic_key"`
+	CanonicalText  string   `json:"canonical_text"`
+	NormalizedText string   `json:"normalized_text,omitempty"`
+	SourceTraceIDs []string `json:"source_trace_ids,omitempty"`
+	SourceRefs     []string `json:"source_refs,omitempty"`
+	ProposedBy     string   `json:"proposed_by,omitempty"`
+	IdempotencyKey string   `json:"idempotency_key,omitempty"`
+}
+
+type HeuristicProposalCreateResult struct {
+	ProposalID string `json:"proposal_id"`
+	ProjectID  string `json:"project_id"`
+	State      string `json:"state"`
+}
+
+type HeuristicProposalReviewInput struct {
+	Project     string `json:"project"`
+	ProjectID   string `json:"project_id,omitempty"`
+	ProposalID  string `json:"proposal_id"`
+	Action      string `json:"action"`
+	ReviewNotes string `json:"review_notes,omitempty"`
+}
+
+type HeuristicProposalReviewResult struct {
+	ProposalID          string `json:"proposal_id"`
+	ApprovedHeuristicID string `json:"approved_heuristic_id,omitempty"`
+	ProjectID           string `json:"project_id"`
+	State               string `json:"state"`
+}
+
+type ApprovedHeuristicUpdateInput struct {
+	Project     string `json:"project"`
+	ProjectID   string `json:"project_id,omitempty"`
+	HeuristicID string `json:"heuristic_id"`
+	Action      string `json:"action"`
+}
+
+type ApprovedHeuristicUpdateResult struct {
+	HeuristicID string `json:"heuristic_id"`
+	ProjectID   string `json:"project_id"`
+	State       string `json:"state"`
 }
 
 type IssueAPIKeyInput struct {
@@ -105,4 +196,21 @@ type RevokeAPIKeyResult struct {
 	Scope       string `json:"scope"`
 	ProjectID   string `json:"project_id,omitempty"`
 	Revoked     bool   `json:"revoked"`
+}
+
+type CuratorRunOptions struct {
+	Owner         string
+	BatchSize     int
+	LeaseDuration time.Duration
+	RetryBackoff  time.Duration
+	MaxAttempts   int
+}
+
+type CuratorRunResult struct {
+	Claimed      int      `json:"claimed"`
+	Completed    int      `json:"completed"`
+	Retried      int      `json:"retried"`
+	Failed       int      `json:"failed"`
+	ProposalIDs  []string `json:"proposal_ids"`
+	ProcessedIDs []string `json:"processed_job_ids"`
 }

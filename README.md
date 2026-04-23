@@ -6,6 +6,10 @@ The product surface is the HTTP API.
 
 - `POST /v1/capture`
 - `POST /v1/promote`
+- `POST /v1/judgment-traces`
+- `POST /v1/heuristic-proposals`
+- `POST /v1/heuristic-proposals/review`
+- `POST /v1/approved-heuristics/update`
 - `POST /v1/packets/build`
 - `GET /v1/projects/{project_id}`
 
@@ -69,6 +73,7 @@ This repo currently includes:
 - Neon-backed deployment
 - Bearer auth on all `/v1/*` routes
 - OpenAPI spec and API contract docs
+- proposal-only curator worker for style-memory evolution
 
 ## API Contract
 
@@ -241,6 +246,26 @@ The canary checks:
 - `POST /mcp initialize`
 - `POST /mcp tools/list`
 - `POST /mcp tools/call relay_health`
+
+## V1 Acceptance
+
+Run the canonical style-memory handoff proof:
+
+```bash
+set -a; source .env; set +a
+./scripts/acceptance/v1_canonical_handoff.sh
+```
+
+The runner executes:
+
+- seed trace
+- heuristic proposal
+- admin approval
+- public MCP style-aware packet
+- public MCP control packet
+
+It writes repeatable evidence under `.gstack/projects/relay/`.
+See [docs/evals/v1-canonical-handoff.md](docs/evals/v1-canonical-handoff.md).
 
 ## Dev CLI
 

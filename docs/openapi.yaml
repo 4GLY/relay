@@ -11,6 +11,7 @@ servers:
 tags:
   - name: health
   - name: memory
+  - name: style-memory
 components:
   securitySchemes:
     BearerAuth:
@@ -137,9 +138,163 @@ components:
           type: string
         project_id:
           type: string
+    JudgmentTraceWriteInput:
+      type: object
+      required: [task_id, agent_id, decision, rationale]
+      properties:
+        project:
+          type: string
+        project_id:
+          type: string
+        task_id:
+          type: string
+        agent_id:
+          type: string
+        workflow:
+          type: string
+          example: design_handoff
+        artifact_type:
+          type: string
+          example: design_doc
+        decision:
+          type: string
+        alternatives:
+          type: array
+          items:
+            type: string
+        rationale:
+          type: string
+        constraints:
+          type: array
+          items:
+            type: string
+        source_refs:
+          type: array
+          items:
+            type: string
+        language:
+          type: string
+        idempotency_key:
+          type: string
+    JudgmentTraceWriteResult:
+      type: object
+      required: [trace_id, project_id]
+      properties:
+        trace_id:
+          type: string
+        project_id:
+          type: string
+        curator_job_id:
+          type: string
+          description: Stable queued curator job id when curator queueing is enabled.
+    HeuristicProposalCreateInput:
+      type: object
+      required: [heuristic_key, canonical_text]
+      properties:
+        project:
+          type: string
+        project_id:
+          type: string
+        origin_trace_id:
+          type: string
+        workflow:
+          type: string
+        artifact_type:
+          type: string
+        heuristic_key:
+          type: string
+        canonical_text:
+          type: string
+        normalized_text:
+          type: string
+        source_trace_ids:
+          type: array
+          items:
+            type: string
+        source_refs:
+          type: array
+          items:
+            type: string
+        proposed_by:
+          type: string
+        idempotency_key:
+          type: string
+    HeuristicProposalCreateResult:
+      type: object
+      required: [proposal_id, project_id, state]
+      properties:
+        proposal_id:
+          type: string
+        project_id:
+          type: string
+        state:
+          type: string
+          enum: [pending, approved, rejected, archived]
+    HeuristicProposalReviewInput:
+      type: object
+      required: [proposal_id, action]
+      properties:
+        project:
+          type: string
+        project_id:
+          type: string
+        proposal_id:
+          type: string
+        action:
+          type: string
+          enum: [approve, reject, archive]
+        review_notes:
+          type: string
+    HeuristicProposalReviewResult:
+      type: object
+      required: [proposal_id, project_id, state]
+      properties:
+        proposal_id:
+          type: string
+        approved_heuristic_id:
+          type: string
+        project_id:
+          type: string
+        state:
+          type: string
+          enum: [approved, rejected, archived]
+    ApprovedHeuristicUpdateInput:
+      type: object
+      required: [heuristic_id, action]
+      properties:
+        project:
+          type: string
+        project_id:
+          type: string
+        heuristic_id:
+          type: string
+        action:
+          type: string
+          enum: [disable, archive, approve, enable]
+    ApprovedHeuristicUpdateResult:
+      type: object
+      required: [heuristic_id, project_id, state]
+      properties:
+        heuristic_id:
+          type: string
+        project_id:
+          type: string
+        state:
+          type: string
+          enum: [approved, archived, disabled]
+    PacketStyleCue:
+      type: object
+      required: [heuristic_id, why_selected, source_summary]
+      properties:
+        heuristic_id:
+          type: string
+        why_selected:
+          type: string
+        source_summary:
+          type: string
     PacketBuildInput:
       type: object
-      required: [project, type, target]
+      required: [project]
       properties:
         project:
           type: string
@@ -149,6 +304,20 @@ components:
         target:
           type: string
           example: codex
+        workflow:
+          type: string
+          example: design_handoff
+        artifact_type:
+          type: string
+          example: design_doc
+        task_summary:
+          type: string
+        disable_style_cues:
+          type: boolean
+        persist_snapshot:
+          type: boolean
+        idempotency_key:
+          type: string
     PacketBuildResult:
       type: object
       required:
@@ -164,14 +333,26 @@ components:
       properties:
         packet_id:
           type: string
+        snapshot_id:
+          type: string
         project_id:
+          type: string
+        schema_version:
           type: string
         type:
           type: string
         target:
           type: string
+        task_summary:
+          type: string
         body:
           type: string
+        rendered_body:
+          type: string
+        style_cues:
+          type: array
+          items:
+            $ref: '#/components/schemas/PacketStyleCue'
         decision_ids:
           type: array
           items:
@@ -181,6 +362,10 @@ components:
           items:
             type: string
         source_artifact_ids:
+          type: array
+          items:
+            type: string
+        approved_heuristic_ids:
           type: array
           items:
             type: string
@@ -318,6 +503,34 @@ components:
           properties:
             data:
               $ref: '#/components/schemas/PromoteResult'
+    JudgmentTraceWriteResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/JudgmentTraceWriteResult'
+    HeuristicProposalCreateResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/HeuristicProposalCreateResult'
+    HeuristicProposalReviewResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/HeuristicProposalReviewResult'
+    ApprovedHeuristicUpdateResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/ApprovedHeuristicUpdateResult'
     PacketBuildResponse:
       allOf:
         - $ref: '#/components/schemas/SuccessEnvelope'
@@ -528,6 +741,194 @@ paths:
                 $ref: '#/components/schemas/ErrorEnvelope'
         '401':
           description: Missing or invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /v1/judgment-traces:
+    post:
+      tags: [style-memory]
+      summary: Write a judgment trace for later style-memory evolution
+      operationId: writeJudgmentTrace
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JudgmentTraceWriteInput'
+      responses:
+        '200':
+          description: Judgment trace written
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JudgmentTraceWriteResponse'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '401':
+          description: Missing or invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '403':
+          description: Project-scoped key does not match requested project
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /v1/heuristic-proposals:
+    post:
+      tags: [style-memory]
+      summary: Create a pending heuristic proposal
+      operationId: createHeuristicProposal
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HeuristicProposalCreateInput'
+      responses:
+        '200':
+          description: Heuristic proposal created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HeuristicProposalCreateResponse'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '401':
+          description: Missing or invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '403':
+          description: Project-scoped key does not match requested project
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /v1/heuristic-proposals/review:
+    post:
+      tags: [style-memory]
+      summary: Approve, reject, or archive a heuristic proposal
+      operationId: reviewHeuristicProposal
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HeuristicProposalReviewInput'
+      responses:
+        '200':
+          description: Heuristic proposal reviewed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HeuristicProposalReviewResponse'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '401':
+          description: Missing or invalid bootstrap admin bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '403':
+          description: Requested project does not match proposal project
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: Heuristic proposal not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /v1/approved-heuristics/update:
+    post:
+      tags: [style-memory]
+      summary: Update approved heuristic state
+      operationId: updateApprovedHeuristic
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApprovedHeuristicUpdateInput'
+      responses:
+        '200':
+          description: Approved heuristic updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApprovedHeuristicUpdateResponse'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '401':
+          description: Missing or invalid bootstrap admin bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '403':
+          description: Requested project does not match heuristic project
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: Approved heuristic not found
           content:
             application/json:
               schema:

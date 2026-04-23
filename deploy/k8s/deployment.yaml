@@ -65,7 +65,7 @@ metadata:
   labels:
     app: relay-curator-worker
 spec:
-  replicas: 0
+  replicas: 1
   selector:
     matchLabels:
       app: relay-curator-worker

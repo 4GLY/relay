@@ -206,6 +206,17 @@ Request body:
   "repo_path": ".",
   "handoff_path": "docs/handoff.md",
   "design_path": "docs/design.md",
+  "extra_artifacts": [
+    {
+      "type": "code_path",
+      "source_path": "internal/services/packets.go",
+      "trust_level": "trusted"
+    },
+    {
+      "type": "pr_diff",
+      "source_path": "scripts/evals/fixtures/artifacts/pr-diffs/session-without-summary.md"
+    }
+  ],
   "note": "user said offline matters",
   "idempotency_key": "capture-001"
 }
@@ -213,8 +224,11 @@ Request body:
 
 Contract notes:
 - `project` is optional; when omitted, capture can infer from `repo_path` for normal flows or use the bound project when it safely matches a project-scoped key
+- `repo_path`, `handoff_path`, and `design_path` remain convenience aliases for common trusted artifacts
+- `extra_artifacts` is the general path for attaching additional evidence such as changed-files manifests, code paths, and PR diffs
 - `body` is optional; `note` is accepted as an alias for the stored memory text
 - `source` is optional and defaults to `manual`
+- each `extra_artifacts[]` item requires `type` and `source_path`; `trust_level` defaults to `trusted`
 - `idempotency_key` should be supplied by agents on writes
 
 ### `POST /v1/promote`

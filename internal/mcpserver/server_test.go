@@ -238,6 +238,51 @@ func TestBuildPacketToolForwardsStyleSelectors(t *testing.T) {
 	}
 }
 
+func TestCaptureToolForwardsExtraArtifacts(t *testing.T) {
+	backend := &captureInputBackend{}
+	server := New(backend)
+
+	serverTransport, clientTransport := mcp.NewInMemoryTransports()
+	ctx := context.Background()
+	go func() {
+		_ = server.Run(ctx, serverTransport)
+	}()
+
+	client := mcp.NewClient(&mcp.Implementation{Name: "relay-mcp-test-client", Version: "v1.0.0"}, nil)
+	session, err := client.Connect(ctx, clientTransport, nil)
+	if err != nil {
+		t.Fatalf("connect: %v", err)
+	}
+	defer session.Close()
+
+	result, err := session.CallTool(ctx, &mcp.CallToolParams{
+		Name: "relay_capture",
+		Arguments: map[string]any{
+			"project": "relay",
+			"body":    "remember the latest code paths",
+			"extra_artifacts": []map[string]any{
+				{"type": "code_path", "source_path": "internal/services/capture.go"},
+				{"type": "changed_files", "source_path": "scripts/evals/fixtures/changed-files/api-first-boundary.txt", "trust_level": "trusted"},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("call capture tool: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("unexpected tool error: %#v", result)
+	}
+	if backend.input.Project != "relay" || backend.input.Body != "remember the latest code paths" {
+		t.Fatalf("unexpected capture input: %#v", backend.input)
+	}
+	if len(backend.input.ExtraArtifacts) != 2 {
+		t.Fatalf("expected 2 extra artifacts, got %#v", backend.input.ExtraArtifacts)
+	}
+	if backend.input.ExtraArtifacts[0].Type != "code_path" || backend.input.ExtraArtifacts[1].Type != "changed_files" {
+		t.Fatalf("unexpected extra artifact forwarding: %#v", backend.input.ExtraArtifacts)
+	}
+}
+
 type packetInputBackend struct {
 	stubBackend
 	input services.PacketBuildInput
@@ -246,6 +291,16 @@ type packetInputBackend struct {
 func (b *packetInputBackend) BuildPacket(_ context.Context, input services.PacketBuildInput) (services.PacketBuildResult, error) {
 	b.input = input
 	return services.PacketBuildResult{ProjectID: lib.ProjectID(input.Project), Type: input.Type, Target: input.Target}, nil
+}
+
+type captureInputBackend struct {
+	stubBackend
+	input services.CaptureInput
+}
+
+func (b *captureInputBackend) Capture(_ context.Context, input services.CaptureInput) (services.CaptureResult, error) {
+	b.input = input
+	return services.CaptureResult{ProjectID: lib.ProjectID(input.Project)}, nil
 }
 
 func TestServiceBackedStdIOAdminToolIssuesAPIKey(t *testing.T) {

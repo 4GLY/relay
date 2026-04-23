@@ -187,6 +187,7 @@ Optional fields:
 - `repo_path`
 - `handoff_path`
 - `design_path`
+- `extra_artifacts`
 - `source`
 - `body`
 - `idempotency_key`
@@ -194,6 +195,8 @@ Optional fields:
 Notes:
 - always send `idempotency_key` on retries or automated writes
 - `project` is optional; if omitted, the server may infer it from `repo_path`
+- `repo_path`, `handoff_path`, and `design_path` are convenience aliases for common trusted artifacts
+- `extra_artifacts` is the general evidence list for items such as `code_path`, `changed_files`, and `pr_diff`
 - `source` defaults to `manual`
 - `body` is optional; `note` is accepted as an alias for the stored text
 

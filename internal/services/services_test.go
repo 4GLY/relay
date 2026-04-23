@@ -245,7 +245,11 @@ func TestCaptureCreatesProjectNoteAndArtifacts(t *testing.T) {
 		RepoPath:    "/tmp/model-manager",
 		HandoffPath: "docs/handoff.md",
 		DesignPath:  "docs/brainstorm.md",
-		Note:        "Need to confirm fallback behavior",
+		ExtraArtifacts: []CaptureArtifactInput{
+			{Type: "code_path", SourcePath: "internal/services/capture.go"},
+			{Type: "changed_files", SourcePath: "scripts/evals/fixtures/changed-files/api-first-boundary.txt"},
+		},
+		Note: "Need to confirm fallback behavior",
 	})
 	if err != nil {
 		t.Fatalf("Capture returned error: %v", err)
@@ -256,8 +260,50 @@ func TestCaptureCreatesProjectNoteAndArtifacts(t *testing.T) {
 	if len(result.CreatedNoteIDs) != 1 {
 		t.Fatalf("expected 1 note, got %d", len(result.CreatedNoteIDs))
 	}
-	if len(result.CreatedArtifactIDs) != 3 {
-		t.Fatalf("expected 3 artifacts, got %d", len(result.CreatedArtifactIDs))
+	if len(result.CreatedArtifactIDs) != 5 {
+		t.Fatalf("expected 5 artifacts, got %d", len(result.CreatedArtifactIDs))
+	}
+	if len(artifacts.items) != 5 {
+		t.Fatalf("expected 5 stored artifacts, got %d", len(artifacts.items))
+	}
+	if artifacts.items[3].Type != "code_path" || artifacts.items[3].TrustLevel != "trusted" {
+		t.Fatalf("expected code_path extra artifact with default trusted level, got %#v", artifacts.items[3])
+	}
+}
+
+func TestCaptureRejectsExtraArtifactWithoutRequiredFields(t *testing.T) {
+	service := New(Dependencies{
+		Projects: &fakeProjectStore{
+			projects: map[string]domain.Project{
+				"relay": {ID: lib.ProjectID("relay"), Name: "relay"},
+			},
+		},
+		Notes:         &fakeNoteStore{},
+		Artifacts:     &fakeArtifactStore{},
+		Decisions:     &fakeDecisionStore{},
+		OpenQuestions: &fakeOpenQuestionStore{},
+		Packets:       &fakePacketStore{},
+		APIKeys:       &fakeAPIKeyStore{},
+	})
+
+	_, err := service.Capture(context.Background(), CaptureInput{
+		Project: "relay",
+		ExtraArtifacts: []CaptureArtifactInput{
+			{Type: "code_path"},
+		},
+	})
+	if err == nil {
+		t.Fatal("expected capture to reject extra artifact without source_path")
+	}
+	appErr, ok := err.(lib.AppError)
+	if !ok {
+		t.Fatalf("expected AppError, got %T", err)
+	}
+	if appErr.Code != "MISSING_REQUIRED_FIELDS" {
+		t.Fatalf("expected MISSING_REQUIRED_FIELDS, got %q", appErr.Code)
+	}
+	if len(appErr.MissingFields) != 1 || appErr.MissingFields[0] != "extra_artifacts[0].source_path" {
+		t.Fatalf("unexpected missing fields: %#v", appErr.MissingFields)
 	}
 }
 

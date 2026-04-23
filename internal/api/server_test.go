@@ -69,16 +69,29 @@ func (s *fakeNoteStore) ListByProject(_ context.Context, projectID string) ([]do
 	return items, nil
 }
 
-type fakeArtifactStore struct{}
+type fakeArtifactStore struct{ items []domain.Artifact }
 
 func (s *fakeArtifactStore) CreateArtifact(_ context.Context, artifact domain.Artifact) (domain.Artifact, error) {
+	s.items = append(s.items, artifact)
 	return artifact, nil
 }
-func (s *fakeArtifactStore) CountByProject(_ context.Context, _ string) (int, error) {
-	return 0, nil
+func (s *fakeArtifactStore) CountByProject(_ context.Context, projectID string) (int, error) {
+	count := 0
+	for _, item := range s.items {
+		if item.ProjectID == projectID {
+			count++
+		}
+	}
+	return count, nil
 }
-func (s *fakeArtifactStore) ListByProject(_ context.Context, _ string) ([]domain.Artifact, error) {
-	return nil, nil
+func (s *fakeArtifactStore) ListByProject(_ context.Context, projectID string) ([]domain.Artifact, error) {
+	var items []domain.Artifact
+	for _, item := range s.items {
+		if item.ProjectID == projectID {
+			items = append(items, item)
+		}
+	}
+	return items, nil
 }
 
 type fakeDecisionStore struct{}
@@ -650,6 +663,36 @@ func TestCaptureRouteRejectsUnknownJSONField(t *testing.T) {
 	}
 	if !bytes.Contains(rec.Body.Bytes(), []byte(`"code":"UNKNOWN_JSON_FIELD"`)) {
 		t.Fatalf("expected unknown field error, got %s", rec.Body.String())
+	}
+}
+
+func TestCaptureRouteAcceptsExtraArtifacts(t *testing.T) {
+	projectID := lib.ProjectID("relay")
+	mux := buildMux(testHandler(projectID), config.Config{APIToken: "admin-token"}, testRuntime(projectID))
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/capture", bytes.NewReader([]byte(`{
+		"project":"relay",
+		"source":"chat",
+		"body":"hello",
+		"extra_artifacts":[
+			{"type":"code_path","source_path":"internal/services/capture.go"},
+			{"type":"pr_diff","source_path":"scripts/evals/fixtures/pr-diffs/api-first-boundary.diff.md","trust_level":"trusted"}
+		]
+	}`)))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer admin-token")
+	rec := httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
+	}
+	if !bytes.Contains(rec.Body.Bytes(), []byte(`"created_artifact_ids"`)) {
+		t.Fatalf("expected created_artifact_ids in response, got %s", rec.Body.String())
+	}
+	if !bytes.Contains(rec.Body.Bytes(), []byte(`"art_`)) {
+		t.Fatalf("expected artifact ids in response, got %s", rec.Body.String())
 	}
 }
 

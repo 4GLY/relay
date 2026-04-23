@@ -115,22 +115,38 @@ func (s *Server) healthTool(ctx context.Context, _ *mcp.CallToolRequest, _ healt
 }
 
 type captureInput struct {
-	Project        string `json:"project,omitempty" jsonschema:"Optional project name. When omitted, the server may infer the project from repo_path or use the bound project when it safely matches a project-scoped key"`
-	Source         string `json:"source,omitempty" jsonschema:"Optional memory source such as chat, markdown, or manual. Defaults to manual"`
-	Body           string `json:"body,omitempty" jsonschema:"Optional raw memory text to store. You can also supply note as an alias"`
-	Note           string `json:"note,omitempty" jsonschema:"Alias for body. Optional raw memory text to store"`
-	RepoPath       string `json:"repo_path,omitempty" jsonschema:"Optional repo path artifact to attach"`
-	HandoffPath    string `json:"handoff_path,omitempty" jsonschema:"Optional handoff markdown path to attach"`
-	DesignPath     string `json:"design_path,omitempty" jsonschema:"Optional design document path to attach"`
-	IdempotencyKey string `json:"idempotency_key,omitempty" jsonschema:"Optional but recommended write key for safe retries"`
+	Project        string                 `json:"project,omitempty" jsonschema:"Optional project name. When omitted, the server may infer the project from repo_path or use the bound project when it safely matches a project-scoped key"`
+	Source         string                 `json:"source,omitempty" jsonschema:"Optional memory source such as chat, markdown, or manual. Defaults to manual"`
+	Body           string                 `json:"body,omitempty" jsonschema:"Optional raw memory text to store. You can also supply note as an alias"`
+	Note           string                 `json:"note,omitempty" jsonschema:"Alias for body. Optional raw memory text to store"`
+	RepoPath       string                 `json:"repo_path,omitempty" jsonschema:"Optional repo path artifact to attach"`
+	HandoffPath    string                 `json:"handoff_path,omitempty" jsonschema:"Optional handoff markdown path to attach"`
+	DesignPath     string                 `json:"design_path,omitempty" jsonschema:"Optional design document path to attach"`
+	ExtraArtifacts []captureArtifactInput `json:"extra_artifacts,omitempty" jsonschema:"Optional additional trusted artifacts to attach such as changed files, code paths, or PR diffs"`
+	IdempotencyKey string                 `json:"idempotency_key,omitempty" jsonschema:"Optional but recommended write key for safe retries"`
+}
+
+type captureArtifactInput struct {
+	Type       string `json:"type" jsonschema:"Artifact type such as code_path, changed_files, or pr_diff"`
+	SourcePath string `json:"source_path" jsonschema:"Local or canonical path for the artifact"`
+	TrustLevel string `json:"trust_level,omitempty" jsonschema:"Optional trust level. Defaults to trusted"`
 }
 
 func (s *Server) captureTool(ctx context.Context, _ *mcp.CallToolRequest, input captureInput) (*mcp.CallToolResult, services.CaptureResult, error) {
+	extraArtifacts := make([]services.CaptureArtifactInput, 0, len(input.ExtraArtifacts))
+	for _, artifact := range input.ExtraArtifacts {
+		extraArtifacts = append(extraArtifacts, services.CaptureArtifactInput{
+			Type:       artifact.Type,
+			SourcePath: artifact.SourcePath,
+			TrustLevel: artifact.TrustLevel,
+		})
+	}
 	result, err := s.backend.Capture(ctx, services.CaptureInput{
 		Project:        input.Project,
 		RepoPath:       input.RepoPath,
 		HandoffPath:    input.HandoffPath,
 		DesignPath:     input.DesignPath,
+		ExtraArtifacts: extraArtifacts,
 		Source:         input.Source,
 		Body:           input.Body,
 		Note:           input.Note,

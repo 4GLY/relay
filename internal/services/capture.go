@@ -2,8 +2,11 @@ package services
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
+	"strings"
 
+	"relay/internal/contracts"
 	"relay/internal/domain"
 	"relay/internal/lib"
 )
@@ -63,22 +66,11 @@ func (s Service) Capture(ctx context.Context, input CaptureInput) (CaptureResult
 		result.CreatedNoteIDs = append(result.CreatedNoteIDs, note.ID)
 	}
 
-	artifactSpecs := []struct {
-		kind     string
-		path     string
-		trust    string
-		idSuffix string
-	}{
-		{kind: "git_commits", path: input.RepoPath, trust: "trusted", idSuffix: "repo"},
-		{kind: "handoff_md", path: input.HandoffPath, trust: "trusted", idSuffix: "handoff"},
-		{kind: "design_doc", path: input.DesignPath, trust: "trusted", idSuffix: "design"},
-	}
-
-	for _, spec := range artifactSpecs {
+	for _, spec := range buildCaptureArtifactSpecs(input) {
 		if spec.path == "" || projectID == "" {
 			continue
 		}
-		artifactID := artifactIDFor(input.IdempotencyKey, spec.idSuffix, spec.path)
+		artifactID := artifactIDFor(input.IdempotencyKey, spec.idSuffix, spec.kind, spec.path)
 		artifact, err := s.deps.Artifacts.CreateArtifact(ctx, domain.Artifact{
 			ID:         artifactID,
 			ProjectID:  projectID,
@@ -95,6 +87,34 @@ func (s Service) Capture(ctx context.Context, input CaptureInput) (CaptureResult
 	return result, nil
 }
 
+type captureArtifactSpec struct {
+	kind     string
+	path     string
+	trust    string
+	idSuffix string
+}
+
+func buildCaptureArtifactSpecs(input CaptureInput) []captureArtifactSpec {
+	specs := []captureArtifactSpec{
+		{kind: string(contracts.ArtifactKindGitCommits), path: input.RepoPath, trust: "trusted", idSuffix: "repo"},
+		{kind: string(contracts.ArtifactKindLegacyHandoff), path: input.HandoffPath, trust: "trusted", idSuffix: "handoff"},
+		{kind: string(contracts.ArtifactKindDesignDoc), path: input.DesignPath, trust: "trusted", idSuffix: "design"},
+	}
+	for idx, artifact := range input.ExtraArtifacts {
+		trust := strings.TrimSpace(artifact.TrustLevel)
+		if trust == "" {
+			trust = "trusted"
+		}
+		specs = append(specs, captureArtifactSpec{
+			kind:     artifact.Type,
+			path:     artifact.SourcePath,
+			trust:    trust,
+			idSuffix: fmt.Sprintf("extra-%d", idx),
+		})
+	}
+	return specs
+}
+
 func noteIDFor(idempotencyKey string, body string) string {
 	if idempotencyKey != "" {
 		return lib.StableID("note", "capture:"+idempotencyKey+":note")
@@ -102,9 +122,9 @@ func noteIDFor(idempotencyKey string, body string) string {
 	return lib.StableID("note", body)
 }
 
-func artifactIDFor(idempotencyKey string, suffix string, sourcePath string) string {
+func artifactIDFor(idempotencyKey string, suffix string, kind string, sourcePath string) string {
 	if idempotencyKey != "" {
-		return lib.StableID("art", "capture:"+idempotencyKey+":"+suffix)
+		return lib.StableID("art", "capture:"+idempotencyKey+":"+suffix+":"+kind+":"+sourcePath)
 	}
-	return lib.StableID("art", suffix+":"+sourcePath)
+	return lib.StableID("art", suffix+":"+kind+":"+sourcePath)
 }

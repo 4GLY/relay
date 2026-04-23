@@ -8,6 +8,7 @@ func decodeCaptureInput(payload map[string]any) services.CaptureInput {
 		RepoPath:       stringField(payload, "repo_path"),
 		HandoffPath:    stringField(payload, "handoff_path"),
 		DesignPath:     stringField(payload, "design_path"),
+		ExtraArtifacts: captureArtifactField(payload, "extra_artifacts"),
 		Note:           stringField(payload, "note"),
 		Source:         stringField(payload, "source"),
 		Body:           stringField(payload, "body"),
@@ -65,6 +66,30 @@ func stringSliceField(payload map[string]any, key string) []string {
 		if str, ok := item.(string); ok {
 			result = append(result, str)
 		}
+	}
+	return result
+}
+
+func captureArtifactField(payload map[string]any, key string) []services.CaptureArtifactInput {
+	value, ok := payload[key]
+	if !ok {
+		return nil
+	}
+	items, ok := value.([]any)
+	if !ok {
+		return nil
+	}
+	result := make([]services.CaptureArtifactInput, 0, len(items))
+	for _, item := range items {
+		object, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+		result = append(result, services.CaptureArtifactInput{
+			Type:       stringField(object, "type"),
+			SourcePath: stringField(object, "source_path"),
+			TrustLevel: stringField(object, "trust_level"),
+		})
 	}
 	return result
 }

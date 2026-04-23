@@ -2,15 +2,22 @@ package services
 
 import "time"
 
+type CaptureArtifactInput struct {
+	Type       string `json:"type"`
+	SourcePath string `json:"source_path"`
+	TrustLevel string `json:"trust_level,omitempty"`
+}
+
 type CaptureInput struct {
-	Project        string `json:"project"`
-	RepoPath       string `json:"repo_path"`
-	HandoffPath    string `json:"handoff_path"`
-	DesignPath     string `json:"design_path"`
-	Note           string `json:"note"`
-	Source         string `json:"source"`
-	Body           string `json:"body"`
-	IdempotencyKey string `json:"idempotency_key"`
+	Project        string                 `json:"project"`
+	RepoPath       string                 `json:"repo_path"`
+	HandoffPath    string                 `json:"handoff_path"`
+	DesignPath     string                 `json:"design_path"`
+	ExtraArtifacts []CaptureArtifactInput `json:"extra_artifacts,omitempty"`
+	Note           string                 `json:"note"`
+	Source         string                 `json:"source"`
+	Body           string                 `json:"body"`
+	IdempotencyKey string                 `json:"idempotency_key"`
 }
 
 type CaptureResult struct {

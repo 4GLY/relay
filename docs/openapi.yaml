@@ -78,6 +78,11 @@ components:
         design_path:
           type: string
           description: Optional design document path to attach.
+        extra_artifacts:
+          type: array
+          description: Optional additional trusted artifacts such as changed-files manifests, code paths, or PR diffs.
+          items:
+            $ref: '#/components/schemas/CaptureArtifactInput'
         source:
           type: string
           default: manual
@@ -105,6 +110,19 @@ components:
           type: array
           items:
             type: string
+    CaptureArtifactInput:
+      type: object
+      required: [type, source_path]
+      properties:
+        type:
+          type: string
+          description: Artifact type such as code_path, changed_files, or pr_diff.
+        source_path:
+          type: string
+          description: Canonical path for the artifact.
+        trust_level:
+          type: string
+          description: Optional trust level. Defaults to trusted.
     PromoteInput:
       type: object
       properties:

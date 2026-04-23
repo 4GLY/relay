@@ -52,7 +52,7 @@ func (s Service) BuildPacket(ctx context.Context, input PacketBuildInput) (Packe
 
 	selectedDecisions := limitDecisions(decisions, 3)
 	selectedQuestions := limitQuestions(questions, 3)
-	selectedArtifacts := limitArtifacts(artifacts, 5)
+	selectedArtifacts := limitArtifacts(artifacts, 8)
 	selectedNotes := limitNotes(notes, 3)
 	supportingNotes := summarizeNotes(selectedNotes)
 	supportingDecisions := summarizeDecisions(selectedDecisions)
@@ -68,18 +68,18 @@ func (s Service) BuildPacket(ctx context.Context, input PacketBuildInput) (Packe
 		taskSummary = fmt.Sprintf("resume work on %s", project.Name)
 	}
 	renderedBody := buildResumeBody(packetRenderInput{
-		ProjectName:          project.Name,
-		TaskSummary:          taskSummary,
-		TotalNotes:           len(notes),
-		TotalArtifacts:       len(artifacts),
-		TotalDecisions:       len(decisions),
-		TotalOpenQuestions:   len(questions),
-		SupportingNotes:      supportingNotes,
-		SupportingDecisions:  supportingDecisions,
-		SupportingQuestions:  supportingQuestions,
-		SupportingArtifacts:  supportingArtifacts,
-		StyleCues:            styleCues,
-		WhyIncluded:          whyIncluded,
+		ProjectName:         project.Name,
+		TaskSummary:         taskSummary,
+		TotalNotes:          len(notes),
+		TotalArtifacts:      len(artifacts),
+		TotalDecisions:      len(decisions),
+		TotalOpenQuestions:  len(questions),
+		SupportingNotes:     supportingNotes,
+		SupportingDecisions: supportingDecisions,
+		SupportingQuestions: supportingQuestions,
+		SupportingArtifacts: supportingArtifacts,
+		StyleCues:           styleCues,
+		WhyIncluded:         whyIncluded,
 	})
 
 	packet := domain.Packet{
@@ -132,18 +132,18 @@ func (s Service) BuildPacket(ctx context.Context, input PacketBuildInput) (Packe
 }
 
 type packetRenderInput struct {
-	ProjectName        string
-	TaskSummary        string
-	TotalNotes         int
-	TotalArtifacts     int
-	TotalDecisions     int
-	TotalOpenQuestions int
-	SupportingNotes    []PacketNote
+	ProjectName         string
+	TaskSummary         string
+	TotalNotes          int
+	TotalArtifacts      int
+	TotalDecisions      int
+	TotalOpenQuestions  int
+	SupportingNotes     []PacketNote
 	SupportingDecisions []PacketDecision
 	SupportingQuestions []PacketQuestion
 	SupportingArtifacts []PacketArtifact
-	StyleCues          []PacketStyleCue
-	WhyIncluded        []string
+	StyleCues           []PacketStyleCue
+	WhyIncluded         []string
 }
 
 func buildResumeBody(input packetRenderInput) string {

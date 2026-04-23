@@ -33,9 +33,9 @@ The runner writes:
 
 ## Flow
 
-1. `POST /v1/capture` creates or updates the acceptance project.
-2. `POST /v1/promote` creates one durable decision from the seed memory.
-3. `POST /v1/promote` creates one open question from the same seed memory.
+1. `POST /v1/capture` creates or updates the acceptance project and attaches trusted repo, handoff, and design artifacts.
+2. `POST /v1/promote` creates one durable decision from the seed memory and links the captured artifacts as supporting evidence.
+3. `POST /v1/promote` creates one open question from the same seed memory and links the same supporting artifacts.
 4. `POST /v1/judgment-traces` stores the seed judgment.
 5. `POST /v1/heuristic-proposals` creates a pending proposal from the trace.
 6. `POST /v1/heuristic-proposals/review` approves it through the admin path.
@@ -61,6 +61,33 @@ The judge script writes:
 - `.gstack/projects/relay/<run_id>/paired-comparison.json`
 
 The judge is intentionally blind to which packet is style-aware. It maps packet A/B back to `style-aware` or `control` only after the model returns its preference.
+
+## Repeated Usage Validation
+
+For the next-stage benchmark, run the fixture batch instead of a single canonical seed:
+
+```bash
+set -a; source .env; set +a
+./scripts/evals/v1_usage_validation_batch.sh \
+  --fixtures-file scripts/evals/fixtures/v1_usage_validation.json \
+  --base-url "${RELAY_BASE_URL:-https://relay.4gly.dev}" \
+  --model claude-opus-4.7
+```
+
+The batch runner:
+
+- reuses the same acceptance contract for multiple scenarios
+- attaches richer evidence pointers including code paths, changed-files manifests, and PR-diff summaries
+- runs the blind paired judge after each fixture
+- writes `batch-runs.jsonl` plus `batch-summary.json` and `batch-summary.md`
+- evaluates a release gate from style-aware win rate, average `style_match`, and budget-pass rate
+
+Outputs land under:
+
+- `.gstack/projects/relay/batches/<batch_id>/fixtures.json`
+- `.gstack/projects/relay/batches/<batch_id>/batch-runs.jsonl`
+- `.gstack/projects/relay/batches/<batch_id>/batch-summary.json`
+- `.gstack/projects/relay/batches/<batch_id>/batch-summary.md`
 
 ## Pass Conditions
 

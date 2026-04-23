@@ -2,17 +2,21 @@ package services
 
 import (
 	"fmt"
+	"strings"
 	"unicode/utf8"
 
 	"relay/internal/lib"
 )
 
 const (
-	maxCaptureProjectLength     = 128
-	maxCapturePathLength        = 2048
-	maxCaptureTextLength        = 8192
-	maxCaptureSourceLength      = 64
-	maxCaptureIdempotencyLength = 128
+	maxCaptureProjectLength      = 128
+	maxCapturePathLength         = 2048
+	maxCaptureTextLength         = 8192
+	maxCaptureSourceLength       = 64
+	maxCaptureIdempotencyLength  = 128
+	maxCaptureArtifacts          = 32
+	maxCaptureArtifactTypeLength = 64
+	maxCaptureTrustLevelLength   = 64
 
 	maxPromoteProjectLength     = 128
 	maxPromoteKindLength        = 32
@@ -88,6 +92,30 @@ func validateCaptureInput(input CaptureInput) error {
 	}
 	if err := validateStringFieldLength("design_path", input.DesignPath, maxCapturePathLength); err != nil {
 		return err
+	}
+	if len(input.ExtraArtifacts) > maxCaptureArtifacts {
+		return lib.AppError{
+			Code:      "FIELD_TOO_MANY_ITEMS",
+			Message:   fmt.Sprintf("extra_artifacts exceeds maximum item count of %d", maxCaptureArtifacts),
+			Retryable: false,
+		}
+	}
+	for idx, artifact := range input.ExtraArtifacts {
+		if strings.TrimSpace(artifact.Type) == "" {
+			return lib.MissingFields("MISSING_REQUIRED_FIELDS", fmt.Sprintf("extra_artifacts[%d].type", idx))
+		}
+		if strings.TrimSpace(artifact.SourcePath) == "" {
+			return lib.MissingFields("MISSING_REQUIRED_FIELDS", fmt.Sprintf("extra_artifacts[%d].source_path", idx))
+		}
+		if err := validateStringFieldLength(fmt.Sprintf("extra_artifacts[%d].type", idx), artifact.Type, maxCaptureArtifactTypeLength); err != nil {
+			return err
+		}
+		if err := validateStringFieldLength(fmt.Sprintf("extra_artifacts[%d].source_path", idx), artifact.SourcePath, maxCapturePathLength); err != nil {
+			return err
+		}
+		if err := validateStringFieldLength(fmt.Sprintf("extra_artifacts[%d].trust_level", idx), artifact.TrustLevel, maxCaptureTrustLevelLength); err != nil {
+			return err
+		}
 	}
 	if err := validateStringFieldLength("note", input.Note, maxCaptureTextLength); err != nil {
 		return err

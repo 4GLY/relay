@@ -1,0 +1,237 @@
+[
+  {
+    "id": "api-first-boundary",
+    "scenario_label": "api-first-boundary",
+    "design_path": "docs/api.md",
+    "extra_artifacts": [
+      {
+        "type": "code_path",
+        "source_path": "internal/api/server.go",
+        "trust_level": "trusted"
+      },
+      {
+        "type": "changed_files",
+        "source_path": "scripts/evals/fixtures/artifacts/changed-files/api-first-boundary.txt",
+        "trust_level": "trusted"
+      },
+      {
+        "type": "pr_diff",
+        "source_path": "scripts/evals/fixtures/artifacts/pr-diffs/api-first-boundary.md",
+        "trust_level": "trusted"
+      }
+    ],
+    "task_summary": "Resume Relay contract work by checking API-visible behavior before changing wrapper flows.",
+    "capture_body": "Relay usage validation fixture: api-first-boundary\nUser style seed:\n- Treat the HTTP API as the product contract.\n- Treat CLI and MCP as adapters, not separate products.\n- Avoid wrapper-only behavior that the next model cannot verify through the public API.",
+    "decision_summary": "Keep the HTTP API as the product contract and treat CLI and MCP as adapters.",
+    "decision_reason": "Cross-model handoff stays stable only when the next agent can rely on API-visible behavior instead of wrapper quirks.",
+    "question_summary": "Which API examples should the next agent inspect before adding new wrapper-only behavior?",
+    "trace_decision": "Choose API-contract evidence over CLI-specific convenience when the two differ.",
+    "trace_alternatives": [
+      "Infer product behavior from the local wrapper flow and shell commands."
+    ],
+    "trace_rationale": "A new model can verify API endpoints directly, but cannot safely infer durable behavior from local wrappers.",
+    "trace_constraints": [
+      "API is the product contract",
+      "Adapters must not invent product-only state"
+    ],
+    "trace_source_refs": [
+      "docs/api.md",
+      "docs/mcp.md"
+    ],
+    "heuristic_key": "api_contracts_over_wrappers",
+    "heuristic_canonical_text": "Prefer API-contract evidence over wrapper-specific behavior when handing work across models or sessions.",
+    "heuristic_normalized_text": "prefer api contract evidence over wrapper specific behavior for handoff",
+    "proposal_source_refs": [
+      "docs/api.md",
+      "docs/mcp.md"
+    ]
+  },
+  {
+    "id": "approval-gate",
+    "scenario_label": "approval-gate",
+    "design_path": "docs/api.md",
+    "extra_artifacts": [
+      {
+        "type": "code_path",
+        "source_path": "internal/services/style_memory.go",
+        "trust_level": "trusted"
+      },
+      {
+        "type": "changed_files",
+        "source_path": "scripts/evals/fixtures/artifacts/changed-files/approval-gate.txt",
+        "trust_level": "trusted"
+      },
+      {
+        "type": "pr_diff",
+        "source_path": "scripts/evals/fixtures/artifacts/pr-diffs/approval-gate.md",
+        "trust_level": "trusted"
+      }
+    ],
+    "task_summary": "Resume Relay style-memory work without bypassing human approval for durable heuristics.",
+    "capture_body": "Relay usage validation fixture: approval-gate\nUser style seed:\n- Human approval controls durable style memory.\n- Curator output is a proposal, not a fact.\n- The next model should preserve the review boundary instead of automating around it.",
+    "decision_summary": "Only reviewed proposals may become durable heuristics.",
+    "decision_reason": "Style memory becomes noisy if the system promotes heuristics without an explicit human gate.",
+    "question_summary": "What evidence bundle should each proposal carry before admin approval?",
+    "trace_decision": "Do not let the curator or packet builder auto-approve heuristics.",
+    "trace_alternatives": [
+      "Allow the system to promote heuristics automatically after repeated traces."
+    ],
+    "trace_rationale": "The user wants continuity, but not silent drift in durable memory quality.",
+    "trace_constraints": [
+      "Curator emits proposals only",
+      "Approval remains a human-controlled boundary"
+    ],
+    "trace_source_refs": [
+      "docs/api.md",
+      "docs/evals/v1-canonical-handoff.md"
+    ],
+    "heuristic_key": "approval_before_durable_memory",
+    "heuristic_canonical_text": "Require explicit human approval before a style heuristic becomes durable memory.",
+    "heuristic_normalized_text": "require explicit human approval before durable style memory",
+    "proposal_source_refs": [
+      "docs/api.md",
+      "docs/evals/v1-canonical-handoff.md"
+    ]
+  },
+  {
+    "id": "session-without-summary",
+    "scenario_label": "session-without-summary",
+    "design_path": "docs/mcp.md",
+    "extra_artifacts": [
+      {
+        "type": "code_path",
+        "source_path": "internal/services/packets.go",
+        "trust_level": "trusted"
+      },
+      {
+        "type": "changed_files",
+        "source_path": "scripts/evals/fixtures/artifacts/changed-files/session-without-summary.txt",
+        "trust_level": "trusted"
+      },
+      {
+        "type": "pr_diff",
+        "source_path": "scripts/evals/fixtures/artifacts/pr-diffs/session-without-summary.md",
+        "trust_level": "trusted"
+      }
+    ],
+    "task_summary": "Resume the same Relay project without relying on a manual chat recap from the previous model.",
+    "capture_body": "Relay usage validation fixture: session-without-summary\nUser style seed:\n- The next agent should continue from the packet itself.\n- Manual recap is a fallback, not the happy path.\n- Packets should preserve enough explicit context that a new model can act immediately.",
+    "decision_summary": "Design the handoff around packet-first continuation, not manual recap.",
+    "decision_reason": "A new session should be able to continue work from structured memory and cited evidence alone.",
+    "question_summary": "Which packet fields most reduce the need for a manual chat summary?",
+    "trace_decision": "Prefer packet-contained evidence over free-form recap when resuming a session.",
+    "trace_alternatives": [
+      "Rely on a human-written summary to restate the prior design intent."
+    ],
+    "trace_rationale": "Session continuity is only real if the next model can resume from the handoff packet without hidden chat state.",
+    "trace_constraints": [
+      "Public MCP stays packet-centric",
+      "Continuation should not depend on private chat history"
+    ],
+    "trace_source_refs": [
+      "docs/mcp.md",
+      "docs/evals/v1-canonical-handoff.md"
+    ],
+    "heuristic_key": "packet_before_manual_summary",
+    "heuristic_canonical_text": "Prefer packet-contained evidence over manual recap when resuming work across models or sessions.",
+    "heuristic_normalized_text": "prefer packet contained evidence over manual recap for handoff",
+    "proposal_source_refs": [
+      "docs/mcp.md",
+      "docs/evals/v1-canonical-handoff.md"
+    ]
+  },
+  {
+    "id": "same-project-first",
+    "scenario_label": "same-project-first",
+    "design_path": "docs/research/context-graph-and-semantic-retrieval.md",
+    "extra_artifacts": [
+      {
+        "type": "code_path",
+        "source_path": "internal/services/capture.go",
+        "trust_level": "trusted"
+      },
+      {
+        "type": "changed_files",
+        "source_path": "scripts/evals/fixtures/artifacts/changed-files/same-project-first.txt",
+        "trust_level": "trusted"
+      },
+      {
+        "type": "pr_diff",
+        "source_path": "scripts/evals/fixtures/artifacts/pr-diffs/same-project-first.md",
+        "trust_level": "trusted"
+      }
+    ],
+    "task_summary": "Resume Relay continuity work by proving same-project style carryover before claiming broader implicit learning.",
+    "capture_body": "Relay usage validation fixture: same-project-first\nUser style seed:\n- Prove same-project continuity before broader claims.\n- Do not generalize across projects until one project works repeatedly.\n- The next agent should preserve that sequencing discipline.",
+    "decision_summary": "Prove same-project continuity before cross-project generalization.",
+    "decision_reason": "The product claim is credible only if one project shows repeated, style-aware continuation first.",
+    "question_summary": "What evidence is still missing before cross-project style claims become defensible?",
+    "trace_decision": "Choose same-project proof over early cross-project expansion.",
+    "trace_alternatives": [
+      "Start learning broadly across projects before one project is stable."
+    ],
+    "trace_rationale": "The user wants a believable wedge, not a vague promise of general intelligence.",
+    "trace_constraints": [
+      "Same-project proof comes first",
+      "Expansion claims need repeated evidence"
+    ],
+    "trace_source_refs": [
+      "docs/research/context-graph-and-semantic-retrieval.md",
+      "docs/evals/v1-canonical-handoff.md"
+    ],
+    "heuristic_key": "same_project_before_generalization",
+    "heuristic_canonical_text": "Prefer same-project proof over early cross-project generalization when evaluating continuity quality.",
+    "heuristic_normalized_text": "prefer same project proof over early cross project generalization",
+    "proposal_source_refs": [
+      "docs/research/context-graph-and-semantic-retrieval.md",
+      "docs/evals/v1-canonical-handoff.md"
+    ]
+  },
+  {
+    "id": "retrieval-after-repeatability",
+    "scenario_label": "retrieval-after-repeatability",
+    "design_path": "docs/research/context-graph-and-semantic-retrieval.md",
+    "extra_artifacts": [
+      {
+        "type": "code_path",
+        "source_path": "scripts/evals/v1_usage_validation_report.py",
+        "trust_level": "trusted"
+      },
+      {
+        "type": "changed_files",
+        "source_path": "scripts/evals/fixtures/artifacts/changed-files/retrieval-after-repeatability.txt",
+        "trust_level": "trusted"
+      },
+      {
+        "type": "pr_diff",
+        "source_path": "scripts/evals/fixtures/artifacts/pr-diffs/retrieval-after-repeatability.md",
+        "trust_level": "trusted"
+      }
+    ],
+    "task_summary": "Resume Relay roadmap work by delaying retrieval features until repeated style-aware wins are visible.",
+    "capture_body": "Relay usage validation fixture: retrieval-after-repeatability\nUser style seed:\n- Retrieval is downstream of proof, not a substitute for proof.\n- Packet evidence and repeated eval come before semantic retrieval.\n- The next agent should preserve that implementation order.",
+    "decision_summary": "Prioritize repeated eval and packet evidence before semantic retrieval.",
+    "decision_reason": "Adding retrieval too early makes it harder to tell whether continuation quality came from better evidence or a more complex stack.",
+    "question_summary": "Which repeated-eval metrics should gate the first retrieval-aware packet composer?",
+    "trace_decision": "Delay query-conditioned retrieval until repeated style-aware wins exist.",
+    "trace_alternatives": [
+      "Add semantic retrieval immediately and hope the quality gain is obvious."
+    ],
+    "trace_rationale": "The roadmap should separate proving the wedge from scaling the memory system.",
+    "trace_constraints": [
+      "Repeated eval precedes retrieval rollout",
+      "Packet evidence stays interpretable"
+    ],
+    "trace_source_refs": [
+      "docs/research/context-graph-and-semantic-retrieval.md",
+      "docs/evals/v1-canonical-handoff.md"
+    ],
+    "heuristic_key": "repeatability_before_retrieval",
+    "heuristic_canonical_text": "Prefer repeated style-aware evaluation before adding retrieval complexity to the handoff path.",
+    "heuristic_normalized_text": "prefer repeated style aware evaluation before adding retrieval complexity",
+    "proposal_source_refs": [
+      "docs/research/context-graph-and-semantic-retrieval.md",
+      "docs/evals/v1-canonical-handoff.md"
+    ]
+  }
+]

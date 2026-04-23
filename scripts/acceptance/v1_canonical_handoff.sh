@@ -9,6 +9,11 @@ OUTPUT_ROOT="${RELAY_ACCEPTANCE_OUTPUT_ROOT:-.gstack/projects/relay}"
 FIXTURE_ID="${RELAY_ACCEPTANCE_FIXTURE_ID:-v1-canonical-$(date -u +%Y%m%dT%H%M%SZ)}"
 PROJECT="${RELAY_ACCEPTANCE_PROJECT:-relay-${FIXTURE_ID}}"
 RUN_ID="${RELAY_ACCEPTANCE_RUN_ID:-$(date -u +%Y%m%dT%H%M%SZ)-${FIXTURE_ID}}"
+REPO_PATH="${RELAY_ACCEPTANCE_REPO_PATH:-$(pwd -P)}"
+HANDOFF_PATH="${RELAY_ACCEPTANCE_HANDOFF_PATH:-scripts/acceptance/v1_canonical_handoff.sh}"
+DESIGN_PATH="${RELAY_ACCEPTANCE_DESIGN_PATH:-docs/evals/v1-canonical-handoff.md}"
+EXTRA_ARTIFACTS_JSON="${RELAY_ACCEPTANCE_EXTRA_ARTIFACTS_JSON:-[]}"
+SCENARIO_LABEL="${RELAY_ACCEPTANCE_SCENARIO_LABEL:-${FIXTURE_ID}}"
 
 STYLE_MATCH="${RELAY_ACCEPTANCE_STYLE_MATCH:-0}"
 HEURISTIC_RELEVANCE="${RELAY_ACCEPTANCE_HEURISTIC_RELEVANCE:-yes}"
@@ -20,6 +25,33 @@ PACKET_BUILD_BUDGET_MS="${RELAY_ACCEPTANCE_PACKET_BUILD_BUDGET_MS:-5000}"
 MCP_RESUME_BUDGET_MS="${RELAY_ACCEPTANCE_MCP_RESUME_BUDGET_MS:-10000}"
 FIRST_RESPONSE_BUDGET_MS="${RELAY_ACCEPTANCE_FIRST_RESPONSE_BUDGET_MS:-45000}"
 TOTAL_BUDGET_MS="${RELAY_ACCEPTANCE_TOTAL_BUDGET_MS:-60000}"
+
+default_capture_body() {
+  cat <<EOF
+Relay V1 canonical handoff fixture ${FIXTURE_ID}
+User style seed:
+- Prefer explicit contracts over implicit inference across model and session handoff.
+- Keep Relay API-first and keep public MCP packet-centric.
+- Human approval controls durable heuristics.
+- Same-project proof comes before broader implicit-learning claims.
+EOF
+}
+
+default_trace_alternatives_json() {
+  printf '%s\n' '["Let the next model infer the product contract from chat history."]'
+}
+
+default_trace_constraints_json() {
+  printf '%s\n' '["Same-project V1 proof first","Public MCP remains packet-centric"]'
+}
+
+default_trace_source_refs_json() {
+  printf '%s\n' '["scripts/acceptance/v1_canonical_handoff.sh","docs/evals/v1-canonical-handoff.md"]'
+}
+
+default_proposal_source_refs_json() {
+  printf '%s\n' '["docs/evals/v1-canonical-handoff.md"]'
+}
 
 usage() {
   cat <<EOF
@@ -178,6 +210,7 @@ Run purpose:
 
 Fixture:
 - fixture_id: \`${FIXTURE_ID}\`
+- scenario: \`${SCENARIO_LABEL}\`
 - project: \`${PROJECT}\`
 - project_id: \`${PROJECT_ID}\`
 
@@ -228,6 +261,25 @@ main() {
     exit 1
   fi
 
+  local workflow="${RELAY_ACCEPTANCE_WORKFLOW:-design_handoff}"
+  local artifact_type="${RELAY_ACCEPTANCE_ARTIFACT_TYPE:-design_doc}"
+  local packet_type="${RELAY_ACCEPTANCE_PACKET_TYPE:-style_handoff}"
+  local packet_target="${RELAY_ACCEPTANCE_PACKET_TARGET:-codex}"
+  local task_summary="${RELAY_ACCEPTANCE_TASK_SUMMARY:-Resume Relay V1 implementation from the canonical same-project handoff fixture.}"
+  local capture_body_text="${RELAY_ACCEPTANCE_CAPTURE_BODY:-$(default_capture_body)}"
+  local decision_summary="${RELAY_ACCEPTANCE_DECISION_SUMMARY:-Keep Relay API-first and keep public MCP packet-centric for V1 handoff.}"
+  local decision_reason="${RELAY_ACCEPTANCE_DECISION_REASON:-The next agent should continue from explicit packet contracts instead of hidden chat state.}"
+  local question_summary="${RELAY_ACCEPTANCE_QUESTION_SUMMARY:-What additional packet evidence is still needed before semantic retrieval is introduced?}"
+  local trace_decision="${RELAY_ACCEPTANCE_TRACE_DECISION:-Prefer explicit contracts over implicit inference for model-to-model handoff.}"
+  local trace_alternatives_json="${RELAY_ACCEPTANCE_TRACE_ALTERNATIVES_JSON:-$(default_trace_alternatives_json)}"
+  local trace_rationale="${RELAY_ACCEPTANCE_TRACE_RATIONALE:-The next model should preserve user decision style without re-reading the whole conversation.}"
+  local trace_constraints_json="${RELAY_ACCEPTANCE_TRACE_CONSTRAINTS_JSON:-$(default_trace_constraints_json)}"
+  local trace_source_refs_json="${RELAY_ACCEPTANCE_TRACE_SOURCE_REFS_JSON:-$(default_trace_source_refs_json)}"
+  local heuristic_key="${RELAY_ACCEPTANCE_HEURISTIC_KEY:-explicit_contracts_over_magic}"
+  local heuristic_canonical_text="${RELAY_ACCEPTANCE_HEURISTIC_CANONICAL_TEXT:-Prefer explicit contracts over magic inference when handing work from one model or session to another.}"
+  local heuristic_normalized_text="${RELAY_ACCEPTANCE_HEURISTIC_NORMALIZED_TEXT:-prefer explicit contracts over magic inference for model-to-model handoff}"
+  local proposal_source_refs_json="${RELAY_ACCEPTANCE_PROPOSAL_SOURCE_REFS_JSON:-$(default_proposal_source_refs_json)}"
+
   local output_dir="${OUTPUT_ROOT%/}/${RUN_ID}"
   local result_file="${output_dir}/result.json"
   local summary_file="${output_dir}/summary.md"
@@ -239,54 +291,87 @@ main() {
   api_json "" GET "/healthz" >/dev/null
 
   local capture_body capture_response
-  capture_body="$(jq -nc --arg project "$PROJECT" --arg fixture "$FIXTURE_ID" '{
+  capture_body="$(jq -nc \
+    --arg project "$PROJECT" \
+    --arg body "$capture_body_text" \
+    --arg repo_path "$REPO_PATH" \
+    --arg handoff_path "$HANDOFF_PATH" \
+    --arg design_path "$DESIGN_PATH" \
+    --argjson extra_artifacts "$EXTRA_ARTIFACTS_JSON" \
+    '{
     project: $project,
     source: "acceptance",
-    body: ("Relay V1 canonical handoff fixture " + $fixture + "\n" +
-      "User style seed:\n" +
-      "- Prefer explicit contracts over implicit inference across model and session handoff.\n" +
-      "- Keep Relay API-first and keep public MCP packet-centric.\n" +
-      "- Human approval controls durable heuristics.\n" +
-      "- Same-project proof comes before broader implicit-learning claims."),
-    idempotency_key: ($fixture + "-capture")
+    body: $body,
+    repo_path: $repo_path,
+    handoff_path: $handoff_path,
+    design_path: $design_path,
+    extra_artifacts: $extra_artifacts,
+    idempotency_key: ($project + "-capture")
   }')"
   capture_response="$(api_json "$CLIENT_TOKEN" POST "/v1/capture" "$capture_body")"
   PROJECT_ID="$(jq -r '.data.project_id' <<<"$capture_response")"
   local note_id
   note_id="$(jq -r '.data.created_note_ids[0] // ""' <<<"$capture_response")"
+  local artifact_ids_json
+  artifact_ids_json="$(jq -c '.data.created_artifact_ids // []' <<<"$capture_response")"
 
   local seed_decision_body seed_question_body
-  seed_decision_body="$(jq -nc --arg project "$PROJECT" --arg note_id "$note_id" --arg fixture "$FIXTURE_ID" '{
+  seed_decision_body="$(jq -nc \
+    --arg project "$PROJECT" \
+    --arg note_id "$note_id" \
+    --arg fixture "$FIXTURE_ID" \
+    --arg summary "$decision_summary" \
+    --arg reason "$decision_reason" \
+    --argjson artifact_ids "$artifact_ids_json" \
+    '{
     project: $project,
     kind: "decision",
-    summary: "Keep Relay API-first and keep public MCP packet-centric for V1 handoff.",
-    reason: "The next agent should continue from explicit packet contracts instead of hidden chat state.",
+    summary: $summary,
+    reason: $reason,
     source_note_ids: (if $note_id == "" then [] else [$note_id] end),
+    source_artifact_ids: $artifact_ids,
     idempotency_key: ($fixture + "-seed-decision")
   }')"
   api_json "$CLIENT_TOKEN" POST "/v1/promote" "$seed_decision_body" >/dev/null
 
-  seed_question_body="$(jq -nc --arg project "$PROJECT" --arg note_id "$note_id" --arg fixture "$FIXTURE_ID" '{
+  seed_question_body="$(jq -nc \
+    --arg project "$PROJECT" \
+    --arg note_id "$note_id" \
+    --arg fixture "$FIXTURE_ID" \
+    --arg summary "$question_summary" \
+    --argjson artifact_ids "$artifact_ids_json" \
+    '{
     project: $project,
     kind: "question",
-    summary: "What additional packet evidence is still needed before semantic retrieval is introduced?",
+    summary: $summary,
     source_note_ids: (if $note_id == "" then [] else [$note_id] end),
+    source_artifact_ids: $artifact_ids,
     idempotency_key: ($fixture + "-seed-question")
   }')"
   api_json "$CLIENT_TOKEN" POST "/v1/promote" "$seed_question_body" >/dev/null
 
   local trace_body trace_response
-  trace_body="$(jq -nc --arg project "$PROJECT" --arg fixture "$FIXTURE_ID" '{
+  trace_body="$(jq -nc \
+    --arg project "$PROJECT" \
+    --arg fixture "$FIXTURE_ID" \
+    --arg workflow "$workflow" \
+    --arg artifact_type "$artifact_type" \
+    --arg decision "$trace_decision" \
+    --arg rationale "$trace_rationale" \
+    --argjson alternatives "$trace_alternatives_json" \
+    --argjson constraints "$trace_constraints_json" \
+    --argjson source_refs "$trace_source_refs_json" \
+    '{
     project: $project,
     task_id: ($fixture + "-task"),
     agent_id: "acceptance-seed-agent",
-    workflow: "design_handoff",
-    artifact_type: "design_doc",
-    decision: "Prefer explicit contracts over implicit inference for model-to-model handoff.",
-    alternatives: ["Let the next model infer the product contract from chat history."],
-    rationale: "The next model should preserve user decision style without re-reading the whole conversation.",
-    constraints: ["Same-project V1 proof first", "Public MCP remains packet-centric"],
-    source_refs: ["scripts/acceptance/v1_canonical_handoff.sh", "docs/evals/v1-canonical-handoff.md"],
+    workflow: $workflow,
+    artifact_type: $artifact_type,
+    decision: $decision,
+    alternatives: $alternatives,
+    rationale: $rationale,
+    constraints: $constraints,
+    source_refs: $source_refs,
     language: "en",
     idempotency_key: ($fixture + "-trace")
   }')"
@@ -296,16 +381,27 @@ main() {
   curator_job_id="$(jq -r '.data.curator_job_id // ""' <<<"$trace_response")"
 
   local proposal_body proposal_response
-  proposal_body="$(jq -nc --arg project "$PROJECT" --arg trace_id "$TRACE_ID" --arg note_id "$note_id" --arg fixture "$FIXTURE_ID" '{
+  proposal_body="$(jq -nc \
+    --arg project "$PROJECT" \
+    --arg trace_id "$TRACE_ID" \
+    --arg note_id "$note_id" \
+    --arg fixture "$FIXTURE_ID" \
+    --arg workflow "$workflow" \
+    --arg artifact_type "$artifact_type" \
+    --arg heuristic_key "$heuristic_key" \
+    --arg canonical_text "$heuristic_canonical_text" \
+    --arg normalized_text "$heuristic_normalized_text" \
+    --argjson proposal_source_refs "$proposal_source_refs_json" \
+    '{
     project: $project,
     origin_trace_id: $trace_id,
-    workflow: "design_handoff",
-    artifact_type: "design_doc",
-    heuristic_key: "explicit_contracts_over_magic",
-    canonical_text: "Prefer explicit contracts over magic inference when handing work from one model or session to another.",
-    normalized_text: "prefer explicit contracts over magic inference for model-to-model handoff",
+    workflow: $workflow,
+    artifact_type: $artifact_type,
+    heuristic_key: $heuristic_key,
+    canonical_text: $canonical_text,
+    normalized_text: $normalized_text,
     source_trace_ids: [$trace_id],
-    source_refs: (["docs/evals/v1-canonical-handoff.md"] + (if $note_id == "" then [] else [$note_id] end)),
+    source_refs: ($proposal_source_refs + (if $note_id == "" then [] else [$note_id] end)),
     proposed_by: "acceptance-runner",
     idempotency_key: ($fixture + "-proposal")
   }')"
@@ -326,13 +422,21 @@ main() {
   handoff_start_ms="$(epoch_ms)"
 
   local style_args style_mcp_response style_packet
-  style_args="$(jq -nc --arg project "$PROJECT" --arg fixture "$FIXTURE_ID" '{
+  style_args="$(jq -nc \
+    --arg project "$PROJECT" \
+    --arg fixture "$FIXTURE_ID" \
+    --arg packet_type "$packet_type" \
+    --arg packet_target "$packet_target" \
+    --arg workflow "$workflow" \
+    --arg artifact_type "$artifact_type" \
+    --arg task_summary "$task_summary" \
+    '{
     project: $project,
-    type: "style_handoff",
-    target: "codex",
-    workflow: "design_handoff",
-    artifact_type: "design_doc",
-    task_summary: "Resume Relay V1 implementation from the canonical same-project handoff fixture.",
+    type: $packet_type,
+    target: $packet_target,
+    workflow: $workflow,
+    artifact_type: $artifact_type,
+    task_summary: $task_summary,
     persist_snapshot: true,
     idempotency_key: ($fixture + "-style-packet")
   }')"
@@ -342,13 +446,21 @@ main() {
   style_packet="$(structured_content "$style_mcp_response")"
 
   local control_args control_mcp_response control_packet
-  control_args="$(jq -nc --arg project "$PROJECT" --arg fixture "$FIXTURE_ID" '{
+  control_args="$(jq -nc \
+    --arg project "$PROJECT" \
+    --arg fixture "$FIXTURE_ID" \
+    --arg packet_type "$packet_type" \
+    --arg packet_target "$packet_target" \
+    --arg workflow "$workflow" \
+    --arg artifact_type "$artifact_type" \
+    --arg task_summary "$task_summary" \
+    '{
     project: $project,
-    type: "style_handoff",
-    target: "codex",
-    workflow: "design_handoff",
-    artifact_type: "design_doc",
-    task_summary: "Resume Relay V1 implementation from the canonical same-project handoff fixture.",
+    type: $packet_type,
+    target: $packet_target,
+    workflow: $workflow,
+    artifact_type: $artifact_type,
+    task_summary: $task_summary,
     disable_style_cues: true,
     persist_snapshot: true,
     idempotency_key: ($fixture + "-control-packet")
@@ -386,6 +498,7 @@ main() {
   result_json="$(jq -n \
     --arg run_id "$RUN_ID" \
     --arg fixture_id "$FIXTURE_ID" \
+    --arg scenario_label "$SCENARIO_LABEL" \
     --arg project "$PROJECT" \
     --arg project_id "$PROJECT_ID" \
     --arg trace_id "$TRACE_ID" \
@@ -421,6 +534,7 @@ main() {
     '{
       run_id: $run_id,
       fixture_id: $fixture_id,
+      scenario_label: $scenario_label,
       project: $project,
       project_id: $project_id,
       trace_id: $trace_id,
@@ -428,6 +542,7 @@ main() {
       proposal_id: $proposal_id,
       approved_heuristic_id: $approved_heuristic_id,
       packet_schema_version: $schema_version,
+      style_snapshot_id: $style_snapshot_id,
       packet_snapshot_id: $style_snapshot_id,
       control_snapshot_id: $control_snapshot_id,
       approved_heuristic_ids: $approved_heuristic_ids,

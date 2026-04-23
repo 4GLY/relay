@@ -27,6 +27,8 @@ The runner writes:
 
 - `.gstack/projects/relay/<run_id>/result.json`
 - `.gstack/projects/relay/<run_id>/summary.md`
+- `.gstack/projects/relay/<run_id>/style-packet.json`
+- `.gstack/projects/relay/<run_id>/control-packet.json`
 - `.gstack/projects/relay/usage-validation.jsonl`
 
 ## Flow
@@ -38,6 +40,25 @@ The runner writes:
 5. `relay_build_packet` over public MCP builds a style-aware packet with `persist_snapshot: true`.
 6. `relay_build_packet` over public MCP builds a control packet with `disable_style_cues: true`.
 7. The runner records timings, snapshot IDs, reused heuristic IDs, and rubric fields.
+
+## Blind Judge
+
+After an acceptance run, ask an external model to judge the paired packets:
+
+```bash
+./scripts/evals/v1_copilot_paired_judge.sh \
+  --result-file .gstack/projects/relay/<run_id>/result.json \
+  --model claude-opus-4.7
+```
+
+The judge script writes:
+
+- `.gstack/projects/relay/<run_id>/paired-comparison-prompt.md`
+- `.gstack/projects/relay/<run_id>/copilot-opus-judge.jsonl`
+- `.gstack/projects/relay/<run_id>/copilot-opus-judge.md`
+- `.gstack/projects/relay/<run_id>/paired-comparison.json`
+
+The judge is intentionally blind to which packet is style-aware. It maps packet A/B back to `style-aware` or `control` only after the model returns its preference.
 
 ## Pass Conditions
 

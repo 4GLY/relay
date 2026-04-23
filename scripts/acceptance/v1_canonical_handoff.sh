@@ -232,6 +232,8 @@ main() {
   local result_file="${output_dir}/result.json"
   local summary_file="${output_dir}/summary.md"
   local ledger_file="${OUTPUT_ROOT%/}/usage-validation.jsonl"
+  local style_packet_file="${output_dir}/style-packet.json"
+  local control_packet_file="${output_dir}/control-packet.json"
   mkdir -p "$output_dir" "${OUTPUT_ROOT%/}"
 
   api_json "" GET "/healthz" >/dev/null
@@ -340,6 +342,8 @@ main() {
   APPROVED_HEURISTIC_IDS="$(jq -c '.approved_heuristic_ids // []' <<<"$style_packet")"
   STYLE_EXCERPT="$(excerpt_from_packet <<<"$style_packet")"
   CONTROL_EXCERPT="$(excerpt_from_packet <<<"$control_packet")"
+  jq . <<<"$style_packet" >"$style_packet_file"
+  jq . <<<"$control_packet" >"$control_packet_file"
 
   local first_response_duration_ms budget_pass heuristic_relevance_json result_json ledger_json
   first_response_duration_ms="$STYLE_PACKET_DURATION_MS"
@@ -371,6 +375,8 @@ main() {
     --arg packet_built_time "$(ms_to_iso "$style_end_ms")" \
     --arg mcp_resume_start_time "$(ms_to_iso "$style_start_ms")" \
     --arg first_usable_response_time "$(ms_to_iso "$style_end_ms")" \
+    --arg style_packet_file "$style_packet_file" \
+    --arg control_packet_file "$control_packet_file" \
     --argjson style_packet_duration_ms "$STYLE_PACKET_DURATION_MS" \
     --argjson control_packet_duration_ms "$CONTROL_PACKET_DURATION_MS" \
     --argjson first_response_duration_ms "$first_response_duration_ms" \
@@ -404,6 +410,8 @@ main() {
       packet_built_time: $packet_built_time,
       mcp_resume_start_time: $mcp_resume_start_time,
       first_usable_response_time: $first_usable_response_time,
+      style_packet_file: $style_packet_file,
+      control_packet_file: $control_packet_file,
       style_packet_duration_ms: $style_packet_duration_ms,
       control_packet_duration_ms: $control_packet_duration_ms,
       first_response_duration_ms: $first_response_duration_ms,

@@ -72,6 +72,11 @@ type PacketBuildResult struct {
 	Body                 string           `json:"body"`
 	RenderedBody         string           `json:"rendered_body,omitempty"`
 	StyleCues            []PacketStyleCue `json:"style_cues,omitempty"`
+	SupportingNotes      []PacketNote     `json:"supporting_notes,omitempty"`
+	SupportingDecisions  []PacketDecision `json:"supporting_decisions,omitempty"`
+	SupportingQuestions  []PacketQuestion `json:"supporting_questions,omitempty"`
+	SupportingArtifacts  []PacketArtifact `json:"supporting_artifacts,omitempty"`
+	WhyIncluded          []string         `json:"why_included,omitempty"`
 	DecisionIDs          []string         `json:"decision_ids"`
 	OpenQuestionIDs      []string         `json:"open_question_ids"`
 	SourceArtifactIDs    []string         `json:"source_artifact_ids"`
@@ -80,9 +85,39 @@ type PacketBuildResult struct {
 }
 
 type PacketStyleCue struct {
-	HeuristicID   string `json:"heuristic_id"`
-	WhySelected   string `json:"why_selected"`
-	SourceSummary string `json:"source_summary"`
+	HeuristicID   string   `json:"heuristic_id"`
+	HeuristicKey  string   `json:"heuristic_key,omitempty"`
+	CanonicalText string   `json:"canonical_text,omitempty"`
+	WhySelected   string   `json:"why_selected"`
+	WhyIncluded   string   `json:"why_included,omitempty"`
+	SourceSummary string   `json:"source_summary"`
+	SourceRefs    []string `json:"source_refs,omitempty"`
+}
+
+type PacketNote struct {
+	NoteID   string `json:"note_id"`
+	Source   string `json:"source,omitempty"`
+	Excerpt  string `json:"excerpt"`
+	Evidence string `json:"evidence,omitempty"`
+}
+
+type PacketDecision struct {
+	DecisionID string `json:"decision_id"`
+	Summary    string `json:"summary"`
+	Why        string `json:"why,omitempty"`
+}
+
+type PacketQuestion struct {
+	QuestionID string `json:"question_id"`
+	Summary    string `json:"summary"`
+}
+
+type PacketArtifact struct {
+	ArtifactID  string `json:"artifact_id"`
+	Type        string `json:"type"`
+	SourcePath  string `json:"source_path,omitempty"`
+	TrustLevel  string `json:"trust_level,omitempty"`
+	WhyIncluded string `json:"why_included,omitempty"`
 }
 
 type JudgmentTraceWriteInput struct {

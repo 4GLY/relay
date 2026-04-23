@@ -110,6 +110,11 @@ Expected shape:
   - `body`
   - `rendered_body`
   - `style_cues`
+  - `supporting_notes`
+  - `supporting_decisions`
+  - `supporting_questions`
+  - `supporting_artifacts`
+  - `why_included`
   - `decision_ids`
   - `open_question_ids`
   - `source_artifact_ids`
@@ -262,6 +267,8 @@ Style-memory behavior:
 - `workflow` and `artifact_type` narrow style-cue selection
 - `disable_style_cues` builds a normal packet without style cues
 - `persist_snapshot` returns a `snapshot_id` for deterministic replay
+- each `style_cue` now includes `canonical_text` and `why_included`
+- packet evidence is exposed through `supporting_notes`, `supporting_decisions`, `supporting_questions`, `supporting_artifacts`, and `why_included`
 
 Output:
 - `packet_id`
@@ -274,6 +281,11 @@ Output:
 - `body`
 - `rendered_body`
 - `style_cues`
+- `supporting_notes`
+- `supporting_decisions`
+- `supporting_questions`
+- `supporting_artifacts`
+- `why_included`
 - `decision_ids`
 - `open_question_ids`
 - `source_artifact_ids`

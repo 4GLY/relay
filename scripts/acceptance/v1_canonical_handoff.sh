@@ -242,13 +242,38 @@ main() {
   capture_body="$(jq -nc --arg project "$PROJECT" --arg fixture "$FIXTURE_ID" '{
     project: $project,
     source: "acceptance",
-    body: ("Relay V1 canonical handoff fixture " + $fixture),
+    body: ("Relay V1 canonical handoff fixture " + $fixture + "\n" +
+      "User style seed:\n" +
+      "- Prefer explicit contracts over implicit inference across model and session handoff.\n" +
+      "- Keep Relay API-first and keep public MCP packet-centric.\n" +
+      "- Human approval controls durable heuristics.\n" +
+      "- Same-project proof comes before broader implicit-learning claims."),
     idempotency_key: ($fixture + "-capture")
   }')"
   capture_response="$(api_json "$CLIENT_TOKEN" POST "/v1/capture" "$capture_body")"
   PROJECT_ID="$(jq -r '.data.project_id' <<<"$capture_response")"
   local note_id
   note_id="$(jq -r '.data.created_note_ids[0] // ""' <<<"$capture_response")"
+
+  local seed_decision_body seed_question_body
+  seed_decision_body="$(jq -nc --arg project "$PROJECT" --arg note_id "$note_id" --arg fixture "$FIXTURE_ID" '{
+    project: $project,
+    kind: "decision",
+    summary: "Keep Relay API-first and keep public MCP packet-centric for V1 handoff.",
+    reason: "The next agent should continue from explicit packet contracts instead of hidden chat state.",
+    source_note_ids: (if $note_id == "" then [] else [$note_id] end),
+    idempotency_key: ($fixture + "-seed-decision")
+  }')"
+  api_json "$CLIENT_TOKEN" POST "/v1/promote" "$seed_decision_body" >/dev/null
+
+  seed_question_body="$(jq -nc --arg project "$PROJECT" --arg note_id "$note_id" --arg fixture "$FIXTURE_ID" '{
+    project: $project,
+    kind: "question",
+    summary: "What additional packet evidence is still needed before semantic retrieval is introduced?",
+    source_note_ids: (if $note_id == "" then [] else [$note_id] end),
+    idempotency_key: ($fixture + "-seed-question")
+  }')"
+  api_json "$CLIENT_TOKEN" POST "/v1/promote" "$seed_question_body" >/dev/null
 
   local trace_body trace_response
   trace_body="$(jq -nc --arg project "$PROJECT" --arg fixture "$FIXTURE_ID" '{

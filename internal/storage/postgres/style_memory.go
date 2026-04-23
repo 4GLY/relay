@@ -292,15 +292,38 @@ func (s Stores) CreatePacketSnapshot(ctx context.Context, snapshot domain.Packet
 	openQuestionIDs, _ := json.Marshal(snapshot.OpenQuestionIDs)
 	artifactIDs, _ := json.Marshal(snapshot.SourceArtifactIDs)
 	missingContext, _ := json.Marshal(snapshot.MissingContext)
+	styleCues := snapshot.StyleCues
+	if len(styleCues) == 0 {
+		styleCues = []byte("[]")
+	}
+	supportingNotes := snapshot.SupportingNotes
+	if len(supportingNotes) == 0 {
+		supportingNotes = []byte("[]")
+	}
+	supportingDecisions := snapshot.SupportingDecisions
+	if len(supportingDecisions) == 0 {
+		supportingDecisions = []byte("[]")
+	}
+	supportingQuestions := snapshot.SupportingQuestions
+	if len(supportingQuestions) == 0 {
+		supportingQuestions = []byte("[]")
+	}
+	supportingArtifacts := snapshot.SupportingArtifacts
+	if len(supportingArtifacts) == 0 {
+		supportingArtifacts = []byte("[]")
+	}
+	whyIncluded, _ := json.Marshal(snapshot.WhyIncluded)
 	_, err := s.db.Exec(ctx, `
 		INSERT INTO packet_snapshots (
 			id, project_id, packet_kind, target, schema_version, task_summary,
-			rendered_body, approved_heuristic_ids, decision_ids, open_question_ids,
+			rendered_body, style_cues, supporting_notes, supporting_decisions,
+			supporting_questions, supporting_artifacts, why_included,
+			approved_heuristic_ids, decision_ids, open_question_ids,
 			source_artifact_ids, missing_context
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9::jsonb, $10::jsonb, $11::jsonb, $12::jsonb)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9::jsonb, $10::jsonb, $11::jsonb, $12::jsonb, $13::jsonb, $14::jsonb, $15::jsonb, $16::jsonb, $17::jsonb, $18::jsonb)
 		ON CONFLICT (id) DO NOTHING
-	`, snapshot.ID, snapshot.ProjectID, snapshot.PacketKind, snapshot.Target, snapshot.SchemaVersion, snapshot.TaskSummary, snapshot.RenderedBody, string(heuristicIDs), string(decisionIDs), string(openQuestionIDs), string(artifactIDs), string(missingContext))
+	`, snapshot.ID, snapshot.ProjectID, snapshot.PacketKind, snapshot.Target, snapshot.SchemaVersion, snapshot.TaskSummary, snapshot.RenderedBody, string(styleCues), string(supportingNotes), string(supportingDecisions), string(supportingQuestions), string(supportingArtifacts), string(whyIncluded), string(heuristicIDs), string(decisionIDs), string(openQuestionIDs), string(artifactIDs), string(missingContext))
 	if err != nil {
 		return domain.PacketSnapshot{}, err
 	}
@@ -309,20 +332,23 @@ func (s Stores) CreatePacketSnapshot(ctx context.Context, snapshot domain.Packet
 
 func (s Stores) GetPacketSnapshot(ctx context.Context, id string) (domain.PacketSnapshot, error) {
 	var snapshot domain.PacketSnapshot
-	var heuristicIDs, decisionIDs, openQuestionIDs, artifactIDs, missingContext []byte
+	var heuristicIDs, decisionIDs, openQuestionIDs, artifactIDs, missingContext, whyIncluded []byte
 	err := s.db.QueryRow(ctx, `
 		SELECT id, project_id, packet_kind, target, schema_version, task_summary,
-		       rendered_body, approved_heuristic_ids, decision_ids, open_question_ids,
+		       rendered_body, style_cues, supporting_notes, supporting_decisions,
+		       supporting_questions, supporting_artifacts, why_included,
+		       approved_heuristic_ids, decision_ids, open_question_ids,
 		       source_artifact_ids, missing_context, created_at
 		FROM packet_snapshots
 		WHERE id = $1
-	`, id).Scan(&snapshot.ID, &snapshot.ProjectID, &snapshot.PacketKind, &snapshot.Target, &snapshot.SchemaVersion, &snapshot.TaskSummary, &snapshot.RenderedBody, &heuristicIDs, &decisionIDs, &openQuestionIDs, &artifactIDs, &missingContext, &snapshot.CreatedAt)
+	`, id).Scan(&snapshot.ID, &snapshot.ProjectID, &snapshot.PacketKind, &snapshot.Target, &snapshot.SchemaVersion, &snapshot.TaskSummary, &snapshot.RenderedBody, &snapshot.StyleCues, &snapshot.SupportingNotes, &snapshot.SupportingDecisions, &snapshot.SupportingQuestions, &snapshot.SupportingArtifacts, &whyIncluded, &heuristicIDs, &decisionIDs, &openQuestionIDs, &artifactIDs, &missingContext, &snapshot.CreatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return domain.PacketSnapshot{}, lib.NotFound("PACKET_SNAPSHOT_NOT_FOUND", "packet snapshot not found")
 	}
 	if err != nil {
 		return domain.PacketSnapshot{}, err
 	}
+	_ = json.Unmarshal(whyIncluded, &snapshot.WhyIncluded)
 	_ = json.Unmarshal(heuristicIDs, &snapshot.ApprovedHeuristicIDs)
 	_ = json.Unmarshal(decisionIDs, &snapshot.DecisionIDs)
 	_ = json.Unmarshal(openQuestionIDs, &snapshot.OpenQuestionIDs)

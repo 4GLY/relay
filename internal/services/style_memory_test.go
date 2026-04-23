@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -590,12 +591,24 @@ func TestBuildPacketIncludesApprovedStyleCueAndPersistsSnapshot(t *testing.T) {
 	if len(result.StyleCues) != 1 {
 		t.Fatalf("expected 1 style cue, got %#v", result.StyleCues)
 	}
+	if result.StyleCues[0].CanonicalText != "Prefer explicit contracts over magic inference." {
+		t.Fatalf("expected canonical text in style cue, got %#v", result.StyleCues[0])
+	}
+	if len(result.WhyIncluded) == 0 {
+		t.Fatalf("expected why_included reasons, got %#v", result.WhyIncluded)
+	}
+	if !strings.Contains(result.RenderedBody, "Style rules to preserve:") {
+		t.Fatalf("expected rendered body to include style rules, got %q", result.RenderedBody)
+	}
 	if result.SnapshotID == "" {
 		t.Fatal("expected snapshot id")
 	}
 	snapshot := snapshots.items[result.SnapshotID]
 	if snapshot.CreatedAt.After(time.Now()) {
 		t.Fatalf("unexpected future created_at: %v", snapshot.CreatedAt)
+	}
+	if len(snapshot.StyleCues) == 0 {
+		t.Fatalf("expected snapshot to preserve style cues, got %#v", snapshot)
 	}
 	if len(snapshot.ApprovedHeuristicIDs) != 1 || snapshot.ApprovedHeuristicIDs[0] != "heur_1" {
 		t.Fatalf("expected snapshot to preserve heuristic id, got %#v", snapshot.ApprovedHeuristicIDs)

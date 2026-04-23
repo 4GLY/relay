@@ -625,6 +625,24 @@ func TestBuildPacket(t *testing.T) {
 	if result.Body == "" {
 		t.Fatalf("expected body")
 	}
+	if len(result.SupportingNotes) != 1 || !strings.Contains(result.SupportingNotes[0].Excerpt, "offline matters") {
+		t.Fatalf("expected supporting note excerpt, got %#v", result.SupportingNotes)
+	}
+	if len(result.SupportingDecisions) != 1 || result.SupportingDecisions[0].Summary != "PG-only deploy" {
+		t.Fatalf("expected supporting decision, got %#v", result.SupportingDecisions)
+	}
+	if len(result.SupportingQuestions) != 1 || result.SupportingQuestions[0].Summary != "offline local store timing" {
+		t.Fatalf("expected supporting question, got %#v", result.SupportingQuestions)
+	}
+	if len(result.SupportingArtifacts) != 1 || result.SupportingArtifacts[0].SourcePath != "docs/handoff.md" {
+		t.Fatalf("expected supporting artifact, got %#v", result.SupportingArtifacts)
+	}
+	if len(result.WhyIncluded) != 4 {
+		t.Fatalf("expected why_included reasons, got %#v", result.WhyIncluded)
+	}
+	if !strings.Contains(result.RenderedBody, "Recent notes:") || !strings.Contains(result.RenderedBody, "Durable decisions:") {
+		t.Fatalf("expected enriched rendered body, got %q", result.RenderedBody)
+	}
 	if packets.latest.ID == "" {
 		t.Fatalf("expected packet to be persisted")
 	}

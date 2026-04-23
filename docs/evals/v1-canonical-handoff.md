@@ -34,12 +34,14 @@ The runner writes:
 ## Flow
 
 1. `POST /v1/capture` creates or updates the acceptance project.
-2. `POST /v1/judgment-traces` stores the seed judgment.
-3. `POST /v1/heuristic-proposals` creates a pending proposal from the trace.
-4. `POST /v1/heuristic-proposals/review` approves it through the admin path.
-5. `relay_build_packet` over public MCP builds a style-aware packet with `persist_snapshot: true`.
-6. `relay_build_packet` over public MCP builds a control packet with `disable_style_cues: true`.
-7. The runner records timings, snapshot IDs, reused heuristic IDs, and rubric fields.
+2. `POST /v1/promote` creates one durable decision from the seed memory.
+3. `POST /v1/promote` creates one open question from the same seed memory.
+4. `POST /v1/judgment-traces` stores the seed judgment.
+5. `POST /v1/heuristic-proposals` creates a pending proposal from the trace.
+6. `POST /v1/heuristic-proposals/review` approves it through the admin path.
+7. `relay_build_packet` over public MCP builds a style-aware packet with `persist_snapshot: true`.
+8. `relay_build_packet` over public MCP builds a control packet with `disable_style_cues: true`.
+9. The runner records timings, snapshot IDs, reused heuristic IDs, and rubric fields.
 
 ## Blind Judge
 

@@ -288,9 +288,63 @@ components:
       properties:
         heuristic_id:
           type: string
+        heuristic_key:
+          type: string
+        canonical_text:
+          type: string
         why_selected:
           type: string
+        why_included:
+          type: string
         source_summary:
+          type: string
+        source_refs:
+          type: array
+          items:
+            type: string
+    PacketNote:
+      type: object
+      required: [note_id, excerpt]
+      properties:
+        note_id:
+          type: string
+        source:
+          type: string
+        excerpt:
+          type: string
+        evidence:
+          type: string
+    PacketDecision:
+      type: object
+      required: [decision_id, summary]
+      properties:
+        decision_id:
+          type: string
+        summary:
+          type: string
+        why:
+          type: string
+    PacketQuestion:
+      type: object
+      required: [question_id, summary]
+      properties:
+        question_id:
+          type: string
+        summary:
+          type: string
+    PacketArtifact:
+      type: object
+      required: [artifact_id, type]
+      properties:
+        artifact_id:
+          type: string
+        type:
+          type: string
+        source_path:
+          type: string
+        trust_level:
+          type: string
+        why_included:
           type: string
     PacketBuildInput:
       type: object
@@ -353,6 +407,26 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/PacketStyleCue'
+        supporting_notes:
+          type: array
+          items:
+            $ref: '#/components/schemas/PacketNote'
+        supporting_decisions:
+          type: array
+          items:
+            $ref: '#/components/schemas/PacketDecision'
+        supporting_questions:
+          type: array
+          items:
+            $ref: '#/components/schemas/PacketQuestion'
+        supporting_artifacts:
+          type: array
+          items:
+            $ref: '#/components/schemas/PacketArtifact'
+        why_included:
+          type: array
+          items:
+            type: string
         decision_ids:
           type: array
           items:

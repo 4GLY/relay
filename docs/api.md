@@ -377,6 +377,8 @@ Contract notes:
 - current `type` is effectively `resume`
 - current `target` is free-form, but `codex` is the primary path
 - approved style heuristics are returned as `style_cues` unless `disable_style_cues` is true
+- packet output now includes `supporting_notes`, `supporting_decisions`, `supporting_questions`, `supporting_artifacts`, and `why_included`
+- each `style_cue` now carries the approved heuristic `canonical_text` and `why_included`
 - `persist_snapshot` writes an immutable packet snapshot and returns `snapshot_id`
 - packet output includes `schema_version`, `rendered_body`, `approved_heuristic_ids`, and `missing_context`
 

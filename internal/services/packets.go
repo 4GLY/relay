@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -53,18 +54,33 @@ func (s Service) BuildPacket(ctx context.Context, input PacketBuildInput) (Packe
 	selectedQuestions := limitQuestions(questions, 3)
 	selectedArtifacts := limitArtifacts(artifacts, 5)
 	selectedNotes := limitNotes(notes, 3)
+	supportingNotes := summarizeNotes(selectedNotes)
+	supportingDecisions := summarizeDecisions(selectedDecisions)
+	supportingQuestions := summarizeQuestions(selectedQuestions)
+	supportingArtifacts := summarizeArtifacts(selectedArtifacts)
 	styleCues, approvedHeuristicIDs, err := s.selectStyleCues(ctx, project.ID, input)
 	if err != nil {
 		return PacketBuildResult{}, err
 	}
+	whyIncluded := buildWhyIncluded(supportingNotes, supportingDecisions, supportingQuestions, supportingArtifacts, styleCues)
 	taskSummary := input.TaskSummary
 	if taskSummary == "" {
 		taskSummary = fmt.Sprintf("resume work on %s", project.Name)
 	}
-	renderedBody := buildResumeBody(project, selectedNotes, selectedArtifacts, selectedDecisions, selectedQuestions)
-	if len(styleCues) > 0 {
-		renderedBody = appendStyleCues(renderedBody, styleCues)
-	}
+	renderedBody := buildResumeBody(packetRenderInput{
+		ProjectName:          project.Name,
+		TaskSummary:          taskSummary,
+		TotalNotes:           len(notes),
+		TotalArtifacts:       len(artifacts),
+		TotalDecisions:       len(decisions),
+		TotalOpenQuestions:   len(questions),
+		SupportingNotes:      supportingNotes,
+		SupportingDecisions:  supportingDecisions,
+		SupportingQuestions:  supportingQuestions,
+		SupportingArtifacts:  supportingArtifacts,
+		StyleCues:            styleCues,
+		WhyIncluded:          whyIncluded,
+	})
 
 	packet := domain.Packet{
 		ID:                lib.NewID("pkt"),
@@ -92,6 +108,11 @@ func (s Service) BuildPacket(ctx context.Context, input PacketBuildInput) (Packe
 		Body:                 created.Body,
 		RenderedBody:         created.Body,
 		StyleCues:            styleCues,
+		SupportingNotes:      supportingNotes,
+		SupportingDecisions:  supportingDecisions,
+		SupportingQuestions:  supportingQuestions,
+		SupportingArtifacts:  supportingArtifacts,
+		WhyIncluded:          whyIncluded,
 		DecisionIDs:          created.DecisionIDs,
 		OpenQuestionIDs:      created.OpenQuestionIDs,
 		SourceArtifactIDs:    created.SourceArtifactIDs,
@@ -110,35 +131,102 @@ func (s Service) BuildPacket(ctx context.Context, input PacketBuildInput) (Packe
 	return result, nil
 }
 
-func buildResumeBody(project domain.Project, notes []domain.Note, artifacts []domain.Artifact, decisions []domain.Decision, questions []domain.OpenQuestion) string {
+type packetRenderInput struct {
+	ProjectName        string
+	TaskSummary        string
+	TotalNotes         int
+	TotalArtifacts     int
+	TotalDecisions     int
+	TotalOpenQuestions int
+	SupportingNotes    []PacketNote
+	SupportingDecisions []PacketDecision
+	SupportingQuestions []PacketQuestion
+	SupportingArtifacts []PacketArtifact
+	StyleCues          []PacketStyleCue
+	WhyIncluded        []string
+}
+
+func buildResumeBody(input packetRenderInput) string {
 	lines := []string{
-		fmt.Sprintf("Project: %s", project.Name),
-		fmt.Sprintf("Current goal: resume work on %s", project.Name),
-		fmt.Sprintf("Current state: %d note(s), %d artifact(s), %d decision(s), %d open question(s) are stored.", len(notes), len(artifacts), len(decisions), len(questions)),
+		fmt.Sprintf("Project: %s", input.ProjectName),
+		fmt.Sprintf("Current goal: %s", input.TaskSummary),
+		fmt.Sprintf("Current state: %d note(s), %d artifact(s), %d decision(s), %d open question(s) are stored.", input.TotalNotes, input.TotalArtifacts, input.TotalDecisions, input.TotalOpenQuestions),
 	}
 
-	if len(decisions) > 0 {
-		lines = append(lines, "Decisions:")
-		for _, decision := range decisions {
-			lines = append(lines, fmt.Sprintf("- %s: %s", decision.Summary, decision.Why))
+	if len(input.SupportingNotes) > 0 {
+		lines = append(lines, "Recent notes:")
+		for _, note := range input.SupportingNotes {
+			line := fmt.Sprintf("- %s", note.Excerpt)
+			if note.Source != "" {
+				line = fmt.Sprintf("- [%s] %s", note.Source, note.Excerpt)
+			}
+			if note.Evidence != "" {
+				line += fmt.Sprintf(" (%s)", note.Evidence)
+			}
+			lines = append(lines, line)
 		}
 	}
 
-	if len(questions) > 0 {
+	if len(input.SupportingDecisions) > 0 {
+		lines = append(lines, "Durable decisions:")
+		for _, decision := range input.SupportingDecisions {
+			if decision.Why != "" {
+				lines = append(lines, fmt.Sprintf("- %s: %s", decision.Summary, decision.Why))
+				continue
+			}
+			lines = append(lines, fmt.Sprintf("- %s", decision.Summary))
+		}
+	}
+
+	if len(input.SupportingQuestions) > 0 {
 		lines = append(lines, "Open questions:")
-		for _, question := range questions {
+		for _, question := range input.SupportingQuestions {
 			lines = append(lines, fmt.Sprintf("- %s", question.Summary))
 		}
 	}
 
-	if len(artifacts) > 0 {
+	if len(input.SupportingArtifacts) > 0 {
 		lines = append(lines, "Trusted artifacts:")
-		for _, artifact := range artifacts {
-			lines = append(lines, fmt.Sprintf("- %s (%s)", artifact.Type, artifact.SourcePath))
+		for _, artifact := range input.SupportingArtifacts {
+			item := fmt.Sprintf("- %s", artifact.Type)
+			if artifact.SourcePath != "" {
+				item = fmt.Sprintf("%s (%s)", item, artifact.SourcePath)
+			}
+			if artifact.TrustLevel != "" {
+				item = fmt.Sprintf("%s [trust=%s]", item, artifact.TrustLevel)
+			}
+			lines = append(lines, item)
 		}
 	}
 
-	lines = append(lines, "Next step: inspect the decisions and open questions, then continue the highest-confidence path.")
+	if len(input.StyleCues) > 0 {
+		lines = append(lines, "Style rules to preserve:")
+		for _, cue := range input.StyleCues {
+			item := fmt.Sprintf("- %s", cue.HeuristicID)
+			if cue.CanonicalText != "" {
+				item = fmt.Sprintf("%s: %s", item, cue.CanonicalText)
+			}
+			lines = append(lines, item)
+			if cue.WhyIncluded != "" {
+				lines = append(lines, fmt.Sprintf("  why included: %s", cue.WhyIncluded))
+			}
+			if cue.SourceSummary != "" {
+				lines = append(lines, fmt.Sprintf("  evidence: %s", cue.SourceSummary))
+			}
+			if len(cue.SourceRefs) > 0 {
+				lines = append(lines, fmt.Sprintf("  source refs: %s", strings.Join(cue.SourceRefs, ", ")))
+			}
+		}
+	}
+
+	if len(input.WhyIncluded) > 0 {
+		lines = append(lines, "Why this context was included:")
+		for _, reason := range input.WhyIncluded {
+			lines = append(lines, fmt.Sprintf("- %s", reason))
+		}
+	}
+
+	lines = append(lines, "Next step: inspect the durable decisions, open questions, cited artifacts, and style rules before making new assumptions.")
 	return strings.Join(lines, "\n")
 }
 
@@ -196,8 +284,12 @@ func (s Service) selectStyleCues(ctx context.Context, projectID string, input Pa
 		}
 		cues = append(cues, PacketStyleCue{
 			HeuristicID:   heuristic.ID,
+			HeuristicKey:  heuristic.HeuristicKey,
+			CanonicalText: heuristic.CanonicalText,
 			WhySelected:   "selected for " + scope,
+			WhyIncluded:   "approved heuristic matched the current project selectors: " + scope,
 			SourceSummary: fmt.Sprintf("%d source trace(s)", len(heuristic.SourceTraceIDs)),
+			SourceRefs:    heuristic.SourceRefs,
 		})
 	}
 	return cues, ids, nil
@@ -215,14 +307,6 @@ func selectMostSpecificHeuristics(items []domain.ApprovedHeuristic, limit int) [
 		selected = append(selected, item)
 	}
 	return selected
-}
-
-func appendStyleCues(body string, cues []PacketStyleCue) string {
-	lines := []string{body, "Style cues:"}
-	for _, cue := range cues {
-		lines = append(lines, fmt.Sprintf("- %s: %s (%s)", cue.HeuristicID, cue.WhySelected, cue.SourceSummary))
-	}
-	return strings.Join(lines, "\n")
 }
 
 func (s Service) createPacketSnapshot(ctx context.Context, projectID string, result PacketBuildResult, idempotencyKey string) (domain.PacketSnapshot, error) {
@@ -243,6 +327,11 @@ func (s Service) createPacketSnapshot(ctx context.Context, projectID string, res
 	if idempotencyKey != "" {
 		snapshotID = lib.StableID("psnap", projectID+":"+idempotencyKey)
 	}
+	styleCuesJSON, _ := json.Marshal(result.StyleCues)
+	supportingNotesJSON, _ := json.Marshal(result.SupportingNotes)
+	supportingDecisionsJSON, _ := json.Marshal(result.SupportingDecisions)
+	supportingQuestionsJSON, _ := json.Marshal(result.SupportingQuestions)
+	supportingArtifactsJSON, _ := json.Marshal(result.SupportingArtifacts)
 	snapshot, err := s.deps.PacketSnapshots.CreatePacketSnapshot(ctx, domain.PacketSnapshot{
 		ID:                   snapshotID,
 		ProjectID:            projectID,
@@ -251,6 +340,12 @@ func (s Service) createPacketSnapshot(ctx context.Context, projectID string, res
 		SchemaVersion:        result.SchemaVersion,
 		TaskSummary:          result.TaskSummary,
 		RenderedBody:         result.RenderedBody,
+		StyleCues:            styleCuesJSON,
+		SupportingNotes:      supportingNotesJSON,
+		SupportingDecisions:  supportingDecisionsJSON,
+		SupportingQuestions:  supportingQuestionsJSON,
+		SupportingArtifacts:  supportingArtifactsJSON,
+		WhyIncluded:          result.WhyIncluded,
 		ApprovedHeuristicIDs: result.ApprovedHeuristicIDs,
 		DecisionIDs:          result.DecisionIDs,
 		OpenQuestionIDs:      result.OpenQuestionIDs,
@@ -264,6 +359,87 @@ func (s Service) createPacketSnapshot(ctx context.Context, projectID string, res
 		return domain.PacketSnapshot{}, err
 	}
 	return snapshot, nil
+}
+
+func summarizeNotes(items []domain.Note) []PacketNote {
+	summaries := make([]PacketNote, 0, len(items))
+	for _, item := range items {
+		summaries = append(summaries, PacketNote{
+			NoteID:   item.ID,
+			Source:   item.Source,
+			Excerpt:  summarizeText(item.Body, 220),
+			Evidence: "recent raw capture",
+		})
+	}
+	return summaries
+}
+
+func summarizeDecisions(items []domain.Decision) []PacketDecision {
+	summaries := make([]PacketDecision, 0, len(items))
+	for _, item := range items {
+		summaries = append(summaries, PacketDecision{
+			DecisionID: item.ID,
+			Summary:    item.Summary,
+			Why:        item.Why,
+		})
+	}
+	return summaries
+}
+
+func summarizeQuestions(items []domain.OpenQuestion) []PacketQuestion {
+	summaries := make([]PacketQuestion, 0, len(items))
+	for _, item := range items {
+		summaries = append(summaries, PacketQuestion{
+			QuestionID: item.ID,
+			Summary:    item.Summary,
+		})
+	}
+	return summaries
+}
+
+func summarizeArtifacts(items []domain.Artifact) []PacketArtifact {
+	summaries := make([]PacketArtifact, 0, len(items))
+	for _, item := range items {
+		summaries = append(summaries, PacketArtifact{
+			ArtifactID:  item.ID,
+			Type:        item.Type,
+			SourcePath:  item.SourcePath,
+			TrustLevel:  item.TrustLevel,
+			WhyIncluded: "trusted artifact referenced by project memory",
+		})
+	}
+	return summaries
+}
+
+func buildWhyIncluded(notes []PacketNote, decisions []PacketDecision, questions []PacketQuestion, artifacts []PacketArtifact, styleCues []PacketStyleCue) []string {
+	reasons := make([]string, 0, 5)
+	if len(notes) > 0 {
+		reasons = append(reasons, "recent captured notes preserve raw context that has not yet been promoted into canonical decisions")
+	}
+	if len(decisions) > 0 {
+		reasons = append(reasons, "durable decisions anchor settled choices so the next agent does not need to infer them again")
+	}
+	if len(questions) > 0 {
+		reasons = append(reasons, "open questions surface unresolved blockers before the next agent commits to a path")
+	}
+	if len(artifacts) > 0 {
+		reasons = append(reasons, "trusted artifacts point to concrete files or deliverables worth inspecting next")
+	}
+	if len(styleCues) > 0 {
+		reasons = append(reasons, "approved heuristics matched the current workflow and artifact selectors and should shape continuation style")
+	}
+	return reasons
+}
+
+func summarizeText(input string, limit int) string {
+	compact := strings.Join(strings.Fields(strings.TrimSpace(input)), " ")
+	if len(compact) <= limit {
+		return compact
+	}
+	if limit <= 3 {
+		return compact[:limit]
+	}
+	return compact[:limit-3] + "..."
 }
 
 func limitNotes(items []domain.Note, limit int) []domain.Note {

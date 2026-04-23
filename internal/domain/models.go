@@ -119,6 +119,12 @@ type PacketSnapshot struct {
 	SchemaVersion        string
 	TaskSummary          string
 	RenderedBody         string
+	StyleCues            []byte
+	SupportingNotes      []byte
+	SupportingDecisions  []byte
+	SupportingQuestions  []byte
+	SupportingArtifacts  []byte
+	WhyIncluded          []string
 	ApprovedHeuristicIDs []string
 	DecisionIDs          []string
 	OpenQuestionIDs      []string

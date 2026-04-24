@@ -317,6 +317,11 @@ and consumer-stability runs:
 ./scripts/evals/relay_evidence_status.py --json
 ```
 
+Consumer-stability internally runs usage-validation batches with
+`batch_id=consumer-stability-*`; the summary tool separates those as
+`consumer_usage_validation_batch` so they do not replace the full release
+`usage_validation_gate` status.
+
 Use strict mode when automation needs to fail unless canonical evidence exists:
 
 ```bash

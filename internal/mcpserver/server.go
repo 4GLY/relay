@@ -15,6 +15,7 @@ type Backend interface {
 	Capture(ctx context.Context, input services.CaptureInput) (services.CaptureResult, error)
 	Promote(ctx context.Context, input services.PromoteInput) (services.PromoteResult, error)
 	BuildPacket(ctx context.Context, input services.PacketBuildInput) (services.PacketBuildResult, error)
+	LatestPacketSnapshot(ctx context.Context, input services.PacketSnapshotReadInput) (services.PacketSnapshotReadResult, error)
 	Show(ctx context.Context, projectID string) (services.ShowResult, error)
 	ProjectRetrieve(ctx context.Context, projectID string, query string, limit int) (services.ProjectRetrieveResult, error)
 	IssueAPIKey(ctx context.Context, input services.IssueAPIKeyInput) (services.IssueAPIKeyResult, error)
@@ -70,6 +71,11 @@ func (s *Server) registerTools() {
 		Title:       "Relay Build Packet",
 		Description: "Build an agent-ready packet from stored Relay memory.",
 	}, s.buildPacketTool)
+	mcp.AddTool(s.server, &mcp.Tool{
+		Name:        "relay_latest_packet_snapshot",
+		Title:       "Relay Latest Packet Snapshot",
+		Description: "Read the latest immutable packet snapshot for deterministic model-to-model continuation.",
+	}, s.latestPacketSnapshotTool)
 	mcp.AddTool(s.server, &mcp.Tool{
 		Name:        "relay_show_project",
 		Title:       "Relay Show Project",
@@ -221,6 +227,27 @@ func (s *Server) buildPacketTool(ctx context.Context, _ *mcp.CallToolRequest, in
 	return nil, result, err
 }
 
+type latestPacketSnapshotInput struct {
+	Project   string `json:"project,omitempty" jsonschema:"Project name. Required unless project_id is supplied"`
+	ProjectID string `json:"project_id,omitempty" jsonschema:"Canonical Relay project id. Required unless project is supplied"`
+	Type      string `json:"type,omitempty" jsonschema:"Optional packet type. Defaults to resume"`
+	Target    string `json:"target,omitempty" jsonschema:"Optional packet target. Defaults to codex in MCP flows"`
+}
+
+func (s *Server) latestPacketSnapshotTool(ctx context.Context, _ *mcp.CallToolRequest, input latestPacketSnapshotInput) (*mcp.CallToolResult, services.PacketSnapshotReadResult, error) {
+	target := input.Target
+	if target == "" {
+		target = "codex"
+	}
+	result, err := s.backend.LatestPacketSnapshot(ctx, services.PacketSnapshotReadInput{
+		Project:   input.Project,
+		ProjectID: input.ProjectID,
+		Type:      input.Type,
+		Target:    target,
+	})
+	return nil, result, err
+}
+
 type showProjectInput struct {
 	ProjectID string `json:"project_id" jsonschema:"Required canonical Relay project id, not the project name"`
 }
@@ -309,6 +336,10 @@ func (b serviceBackend) Promote(ctx context.Context, input services.PromoteInput
 
 func (b serviceBackend) BuildPacket(ctx context.Context, input services.PacketBuildInput) (services.PacketBuildResult, error) {
 	return b.service.BuildPacket(ctx, input)
+}
+
+func (b serviceBackend) LatestPacketSnapshot(ctx context.Context, input services.PacketSnapshotReadInput) (services.PacketSnapshotReadResult, error) {
+	return b.service.LatestPacketSnapshot(ctx, input)
 }
 
 func (b serviceBackend) Show(ctx context.Context, projectID string) (services.ShowResult, error) {

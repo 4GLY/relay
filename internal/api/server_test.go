@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"relay/internal/app"
 	"relay/internal/config"
@@ -154,6 +155,29 @@ func (s *fakePacketStore) LatestByProject(_ context.Context, _ string) (domain.P
 	return s.latest, nil
 }
 
+type fakePacketSnapshotStore struct {
+	latest domain.PacketSnapshot
+}
+
+func (s *fakePacketSnapshotStore) CreatePacketSnapshot(_ context.Context, snapshot domain.PacketSnapshot) (domain.PacketSnapshot, error) {
+	s.latest = snapshot
+	return snapshot, nil
+}
+
+func (s *fakePacketSnapshotStore) GetPacketSnapshot(_ context.Context, id string) (domain.PacketSnapshot, error) {
+	if s.latest.ID == id {
+		return s.latest, nil
+	}
+	return domain.PacketSnapshot{}, lib.NotFound("PACKET_SNAPSHOT_NOT_FOUND", "packet snapshot not found")
+}
+
+func (s *fakePacketSnapshotStore) LatestPacketSnapshotByProject(_ context.Context, projectID string, packetKind string, target string) (domain.PacketSnapshot, error) {
+	if s.latest.ProjectID == projectID && s.latest.PacketKind == packetKind && s.latest.Target == target {
+		return s.latest, nil
+	}
+	return domain.PacketSnapshot{}, lib.NotFound("PACKET_SNAPSHOT_NOT_FOUND", "packet snapshot not found")
+}
+
 type fakeAPIKeyStore struct {
 	itemsByHash map[string]domain.APIKey
 	created     []domain.APIKey
@@ -297,6 +321,26 @@ func TestHandleProjectRetrieveUsesQueryParam(t *testing.T) {
 	}
 	if !bytes.Contains(rec.Body.Bytes(), []byte(`"kind":"artifact"`)) {
 		t.Fatalf("expected artifact hit in retrieval response, got %s", rec.Body.String())
+	}
+}
+
+func TestHandleLatestPacketSnapshotUsesProjectID(t *testing.T) {
+	projectID := lib.ProjectID("relay")
+	handler := testHandler(projectID)
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/projects/"+projectID+"/packet-snapshots/latest?target=codex", nil)
+	rec := httptest.NewRecorder()
+
+	handler.handleProjectShow(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
+	}
+	if !bytes.Contains(rec.Body.Bytes(), []byte(`"command":"relay latest packet snapshot"`)) {
+		t.Fatalf("expected latest snapshot command, got %s", rec.Body.String())
+	}
+	if !bytes.Contains(rec.Body.Bytes(), []byte(`"snapshot_id":"psnap_1"`)) {
+		t.Fatalf("expected snapshot id, got %s", rec.Body.String())
 	}
 }
 
@@ -972,6 +1016,18 @@ func testHandler(projectID string, apiKeyStores ...*fakeAPIKeyStore) Handler {
 				},
 			},
 			Packets: &fakePacketStore{},
+			PacketSnapshots: &fakePacketSnapshotStore{
+				latest: domain.PacketSnapshot{
+					ID:            "psnap_1",
+					ProjectID:     projectID,
+					PacketKind:    "resume",
+					Target:        "codex",
+					SchemaVersion: "relay.packet.v1",
+					RenderedBody:  "latest body",
+					StyleCues:     []byte(`[]`),
+					CreatedAt:     time.Now(),
+				},
+			},
 			APIKeys: apiKeys,
 		}),
 	}

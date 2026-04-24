@@ -60,6 +60,7 @@ Notes:
   - `relay_capture`
   - `relay_promote`
   - `relay_build_packet`
+  - `relay_latest_packet_snapshot`
   - `relay_show_project`
 - API key issue/list/revoke stays on the HTTP API and local skill, not the public MCP surface.
 - Local `cmd/relay-mcp` can still expose admin tools for operator/debug workflows.

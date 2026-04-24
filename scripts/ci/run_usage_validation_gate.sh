@@ -80,6 +80,18 @@ cleanup() {
   fi
 }
 
+append_evidence_status_summary() {
+  if [[ -z "${GITHUB_STEP_SUMMARY:-}" ]]; then
+    return 0
+  fi
+  {
+    echo
+    echo "## Relay Evidence Status"
+    echo
+    ./scripts/evals/relay_evidence_status.py --root "$OUTPUT_ROOT"
+  } >>"$GITHUB_STEP_SUMMARY"
+}
+
 main() {
   if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
     usage
@@ -170,6 +182,7 @@ main() {
       "$batch_dir" \
       "$run_status_json" \
       "$api_log"
+    append_evidence_status_summary
     exit 75
   fi
   if [[ "$batch_status" -ne 0 ]]; then
@@ -195,6 +208,7 @@ main() {
   if [[ -n "${GITHUB_STEP_SUMMARY:-}" && -f "$summary_md" ]]; then
     cat "$summary_md" >>"$GITHUB_STEP_SUMMARY"
   fi
+  append_evidence_status_summary
 }
 
 main "$@"

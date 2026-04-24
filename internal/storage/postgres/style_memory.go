@@ -331,9 +331,7 @@ func (s Stores) CreatePacketSnapshot(ctx context.Context, snapshot domain.Packet
 }
 
 func (s Stores) GetPacketSnapshot(ctx context.Context, id string) (domain.PacketSnapshot, error) {
-	var snapshot domain.PacketSnapshot
-	var heuristicIDs, decisionIDs, openQuestionIDs, artifactIDs, missingContext, whyIncluded []byte
-	err := s.db.QueryRow(ctx, `
+	return scanPacketSnapshot(s.db.QueryRow(ctx, `
 		SELECT id, project_id, packet_kind, target, schema_version, task_summary,
 		       rendered_body, style_cues, supporting_notes, supporting_decisions,
 		       supporting_questions, supporting_artifacts, why_included,
@@ -341,7 +339,29 @@ func (s Stores) GetPacketSnapshot(ctx context.Context, id string) (domain.Packet
 		       source_artifact_ids, missing_context, created_at
 		FROM packet_snapshots
 		WHERE id = $1
-	`, id).Scan(&snapshot.ID, &snapshot.ProjectID, &snapshot.PacketKind, &snapshot.Target, &snapshot.SchemaVersion, &snapshot.TaskSummary, &snapshot.RenderedBody, &snapshot.StyleCues, &snapshot.SupportingNotes, &snapshot.SupportingDecisions, &snapshot.SupportingQuestions, &snapshot.SupportingArtifacts, &whyIncluded, &heuristicIDs, &decisionIDs, &openQuestionIDs, &artifactIDs, &missingContext, &snapshot.CreatedAt)
+	`, id))
+}
+
+func (s Stores) LatestPacketSnapshotByProject(ctx context.Context, projectID string, packetKind string, target string) (domain.PacketSnapshot, error) {
+	return scanPacketSnapshot(s.db.QueryRow(ctx, `
+		SELECT id, project_id, packet_kind, target, schema_version, task_summary,
+		       rendered_body, style_cues, supporting_notes, supporting_decisions,
+		       supporting_questions, supporting_artifacts, why_included,
+		       approved_heuristic_ids, decision_ids, open_question_ids,
+		       source_artifact_ids, missing_context, created_at
+		FROM packet_snapshots
+		WHERE project_id = $1
+		  AND packet_kind = $2
+		  AND target = $3
+		ORDER BY created_at DESC, id DESC
+		LIMIT 1
+	`, projectID, packetKind, target))
+}
+
+func scanPacketSnapshot(row pgx.Row) (domain.PacketSnapshot, error) {
+	var snapshot domain.PacketSnapshot
+	var heuristicIDs, decisionIDs, openQuestionIDs, artifactIDs, missingContext, whyIncluded []byte
+	err := row.Scan(&snapshot.ID, &snapshot.ProjectID, &snapshot.PacketKind, &snapshot.Target, &snapshot.SchemaVersion, &snapshot.TaskSummary, &snapshot.RenderedBody, &snapshot.StyleCues, &snapshot.SupportingNotes, &snapshot.SupportingDecisions, &snapshot.SupportingQuestions, &snapshot.SupportingArtifacts, &whyIncluded, &heuristicIDs, &decisionIDs, &openQuestionIDs, &artifactIDs, &missingContext, &snapshot.CreatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return domain.PacketSnapshot{}, lib.NotFound("PACKET_SNAPSHOT_NOT_FOUND", "packet snapshot not found")
 	}

@@ -72,6 +72,7 @@ type ApprovedHeuristicStore interface {
 type PacketSnapshotStore interface {
 	CreatePacketSnapshot(ctx context.Context, snapshot domain.PacketSnapshot) (domain.PacketSnapshot, error)
 	GetPacketSnapshot(ctx context.Context, id string) (domain.PacketSnapshot, error)
+	LatestPacketSnapshotByProject(ctx context.Context, projectID string, packetKind string, target string) (domain.PacketSnapshot, error)
 }
 
 type IdempotencyStore interface {

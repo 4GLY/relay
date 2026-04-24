@@ -37,6 +37,10 @@ func (b stubBackend) BuildPacket(_ context.Context, _ services.PacketBuildInput)
 	return services.PacketBuildResult{}, nil
 }
 
+func (b stubBackend) LatestPacketSnapshot(_ context.Context, _ services.PacketSnapshotReadInput) (services.PacketSnapshotReadResult, error) {
+	return services.PacketSnapshotReadResult{}, nil
+}
+
 func (b stubBackend) Show(_ context.Context, _ string) (services.ShowResult, error) {
 	return services.ShowResult{}, nil
 }
@@ -112,6 +116,7 @@ func TestListToolsDeterministicWithoutAdmin(t *testing.T) {
 		"relay_build_packet",
 		"relay_capture",
 		"relay_health",
+		"relay_latest_packet_snapshot",
 		"relay_promote",
 		"relay_retrieve_project",
 		"relay_show_project",
@@ -318,6 +323,59 @@ type retrieveInputBackend struct {
 func (b *retrieveInputBackend) ProjectRetrieve(_ context.Context, projectID string, query string, limit int) (services.ProjectRetrieveResult, error) {
 	b.input = services.ProjectRetrieveInput{ProjectID: projectID, Query: query, Limit: limit}
 	return services.ProjectRetrieveResult{ProjectID: projectID, Query: query}, nil
+}
+
+type latestSnapshotInputBackend struct {
+	stubBackend
+	input services.PacketSnapshotReadInput
+}
+
+func (b *latestSnapshotInputBackend) LatestPacketSnapshot(_ context.Context, input services.PacketSnapshotReadInput) (services.PacketSnapshotReadResult, error) {
+	b.input = input
+	projectID := input.ProjectID
+	if projectID == "" {
+		projectID = lib.ProjectID(input.Project)
+	}
+	return services.PacketSnapshotReadResult{
+		SnapshotID: "psnap_test",
+		ProjectID:  projectID,
+		Type:       input.Type,
+		Target:     input.Target,
+	}, nil
+}
+
+func TestLatestPacketSnapshotToolForwardsDefaults(t *testing.T) {
+	backend := &latestSnapshotInputBackend{}
+	server := New(backend)
+
+	serverTransport, clientTransport := mcp.NewInMemoryTransports()
+	ctx := context.Background()
+	go func() {
+		_ = server.Run(ctx, serverTransport)
+	}()
+
+	client := mcp.NewClient(&mcp.Implementation{Name: "relay-mcp-test-client", Version: "v1.0.0"}, nil)
+	session, err := client.Connect(ctx, clientTransport, nil)
+	if err != nil {
+		t.Fatalf("connect: %v", err)
+	}
+	defer session.Close()
+
+	result, err := session.CallTool(ctx, &mcp.CallToolParams{
+		Name: "relay_latest_packet_snapshot",
+		Arguments: map[string]any{
+			"project": "relay",
+		},
+	})
+	if err != nil {
+		t.Fatalf("call latest packet snapshot tool: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("unexpected tool error: %#v", result)
+	}
+	if backend.input.Project != "relay" || backend.input.Target != "codex" {
+		t.Fatalf("unexpected latest snapshot input: %#v", backend.input)
+	}
 }
 
 func TestRetrieveProjectToolForwardsQuery(t *testing.T) {

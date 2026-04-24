@@ -150,7 +150,10 @@ status under `.gstack/projects/relay-ci/batches/<batch_id>/run-status.json`:
   judge run, and the workflow fell back to deterministic Go tests.
 
 Automation should read `run-status.json` before parsing human Markdown
-summaries. The Markdown is for people. The JSON file is the contract.
+summaries. The Markdown is for people. The JSON file is the contract. Actions
+step summaries also include `Relay Evidence Status`, generated from the same
+`run-status.json` files, so the human CI view and automation contract stay in
+sync.
 
 For a local operator summary after downloading Actions artifacts, run:
 

@@ -23,8 +23,9 @@ This is the shortest useful remote MCP session:
 1. `relay_capture` stores raw memory and returns `project_id` plus any created note ids.
 2. `relay_promote` turns that raw note into a durable decision or question.
 3. `relay_build_packet` produces an agent-ready `resume` packet.
-4. `relay_show_project` checks aggregate state using the canonical `project_id`.
-5. `relay_retrieve_project` surfaces query-conditioned context before the next packet or action.
+4. `relay_latest_packet_snapshot` reopens the latest immutable packet snapshot for deterministic continuation.
+5. `relay_show_project` checks aggregate state using the canonical `project_id`.
+6. `relay_retrieve_project` surfaces query-conditioned context before the next packet or action.
 
 Example with the bundled raw HTTP helper:
 
@@ -121,6 +122,20 @@ Expected shape:
   - `source_artifact_ids`
   - `approved_heuristic_ids`
   - `missing_context`
+- `relay_latest_packet_snapshot`
+  - `snapshot_id`
+  - `project_id`
+  - `schema_version`
+  - `type`
+  - `target`
+  - `task_summary`
+  - `rendered_body`
+  - `style_cues`
+  - `supporting_notes`
+  - `supporting_decisions`
+  - `supporting_questions`
+  - `supporting_artifacts`
+  - `created_at`
 - `relay_show_project`
   - `project_id`
   - `note_count`
@@ -145,6 +160,7 @@ Expected shape:
 - `relay_capture`
 - `relay_promote`
 - `relay_build_packet`
+- `relay_latest_packet_snapshot`
 - `relay_show_project`
 - `relay_retrieve_project`
 
@@ -300,6 +316,49 @@ Output:
 - `source_artifact_ids`
 - `approved_heuristic_ids`
 - `missing_context`
+
+### `relay_latest_packet_snapshot`
+
+Use:
+- read the latest immutable packet snapshot for a project, packet type, and target without creating a new packet
+
+Minimum input:
+
+```json
+{
+  "project": "relay"
+}
+```
+
+Optional fields:
+- `project_id`
+- `type`
+- `target`
+
+Defaults:
+- `type`: `resume`
+- `target`: `codex` in MCP flows
+
+Output:
+- `snapshot_id`
+- `project_id`
+- `schema_version`
+- `type`
+- `target`
+- `task_summary`
+- `rendered_body`
+- `style_cues`
+- `supporting_notes`
+- `supporting_decisions`
+- `supporting_questions`
+- `supporting_artifacts`
+- `why_included`
+- `approved_heuristic_ids`
+- `decision_ids`
+- `open_question_ids`
+- `source_artifact_ids`
+- `missing_context`
+- `created_at`
 
 ### `relay_show_project`
 

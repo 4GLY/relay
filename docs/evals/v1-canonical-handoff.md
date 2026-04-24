@@ -286,6 +286,8 @@ That helper:
 - verifies `claude` authentication from `CLAUDE_CODE_OAUTH_TOKEN`, `ANTHROPIC_API_KEY`, or an existing `claude auth login` session
 - runs `scripts/evals/v1_usage_validation_batch.sh`
 - appends `batch-summary.md` to `GITHUB_STEP_SUMMARY` when running in Actions
+- appends `Relay Evidence Status` to `GITHUB_STEP_SUMMARY` from
+  `run-status.json`
 - fails when either the style-aware gate or the retrieval-aware gate falls below threshold
 
 Outputs land under:
@@ -328,6 +330,22 @@ Use strict mode when automation needs to fail unless canonical evidence exists:
 ./scripts/evals/relay_evidence_status.py --strict-release
 ./scripts/evals/relay_evidence_status.py --strict-consumer
 ```
+
+### Consumer Threshold Promotion
+
+Consumer-stability thresholds may be promoted only from machine-readable
+`run-status.json` evidence where:
+
+- `status=completed`
+- `canonical_benchmark_evidence=true`
+- `soft_gate.pass=true`
+- `runs>=3`
+- `judge_model` and `codex_model` are stable across the run
+- no model-limit fallback or substituted exploratory model was used
+
+A single-fixture run such as `fixture_limit=1` may promote only a narrow
+single-fixture threshold. Broad release thresholds require full-fixture evidence
+or an explicit fixture count that matches the release gate scope.
 
 Each fixture now declares `evidence_paths` instead of checking in static sample files. The batch runner generates:
 

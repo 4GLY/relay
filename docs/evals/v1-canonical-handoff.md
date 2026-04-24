@@ -226,6 +226,8 @@ The batch runner:
 - runs the retrieval baseline judge after each fixture so `retrieval-aware` can be compared against `ranking-only`
 - optionally runs the real Claude/Codex consumer continuation eval after each fixture when `--consumer-continuation` is set
 - writes `batch-runs.jsonl` plus `batch-summary.json` and `batch-summary.md`
+- writes `run-status.json` as the machine-readable status contract for
+  downstream automation
 - evaluates a release gate from style-aware win rate, average `style_match`, retrieval-aware win rate, retrieval readiness/evidence scores, and budget-pass rate
 - reports consumer continuation metrics when present, but does not gate releases on them yet
 
@@ -294,6 +296,18 @@ Outputs land under:
 - `.gstack/projects/relay/batches/<batch_id>/batch-runs.jsonl`
 - `.gstack/projects/relay/batches/<batch_id>/batch-summary.json`
 - `.gstack/projects/relay/batches/<batch_id>/batch-summary.md`
+- `.gstack/projects/relay/batches/<batch_id>/run-status.json`
+
+For usage-validation batches, `run-status.json` is the first file downstream
+automation should read:
+
+- `status=completed` means the batch collected real Claude judge evidence and
+  `canonical_benchmark_evidence=true`.
+- `status=blocked_by_model_limit` means provider capacity prevented canonical
+  judge evidence, so `canonical_benchmark_evidence=false` and the required check
+  falls back to deterministic `go test ./...`.
+- `gate_pass` and `gate_reasons` mirror the aggregate report when the batch
+  completed.
 
 Each fixture now declares `evidence_paths` instead of checking in static sample files. The batch runner generates:
 

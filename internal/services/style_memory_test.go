@@ -164,6 +164,24 @@ func (s *fakePacketSnapshotStore) GetPacketSnapshot(_ context.Context, id string
 	return item, nil
 }
 
+func (s *fakePacketSnapshotStore) LatestPacketSnapshotByProject(_ context.Context, projectID string, packetKind string, target string) (domain.PacketSnapshot, error) {
+	var latest domain.PacketSnapshot
+	found := false
+	for _, item := range s.items {
+		if item.ProjectID != projectID || item.PacketKind != packetKind || item.Target != target {
+			continue
+		}
+		if !found || item.CreatedAt.After(latest.CreatedAt) || (item.CreatedAt.Equal(latest.CreatedAt) && item.ID > latest.ID) {
+			latest = item
+			found = true
+		}
+	}
+	if !found {
+		return domain.PacketSnapshot{}, lib.NotFound("PACKET_SNAPSHOT_NOT_FOUND", "packet snapshot not found")
+	}
+	return latest, nil
+}
+
 type fakeIdempotencyStore struct {
 	items map[string]domain.IdempotencyRecord
 }
@@ -612,5 +630,63 @@ func TestBuildPacketIncludesApprovedStyleCueAndPersistsSnapshot(t *testing.T) {
 	}
 	if len(snapshot.ApprovedHeuristicIDs) != 1 || snapshot.ApprovedHeuristicIDs[0] != "heur_1" {
 		t.Fatalf("expected snapshot to preserve heuristic id, got %#v", snapshot.ApprovedHeuristicIDs)
+	}
+}
+
+func TestLatestPacketSnapshotReturnsImmutablePacket(t *testing.T) {
+	projectID := lib.ProjectID("relay")
+	snapshots := &fakePacketSnapshotStore{items: map[string]domain.PacketSnapshot{
+		"psnap_old": {
+			ID:            "psnap_old",
+			ProjectID:     projectID,
+			PacketKind:    string(contracts.PacketKindResume),
+			Target:        string(contracts.PacketTargetCodex),
+			SchemaVersion: packetSchemaVersionV1,
+			RenderedBody:  "old body",
+			StyleCues:     []byte(`[]`),
+			CreatedAt:     time.Now().Add(-time.Hour),
+		},
+		"psnap_new": {
+			ID:                   "psnap_new",
+			ProjectID:            projectID,
+			PacketKind:           string(contracts.PacketKindResume),
+			Target:               string(contracts.PacketTargetCodex),
+			SchemaVersion:        packetSchemaVersionV1,
+			TaskSummary:          "continue Relay",
+			RenderedBody:         "latest body",
+			StyleCues:            []byte(`[{"heuristic_id":"heur_1","why_selected":"specific","source_summary":"approved"}]`),
+			SupportingNotes:      []byte(`[{"note_id":"note_1","excerpt":"handoff context"}]`),
+			SupportingDecisions:  []byte(`[]`),
+			SupportingQuestions:  []byte(`[]`),
+			SupportingArtifacts:  []byte(`[]`),
+			WhyIncluded:          []string{"latest approved packet"},
+			ApprovedHeuristicIDs: []string{"heur_1"},
+			DecisionIDs:          []string{"dec_1"},
+			MissingContext:       []string{"none"},
+			CreatedAt:            time.Now(),
+		},
+	}}
+	service := New(Dependencies{
+		Projects: &fakeProjectStore{projects: map[string]domain.Project{
+			"relay": {ID: projectID, Name: "relay"},
+		}},
+		PacketSnapshots: snapshots,
+	})
+
+	result, err := service.LatestPacketSnapshot(context.Background(), PacketSnapshotReadInput{
+		Project: "relay",
+		Target:  string(contracts.PacketTargetCodex),
+	})
+	if err != nil {
+		t.Fatalf("LatestPacketSnapshot returned error: %v", err)
+	}
+	if result.SnapshotID != "psnap_new" || result.RenderedBody != "latest body" {
+		t.Fatalf("unexpected latest snapshot: %#v", result)
+	}
+	if len(result.StyleCues) != 1 || result.StyleCues[0].HeuristicID != "heur_1" {
+		t.Fatalf("expected decoded style cues, got %#v", result.StyleCues)
+	}
+	if len(result.SupportingNotes) != 1 || result.SupportingNotes[0].NoteID != "note_1" {
+		t.Fatalf("expected decoded supporting notes, got %#v", result.SupportingNotes)
 	}
 }

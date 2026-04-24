@@ -151,6 +151,12 @@ jobs:
                 codex_model: $codex_model,
                 reason: "provider usage limit reached before consumer stability could complete"
               }' > ".gstack/projects/relay-consumer-stability/stability/${RELAY_EVAL_CONSUMER_STABILITY_PREFIX}/run-status.json"
+            {
+              echo
+              echo "## Relay Evidence Status"
+              echo
+              ./scripts/evals/relay_evidence_status.py --root .gstack/projects/relay-consumer-stability
+            } >> "${GITHUB_STEP_SUMMARY}"
             exit 0
           fi
           exit "$status"

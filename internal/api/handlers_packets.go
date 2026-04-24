@@ -36,6 +36,10 @@ func (h Handler) handleProjectShow(w http.ResponseWriter, r *http.Request) {
 		h.handleProjectRetrieve(w, r, projectID)
 		return
 	}
+	if action == "packet-snapshots" {
+		h.handleLatestPacketSnapshot(w, r, projectID)
+		return
+	}
 	result, err := h.services.Show(r.Context(), services.ShowInput{ProjectID: projectID})
 	if err != nil {
 		writeServiceError(w, "relay show", err)
@@ -76,6 +80,23 @@ func (h Handler) handleProjectRetrieve(w http.ResponseWriter, r *http.Request, p
 	writeJSON(w, http.StatusOK, contracts.Success("relay project retrieve", result))
 }
 
+func (h Handler) handleLatestPacketSnapshot(w http.ResponseWriter, r *http.Request, projectID string) {
+	if _, action := projectPathPartsAfterAction(r.URL.Path); action != "latest" {
+		writeJSON(w, http.StatusNotFound, contracts.Failure("relay latest packet snapshot", "NOT_FOUND", "unknown packet snapshot route", false, "path"))
+		return
+	}
+	result, err := h.services.LatestPacketSnapshot(r.Context(), services.PacketSnapshotReadInput{
+		ProjectID: projectID,
+		Type:      strings.TrimSpace(r.URL.Query().Get("type")),
+		Target:    strings.TrimSpace(r.URL.Query().Get("target")),
+	})
+	if err != nil {
+		writeServiceError(w, "relay latest packet snapshot", err)
+		return
+	}
+	writeJSON(w, http.StatusOK, contracts.Success("relay latest packet snapshot", result))
+}
+
 func projectPathParts(path string) (projectID string, action string) {
 	trimmed := strings.Trim(strings.TrimPrefix(path, "/v1/projects/"), "/")
 	if trimmed == "" {
@@ -87,4 +108,16 @@ func projectPathParts(path string) (projectID string, action string) {
 		action = parts[1]
 	}
 	return projectID, action
+}
+
+func projectPathPartsAfterAction(path string) (action string, subaction string) {
+	trimmed := strings.Trim(strings.TrimPrefix(path, "/v1/projects/"), "/")
+	parts := strings.Split(trimmed, "/")
+	if len(parts) > 1 {
+		action = parts[1]
+	}
+	if len(parts) > 2 {
+		subaction = parts[2]
+	}
+	return action, subaction
 }

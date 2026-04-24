@@ -393,6 +393,82 @@ func (s Service) createPacketSnapshot(ctx context.Context, projectID string, res
 	return snapshot, nil
 }
 
+func (s Service) LatestPacketSnapshot(ctx context.Context, input PacketSnapshotReadInput) (PacketSnapshotReadResult, error) {
+	if input.Project == "" && input.ProjectID == "" {
+		return PacketSnapshotReadResult{}, lib.MissingFields("MISSING_REQUIRED_FIELDS", "project")
+	}
+	if s.deps.PacketSnapshots == nil {
+		return PacketSnapshotReadResult{}, lib.Misconfigured("packet snapshot store is required")
+	}
+
+	project, err := s.resolveProject(ctx, input.Project, input.ProjectID)
+	if err != nil {
+		return PacketSnapshotReadResult{}, err
+	}
+	if err := s.enforceProjectAccess(ctx, project.ID); err != nil {
+		return PacketSnapshotReadResult{}, err
+	}
+
+	packetType := contracts.NormalizePacketKind(input.Type)
+	target := contracts.NormalizePacketTarget(input.Target)
+	snapshot, err := s.deps.PacketSnapshots.LatestPacketSnapshotByProject(ctx, project.ID, packetType, target)
+	if err != nil {
+		return PacketSnapshotReadResult{}, err
+	}
+	return packetSnapshotReadResult(snapshot)
+}
+
+func packetSnapshotReadResult(snapshot domain.PacketSnapshot) (PacketSnapshotReadResult, error) {
+	var styleCues []PacketStyleCue
+	var supportingNotes []PacketNote
+	var supportingDecisions []PacketDecision
+	var supportingQuestions []PacketQuestion
+	var supportingArtifacts []PacketArtifact
+	if err := unmarshalPacketSnapshotJSON(snapshot.StyleCues, &styleCues); err != nil {
+		return PacketSnapshotReadResult{}, err
+	}
+	if err := unmarshalPacketSnapshotJSON(snapshot.SupportingNotes, &supportingNotes); err != nil {
+		return PacketSnapshotReadResult{}, err
+	}
+	if err := unmarshalPacketSnapshotJSON(snapshot.SupportingDecisions, &supportingDecisions); err != nil {
+		return PacketSnapshotReadResult{}, err
+	}
+	if err := unmarshalPacketSnapshotJSON(snapshot.SupportingQuestions, &supportingQuestions); err != nil {
+		return PacketSnapshotReadResult{}, err
+	}
+	if err := unmarshalPacketSnapshotJSON(snapshot.SupportingArtifacts, &supportingArtifacts); err != nil {
+		return PacketSnapshotReadResult{}, err
+	}
+	return PacketSnapshotReadResult{
+		SnapshotID:           snapshot.ID,
+		ProjectID:            snapshot.ProjectID,
+		SchemaVersion:        snapshot.SchemaVersion,
+		Type:                 snapshot.PacketKind,
+		Target:               snapshot.Target,
+		TaskSummary:          snapshot.TaskSummary,
+		RenderedBody:         snapshot.RenderedBody,
+		StyleCues:            styleCues,
+		SupportingNotes:      supportingNotes,
+		SupportingDecisions:  supportingDecisions,
+		SupportingQuestions:  supportingQuestions,
+		SupportingArtifacts:  supportingArtifacts,
+		WhyIncluded:          snapshot.WhyIncluded,
+		ApprovedHeuristicIDs: snapshot.ApprovedHeuristicIDs,
+		DecisionIDs:          snapshot.DecisionIDs,
+		OpenQuestionIDs:      snapshot.OpenQuestionIDs,
+		SourceArtifactIDs:    snapshot.SourceArtifactIDs,
+		MissingContext:       snapshot.MissingContext,
+		CreatedAt:            snapshot.CreatedAt,
+	}, nil
+}
+
+func unmarshalPacketSnapshotJSON[T any](raw []byte, target *T) error {
+	if len(raw) == 0 {
+		raw = []byte("[]")
+	}
+	return json.Unmarshal(raw, target)
+}
+
 func summarizeNotes(items []domain.Note, evidenceByID map[string]string) []PacketNote {
 	summaries := make([]PacketNote, 0, len(items))
 	for _, item := range items {

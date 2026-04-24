@@ -148,6 +148,35 @@ type PacketBuildResult struct {
 	MissingContext       []string         `json:"missing_context"`
 }
 
+type PacketSnapshotReadInput struct {
+	Project   string `json:"project"`
+	ProjectID string `json:"project_id,omitempty"`
+	Type      string `json:"type,omitempty"`
+	Target    string `json:"target,omitempty"`
+}
+
+type PacketSnapshotReadResult struct {
+	SnapshotID           string           `json:"snapshot_id"`
+	ProjectID            string           `json:"project_id"`
+	SchemaVersion        string           `json:"schema_version,omitempty"`
+	Type                 string           `json:"type"`
+	Target               string           `json:"target"`
+	TaskSummary          string           `json:"task_summary,omitempty"`
+	RenderedBody         string           `json:"rendered_body,omitempty"`
+	StyleCues            []PacketStyleCue `json:"style_cues,omitempty"`
+	SupportingNotes      []PacketNote     `json:"supporting_notes,omitempty"`
+	SupportingDecisions  []PacketDecision `json:"supporting_decisions,omitempty"`
+	SupportingQuestions  []PacketQuestion `json:"supporting_questions,omitempty"`
+	SupportingArtifacts  []PacketArtifact `json:"supporting_artifacts,omitempty"`
+	WhyIncluded          []string         `json:"why_included,omitempty"`
+	ApprovedHeuristicIDs []string         `json:"approved_heuristic_ids,omitempty"`
+	DecisionIDs          []string         `json:"decision_ids"`
+	OpenQuestionIDs      []string         `json:"open_question_ids"`
+	SourceArtifactIDs    []string         `json:"source_artifact_ids"`
+	MissingContext       []string         `json:"missing_context"`
+	CreatedAt            time.Time        `json:"created_at"`
+}
+
 type PacketStyleCue struct {
 	HeuristicID   string   `json:"heuristic_id"`
 	HeuristicKey  string   `json:"heuristic_key,omitempty"`

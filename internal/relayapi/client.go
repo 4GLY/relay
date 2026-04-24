@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"relay/internal/contracts"
+	"relay/internal/lib"
 	"relay/internal/services"
 )
 
@@ -138,6 +139,25 @@ func (c *Client) Promote(ctx context.Context, input services.PromoteInput) (serv
 
 func (c *Client) BuildPacket(ctx context.Context, input services.PacketBuildInput) (services.PacketBuildResult, error) {
 	return doJSON[services.PacketBuildResult](ctx, c.httpClient, c.clientToken, http.MethodPost, c.baseURL+"/v1/packets/build", input)
+}
+
+func (c *Client) LatestPacketSnapshot(ctx context.Context, input services.PacketSnapshotReadInput) (services.PacketSnapshotReadResult, error) {
+	projectID := input.ProjectID
+	if projectID == "" && input.Project != "" {
+		projectID = lib.ProjectID(input.Project)
+	}
+	endpoint := c.baseURL + "/v1/projects/" + projectID + "/packet-snapshots/latest"
+	params := url.Values{}
+	if input.Type != "" {
+		params.Set("type", input.Type)
+	}
+	if input.Target != "" {
+		params.Set("target", input.Target)
+	}
+	if encoded := params.Encode(); encoded != "" {
+		endpoint += "?" + encoded
+	}
+	return doJSON[services.PacketSnapshotReadResult](ctx, c.httpClient, c.clientToken, http.MethodGet, endpoint, nil)
 }
 
 func (c *Client) Show(ctx context.Context, projectID string) (services.ShowResult, error) {

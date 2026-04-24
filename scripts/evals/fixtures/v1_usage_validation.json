@@ -3,20 +3,16 @@
     "id": "api-first-boundary",
     "scenario_label": "api-first-boundary",
     "design_path": "docs/api.md",
+    "evidence_paths": [
+      "docs/api.md",
+      "docs/mcp.md",
+      "internal/api/server.go",
+      "internal/mcpserver/server.go"
+    ],
     "extra_artifacts": [
       {
         "type": "code_path",
         "source_path": "internal/api/server.go",
-        "trust_level": "trusted"
-      },
-      {
-        "type": "changed_files",
-        "source_path": "scripts/evals/fixtures/artifacts/changed-files/api-first-boundary.txt",
-        "trust_level": "trusted"
-      },
-      {
-        "type": "pr_diff",
-        "source_path": "scripts/evals/fixtures/artifacts/pr-diffs/api-first-boundary.md",
         "trust_level": "trusted"
       }
     ],
@@ -50,20 +46,16 @@
     "id": "approval-gate",
     "scenario_label": "approval-gate",
     "design_path": "docs/api.md",
+    "evidence_paths": [
+      "docs/api.md",
+      "internal/services/style_memory.go",
+      "internal/services/curator.go",
+      "cmd/relay-worker/main.go"
+    ],
     "extra_artifacts": [
       {
         "type": "code_path",
         "source_path": "internal/services/style_memory.go",
-        "trust_level": "trusted"
-      },
-      {
-        "type": "changed_files",
-        "source_path": "scripts/evals/fixtures/artifacts/changed-files/approval-gate.txt",
-        "trust_level": "trusted"
-      },
-      {
-        "type": "pr_diff",
-        "source_path": "scripts/evals/fixtures/artifacts/pr-diffs/approval-gate.md",
         "trust_level": "trusted"
       }
     ],
@@ -97,20 +89,16 @@
     "id": "session-without-summary",
     "scenario_label": "session-without-summary",
     "design_path": "docs/mcp.md",
+    "evidence_paths": [
+      "docs/mcp.md",
+      "internal/services/packets.go",
+      "internal/mcpserver/server.go",
+      "scripts/acceptance/v1_canonical_handoff.sh"
+    ],
     "extra_artifacts": [
       {
         "type": "code_path",
         "source_path": "internal/services/packets.go",
-        "trust_level": "trusted"
-      },
-      {
-        "type": "changed_files",
-        "source_path": "scripts/evals/fixtures/artifacts/changed-files/session-without-summary.txt",
-        "trust_level": "trusted"
-      },
-      {
-        "type": "pr_diff",
-        "source_path": "scripts/evals/fixtures/artifacts/pr-diffs/session-without-summary.md",
         "trust_level": "trusted"
       }
     ],
@@ -144,20 +132,16 @@
     "id": "same-project-first",
     "scenario_label": "same-project-first",
     "design_path": "docs/research/context-graph-and-semantic-retrieval.md",
+    "evidence_paths": [
+      "docs/research/context-graph-and-semantic-retrieval.md",
+      "docs/evals/v1-canonical-handoff.md",
+      "internal/services/capture.go",
+      "scripts/evals/v1_usage_validation_batch.sh"
+    ],
     "extra_artifacts": [
       {
         "type": "code_path",
         "source_path": "internal/services/capture.go",
-        "trust_level": "trusted"
-      },
-      {
-        "type": "changed_files",
-        "source_path": "scripts/evals/fixtures/artifacts/changed-files/same-project-first.txt",
-        "trust_level": "trusted"
-      },
-      {
-        "type": "pr_diff",
-        "source_path": "scripts/evals/fixtures/artifacts/pr-diffs/same-project-first.md",
         "trust_level": "trusted"
       }
     ],
@@ -191,20 +175,16 @@
     "id": "retrieval-after-repeatability",
     "scenario_label": "retrieval-after-repeatability",
     "design_path": "docs/research/context-graph-and-semantic-retrieval.md",
+    "evidence_paths": [
+      "docs/research/context-graph-and-semantic-retrieval.md",
+      "scripts/evals/v1_usage_validation_batch.sh",
+      "scripts/evals/v1_usage_validation_report.py",
+      "internal/services/packets.go"
+    ],
     "extra_artifacts": [
       {
         "type": "code_path",
         "source_path": "scripts/evals/v1_usage_validation_report.py",
-        "trust_level": "trusted"
-      },
-      {
-        "type": "changed_files",
-        "source_path": "scripts/evals/fixtures/artifacts/changed-files/retrieval-after-repeatability.txt",
-        "trust_level": "trusted"
-      },
-      {
-        "type": "pr_diff",
-        "source_path": "scripts/evals/fixtures/artifacts/pr-diffs/retrieval-after-repeatability.md",
         "trust_level": "trusted"
       }
     ],

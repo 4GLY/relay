@@ -1,4 +1,0 @@
-docs/mcp.md
-internal/services/packets.go
-internal/mcpserver/server.go
-scripts/acceptance/v1_canonical_handoff.sh

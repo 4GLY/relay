@@ -1,4 +1,0 @@
-docs/research/context-graph-and-semantic-retrieval.md
-docs/evals/v1-canonical-handoff.md
-internal/services/capture.go
-scripts/evals/v1_usage_validation_batch.sh

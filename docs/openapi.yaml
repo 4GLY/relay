@@ -384,6 +384,7 @@ components:
           example: design_doc
         task_summary:
           type: string
+          description: Optional current-task summary used in the rendered packet body and supporting-artifact ranking.
         disable_style_cues:
           type: boolean
         persist_snapshot:

@@ -694,6 +694,73 @@ func TestBuildPacket(t *testing.T) {
 	}
 }
 
+func TestBuildPacketRanksArtifactsByTaskSummary(t *testing.T) {
+	projectID := lib.ProjectID("relay")
+	projects := &fakeProjectStore{
+		projects: map[string]domain.Project{
+			"relay": {ID: projectID, Name: "relay"},
+		},
+	}
+	artifacts := &fakeArtifactStore{
+		items: []domain.Artifact{
+			{ID: "art_api", ProjectID: projectID, Type: "design_doc", SourcePath: "docs/api.md", TrustLevel: "trusted"},
+			{ID: "art_packets", ProjectID: projectID, Type: "code_path", SourcePath: "internal/services/packets.go", TrustLevel: "trusted"},
+			{ID: "art_repo", ProjectID: projectID, Type: "repo_path", SourcePath: "cmd/relay-worker/main.go", TrustLevel: "trusted"},
+			{ID: "art_handoff", ProjectID: projectID, Type: "handoff_md", SourcePath: "docs/evals/v1-canonical-handoff.md", TrustLevel: "trusted"},
+			{ID: "art_design", ProjectID: projectID, Type: "design_doc", SourcePath: "docs/research/context-graph-and-semantic-retrieval.md", TrustLevel: "trusted"},
+			{ID: "art_capture", ProjectID: projectID, Type: "code_path", SourcePath: "internal/services/capture.go", TrustLevel: "trusted"},
+			{ID: "art_report", ProjectID: projectID, Type: "code_path", SourcePath: "scripts/evals/v1_usage_validation_report.py", TrustLevel: "trusted"},
+			{ID: "art_mcp", ProjectID: projectID, Type: "design_doc", SourcePath: "docs/mcp.md", TrustLevel: "trusted"},
+			{ID: "art_worker", ProjectID: projectID, Type: "code_path", SourcePath: "cmd/relay-worker/main.go", TrustLevel: "trusted"},
+			{ID: "art_curator", ProjectID: projectID, Type: "code_path", SourcePath: "internal/services/curator.go", TrustLevel: "trusted"},
+		},
+	}
+
+	service := New(Dependencies{
+		Projects:      projects,
+		Notes:         &fakeNoteStore{},
+		Artifacts:     artifacts,
+		Decisions:     &fakeDecisionStore{},
+		OpenQuestions: &fakeOpenQuestionStore{},
+		Packets:       &fakePacketStore{},
+		APIKeys:       &fakeAPIKeyStore{},
+	})
+
+	result, err := service.BuildPacket(context.Background(), PacketBuildInput{
+		Project:     "relay",
+		Type:        "resume",
+		Target:      "codex",
+		TaskSummary: "Continue API packet work by checking docs/api.md and internal/services/packets.go before wrapper changes.",
+	})
+	if err != nil {
+		t.Fatalf("BuildPacket returned error: %v", err)
+	}
+	if len(result.SupportingArtifacts) != 8 {
+		t.Fatalf("expected 8 supporting artifacts, got %d", len(result.SupportingArtifacts))
+	}
+	if result.SupportingArtifacts[0].SourcePath != "internal/services/packets.go" {
+		t.Fatalf("expected packets.go to rank first, got %#v", result.SupportingArtifacts)
+	}
+	if !containsArtifactPath(result.SupportingArtifacts, "docs/api.md") {
+		t.Fatalf("expected docs/api.md to be retained by task ranking, got %#v", result.SupportingArtifacts)
+	}
+	if containsArtifactPath(result.SupportingArtifacts, "docs/evals/v1-canonical-handoff.md") {
+		t.Fatalf("expected a lower-signal artifact to be displaced by task-ranked evidence, got %#v", result.SupportingArtifacts)
+	}
+	if !strings.Contains(result.SupportingArtifacts[0].WhyIncluded, "task summary") {
+		t.Fatalf("expected why_included to explain ranking, got %#v", result.SupportingArtifacts[0])
+	}
+}
+
+func containsArtifactPath(items []PacketArtifact, sourcePath string) bool {
+	for _, item := range items {
+		if item.SourcePath == sourcePath {
+			return true
+		}
+	}
+	return false
+}
+
 func TestBuildPacketRejectsOtherProjectForProjectScopedKey(t *testing.T) {
 	relayID := lib.ProjectID("relay")
 	service := New(Dependencies{

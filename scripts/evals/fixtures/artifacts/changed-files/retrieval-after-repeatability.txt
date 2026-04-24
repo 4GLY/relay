@@ -1,4 +1,0 @@
-docs/research/context-graph-and-semantic-retrieval.md
-scripts/evals/v1_usage_validation_batch.sh
-scripts/evals/v1_usage_validation_report.py
-internal/services/packets.go

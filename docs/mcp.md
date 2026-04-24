@@ -268,6 +268,7 @@ Defaults:
 Style-memory behavior:
 - approved heuristics can be returned as `style_cues`
 - `workflow` and `artifact_type` narrow style-cue selection
+- `task_summary` helps rank which supporting artifacts are most relevant for the packet
 - `disable_style_cues` builds a normal packet without style cues
 - `persist_snapshot` returns a `snapshot_id` for deterministic replay
 - each `style_cue` now includes `canonical_text` and `why_included`

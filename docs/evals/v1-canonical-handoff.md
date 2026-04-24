@@ -77,7 +77,7 @@ set -a; source .env; set +a
 The batch runner:
 
 - reuses the same acceptance contract for multiple scenarios
-- attaches richer evidence pointers including code paths, changed-files manifests, and PR-diff summaries
+- attaches richer evidence pointers including code paths plus run-generated changed-files manifests and PR-diff snapshots
 - runs the blind paired judge after each fixture
 - writes `batch-runs.jsonl` plus `batch-summary.json` and `batch-summary.md`
 - evaluates a release gate from style-aware win rate, average `style_match`, and budget-pass rate
@@ -85,9 +85,16 @@ The batch runner:
 Outputs land under:
 
 - `.gstack/projects/relay/batches/<batch_id>/fixtures.json`
+- `.gstack/projects/relay/batches/<batch_id>/generated-artifacts/<fixture_id>/changed-files.txt`
+- `.gstack/projects/relay/batches/<batch_id>/generated-artifacts/<fixture_id>/pr-diff.md`
 - `.gstack/projects/relay/batches/<batch_id>/batch-runs.jsonl`
 - `.gstack/projects/relay/batches/<batch_id>/batch-summary.json`
 - `.gstack/projects/relay/batches/<batch_id>/batch-summary.md`
+
+Each fixture now declares `evidence_paths` instead of checking in static sample files. The batch runner generates:
+
+- `changed-files.txt` from the current working-tree diff for those paths, with a fallback to the declared path set when the tree is clean
+- `pr-diff.md` from the current working-tree diff for those paths, with a fallback to the latest commit touching them when no live diff exists
 
 ## Pass Conditions
 

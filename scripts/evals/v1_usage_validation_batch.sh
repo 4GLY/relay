@@ -15,6 +15,7 @@ MIN_BUDGET_PASS_RATE="${RELAY_EVAL_MIN_BUDGET_PASS_RATE:-1.0}"
 KEEP_ISSUED_KEY=0
 TEMP_KEY_ID=""
 TEMP_KEY_TOKEN=""
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd -P)"
 
 usage() {
   cat <<EOF
@@ -178,9 +179,119 @@ json_array() {
   jq -c "${query} // []" <<<"$payload"
 }
 
+load_json_array_into_paths() {
+  local json_payload="$1"
+  local path
+  GENERATED_PATHS=()
+  while IFS= read -r path; do
+    if [[ -n "$path" ]]; then
+      GENERATED_PATHS+=("$path")
+    fi
+  done < <(jq -r '.[]' <<<"$json_payload")
+}
+
+current_diff_names() {
+  local -a paths=("$@")
+  if [[ ${#paths[@]} -eq 0 ]]; then
+    return 0
+  fi
+
+  git -C "$REPO_ROOT" diff --name-only HEAD -- "${paths[@]}" 2>/dev/null || true
+  git -C "$REPO_ROOT" ls-files --others --exclude-standard -- "${paths[@]}" 2>/dev/null || true
+}
+
+generate_changed_files_artifact() {
+  local target_path="$1"
+  shift
+  local -a paths=("$@")
+  local changed_names=""
+
+  changed_names="$(current_diff_names "${paths[@]}" | sed '/^$/d' | sort -u)"
+  if [[ -z "${changed_names}" ]]; then
+    changed_names="$(printf '%s\n' "${paths[@]}" | sed '/^$/d' | sort -u)"
+  fi
+
+  printf '%s\n' "$changed_names" >"$target_path"
+}
+
+generate_pr_diff_artifact() {
+  local target_path="$1"
+  local fixture_slug="$2"
+  local scenario_label="$3"
+  local task_summary="$4"
+  shift 4
+  local -a paths=("$@")
+  local diff_source="working-tree diff against HEAD"
+  local diff_body=""
+
+  if [[ ${#paths[@]} -gt 0 ]]; then
+    diff_body="$(git -C "$REPO_ROOT" diff --no-color --stat --patch --unified=1 HEAD -- "${paths[@]}" 2>/dev/null || true)"
+    if [[ -z "${diff_body//[$' \t\r\n']/}" ]]; then
+      diff_source="latest commit touching selected paths"
+      diff_body="$(git -C "$REPO_ROOT" log -1 --no-color --stat --patch --format=fuller -- "${paths[@]}" 2>/dev/null || true)"
+    fi
+  fi
+
+  if [[ -z "${diff_body//[$' \t\r\n']/}" ]]; then
+    diff_source="no matching git diff or history"
+    diff_body="No git diff or commit history was found for the selected evidence paths at generation time."
+  fi
+
+  {
+    printf '# Generated PR Diff\n\n'
+    printf -- '- fixture: `%s`\n' "$fixture_slug"
+    printf -- '- scenario: `%s`\n' "$scenario_label"
+    printf -- '- source: %s\n' "$diff_source"
+    printf -- '- repo_root: `%s`\n' "$REPO_ROOT"
+    printf -- '- task_summary: %s\n' "$task_summary"
+    printf -- '- evidence_paths:\n'
+    for path in "${paths[@]}"; do
+      printf '  - `%s`\n' "$path"
+    done
+    printf '\n```diff\n'
+    printf '%s\n' "$diff_body" | sed -n '1,160p'
+    printf '```\n'
+  } >"$target_path"
+}
+
+build_fixture_extra_artifacts() {
+  local fixture_json="$1"
+  local batch_dir="$2"
+  local fixture_slug="$3"
+  local scenario_label="$4"
+  local task_summary="$5"
+  local base_extra_artifacts_json evidence_paths_json scenario_dir changed_files_path pr_diff_path
+
+  base_extra_artifacts_json="$(json_array '.extra_artifacts | map(select(.type != "changed_files" and .type != "pr_diff"))' "$fixture_json")"
+  evidence_paths_json="$(json_array '.evidence_paths' "$fixture_json")"
+  if [[ "$(jq 'length' <<<"$evidence_paths_json")" -eq 0 ]]; then
+    printf '%s\n' "$base_extra_artifacts_json"
+    return 0
+  fi
+
+  load_json_array_into_paths "$evidence_paths_json"
+  scenario_dir="${batch_dir}/generated-artifacts/${fixture_slug}"
+  changed_files_path="${scenario_dir}/changed-files.txt"
+  pr_diff_path="${scenario_dir}/pr-diff.md"
+  mkdir -p "$scenario_dir"
+
+  generate_changed_files_artifact "$changed_files_path" "${GENERATED_PATHS[@]}"
+  generate_pr_diff_artifact "$pr_diff_path" "$fixture_slug" "$scenario_label" "$task_summary" "${GENERATED_PATHS[@]}"
+
+  jq -nc \
+    --argjson base "$base_extra_artifacts_json" \
+    --arg changed_files_path "$changed_files_path" \
+    --arg pr_diff_path "$pr_diff_path" \
+    '$base + [
+      {type: "changed_files", source_path: $changed_files_path, trust_level: "trusted"},
+      {type: "pr_diff", source_path: $pr_diff_path, trust_level: "trusted"}
+    ]'
+}
+
 run_fixture() {
   local fixture_json="$1"
   local batch_runs_file="$2"
+  local batch_dir="$3"
 
   local fixture_slug scenario_label run_stamp fixture_id run_id project result_file comparison_file
   fixture_slug="$(json_string '.id' "$fixture_json")"
@@ -200,8 +311,8 @@ run_fixture() {
   repo_path="$(json_string '.repo_path' "$fixture_json")"
   handoff_path="$(json_string '.handoff_path' "$fixture_json")"
   design_path="$(json_string '.design_path' "$fixture_json")"
-  extra_artifacts_json="$(json_array '.extra_artifacts' "$fixture_json")"
   task_summary="$(json_string '.task_summary' "$fixture_json")"
+  extra_artifacts_json="$(build_fixture_extra_artifacts "$fixture_json" "$batch_dir" "$fixture_slug" "$scenario_label" "$task_summary")"
   capture_body="$(json_string '.capture_body' "$fixture_json")"
   decision_summary="$(json_string '.decision_summary' "$fixture_json")"
   decision_reason="$(json_string '.decision_reason' "$fixture_json")"
@@ -313,7 +424,7 @@ main() {
   local index fixture_json
   for (( index = 0; index < fixture_count; index++ )); do
     fixture_json="$(jq -c ".[$index]" "$FIXTURES_FILE")"
-    run_fixture "$fixture_json" "$batch_runs_file"
+    run_fixture "$fixture_json" "$batch_runs_file" "$batch_dir"
   done
 
   ./scripts/evals/v1_usage_validation_report.py \

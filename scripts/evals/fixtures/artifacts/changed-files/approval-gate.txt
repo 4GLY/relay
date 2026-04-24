@@ -1,4 +1,0 @@
-docs/api.md
-internal/services/style_memory.go
-internal/services/curator.go
-cmd/relay-worker/main.go

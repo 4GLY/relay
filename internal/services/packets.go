@@ -4,7 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"path/filepath"
+	"sort"
 	"strings"
+	"unicode"
 
 	"relay/internal/contracts"
 	"relay/internal/domain"
@@ -50,9 +53,13 @@ func (s Service) BuildPacket(ctx context.Context, input PacketBuildInput) (Packe
 		return PacketBuildResult{}, err
 	}
 
+	taskSummary := input.TaskSummary
+	if taskSummary == "" {
+		taskSummary = fmt.Sprintf("resume work on %s", project.Name)
+	}
 	selectedDecisions := limitDecisions(decisions, 3)
 	selectedQuestions := limitQuestions(questions, 3)
-	selectedArtifacts := limitArtifacts(artifacts, 8)
+	selectedArtifacts := selectArtifacts(artifacts, taskSummary, 8)
 	selectedNotes := limitNotes(notes, 3)
 	supportingNotes := summarizeNotes(selectedNotes)
 	supportingDecisions := summarizeDecisions(selectedDecisions)
@@ -63,10 +70,6 @@ func (s Service) BuildPacket(ctx context.Context, input PacketBuildInput) (Packe
 		return PacketBuildResult{}, err
 	}
 	whyIncluded := buildWhyIncluded(supportingNotes, supportingDecisions, supportingQuestions, supportingArtifacts, styleCues)
-	taskSummary := input.TaskSummary
-	if taskSummary == "" {
-		taskSummary = fmt.Sprintf("resume work on %s", project.Name)
-	}
 	renderedBody := buildResumeBody(packetRenderInput{
 		ProjectName:         project.Name,
 		TaskSummary:         taskSummary,
@@ -90,7 +93,7 @@ func (s Service) BuildPacket(ctx context.Context, input PacketBuildInput) (Packe
 		Body:              renderedBody,
 		DecisionIDs:       collectDecisionIDs(selectedDecisions),
 		OpenQuestionIDs:   collectQuestionIDs(selectedQuestions),
-		SourceArtifactIDs: collectArtifactIDs(selectedArtifacts),
+		SourceArtifactIDs: collectArtifactIDsFromSelections(selectedArtifacts),
 	}
 
 	created, err := s.deps.Packets.CreatePacket(ctx, packet)
@@ -254,6 +257,14 @@ func collectArtifactIDs(items []domain.Artifact) []string {
 	return ids
 }
 
+func collectArtifactIDsFromSelections(items []artifactSelection) []string {
+	ids := make([]string, 0, len(items))
+	for _, item := range items {
+		ids = append(ids, item.Artifact.ID)
+	}
+	return ids
+}
+
 func collectQuestionSummaries(items []domain.OpenQuestion) []string {
 	summaries := make([]string, 0, len(items))
 	for _, item := range items {
@@ -397,15 +408,19 @@ func summarizeQuestions(items []domain.OpenQuestion) []PacketQuestion {
 	return summaries
 }
 
-func summarizeArtifacts(items []domain.Artifact) []PacketArtifact {
+func summarizeArtifacts(items []artifactSelection) []PacketArtifact {
 	summaries := make([]PacketArtifact, 0, len(items))
 	for _, item := range items {
+		whyIncluded := item.WhyIncluded
+		if whyIncluded == "" {
+			whyIncluded = "trusted artifact referenced by project memory"
+		}
 		summaries = append(summaries, PacketArtifact{
-			ArtifactID:  item.ID,
-			Type:        item.Type,
-			SourcePath:  item.SourcePath,
-			TrustLevel:  item.TrustLevel,
-			WhyIncluded: "trusted artifact referenced by project memory",
+			ArtifactID:  item.Artifact.ID,
+			Type:        item.Artifact.Type,
+			SourcePath:  item.Artifact.SourcePath,
+			TrustLevel:  item.Artifact.TrustLevel,
+			WhyIncluded: whyIncluded,
 		})
 	}
 	return summaries
@@ -454,6 +469,174 @@ func limitArtifacts(items []domain.Artifact, limit int) []domain.Artifact {
 		return items
 	}
 	return items[len(items)-limit:]
+}
+
+type artifactSelection struct {
+	Artifact    domain.Artifact
+	WhyIncluded string
+	Score       int
+	Index       int
+}
+
+func selectArtifacts(items []domain.Artifact, taskSummary string, limit int) []artifactSelection {
+	if len(items) == 0 || limit <= 0 {
+		return nil
+	}
+
+	taskTokens := tokenizeRankingText(taskSummary)
+	if len(taskTokens) == 0 {
+		return selectRecentArtifacts(items, limit)
+	}
+
+	selections := make([]artifactSelection, 0, len(items))
+	taskSummaryLower := strings.ToLower(taskSummary)
+	for index, item := range items {
+		score, whyIncluded := scoreArtifactForTask(item, taskTokens, taskSummaryLower)
+		selections = append(selections, artifactSelection{
+			Artifact:    item,
+			WhyIncluded: whyIncluded,
+			Score:       score,
+			Index:       index,
+		})
+	}
+
+	sort.SliceStable(selections, func(i, j int) bool {
+		if selections[i].Score != selections[j].Score {
+			return selections[i].Score > selections[j].Score
+		}
+		return selections[i].Index > selections[j].Index
+	})
+	if len(selections) > limit {
+		selections = selections[:limit]
+	}
+	return selections
+}
+
+func selectRecentArtifacts(items []domain.Artifact, limit int) []artifactSelection {
+	recent := limitArtifacts(items, limit)
+	selections := make([]artifactSelection, 0, len(recent))
+	offset := len(items) - len(recent)
+	for index, item := range recent {
+		selections = append(selections, artifactSelection{
+			Artifact:    item,
+			WhyIncluded: "recent trusted artifact retained as fallback evidence",
+			Index:       offset + index,
+		})
+	}
+	return selections
+}
+
+func scoreArtifactForTask(item domain.Artifact, taskTokens []string, taskSummaryLower string) (int, string) {
+	candidate := strings.ToLower(strings.TrimSpace(item.Type + " " + item.SourcePath))
+	if candidate == "" {
+		return 0, "recent trusted artifact retained as fallback evidence"
+	}
+
+	score := 0
+	reasons := make([]string, 0, 3)
+	if item.Type != "" && strings.Contains(taskSummaryLower, strings.ToLower(item.Type)) {
+		score += 6
+		reasons = append(reasons, "artifact type matched the current task summary")
+	}
+	if item.SourcePath != "" {
+		sourcePathLower := strings.ToLower(item.SourcePath)
+		if strings.Contains(taskSummaryLower, sourcePathLower) {
+			score += 10
+			reasons = append(reasons, "source path matched the current task summary")
+		}
+		baseName := strings.ToLower(filepath.Base(sourcePathLower))
+		if baseName != "" && baseName != "." && strings.Contains(taskSummaryLower, baseName) {
+			score += 8
+			reasons = append(reasons, "file name matched the current task summary")
+		}
+	}
+
+	artifactTokens := tokenizeRankingText(candidate)
+	artifactTokenSet := make(map[string]struct{}, len(artifactTokens))
+	for _, token := range artifactTokens {
+		artifactTokenSet[token] = struct{}{}
+	}
+
+	matchedTokens := make([]string, 0, len(taskTokens))
+	for _, token := range taskTokens {
+		if _, ok := artifactTokenSet[token]; ok {
+			score += 3
+			if len(token) >= 5 {
+				score++
+			}
+			matchedTokens = appendUniqueString(matchedTokens, token)
+			continue
+		}
+		if len(token) >= 4 && strings.Contains(candidate, token) {
+			score++
+			matchedTokens = appendUniqueString(matchedTokens, token)
+		}
+	}
+	if len(matchedTokens) > 0 {
+		reasons = append(reasons, "task-summary tokens overlapped: "+strings.Join(matchedTokens, ", "))
+	}
+	if len(reasons) == 0 {
+		return score, "recent trusted artifact retained as fallback evidence"
+	}
+	return score, strings.Join(reasons, "; ")
+}
+
+func tokenizeRankingText(input string) []string {
+	if strings.TrimSpace(input) == "" {
+		return nil
+	}
+	parts := strings.FieldsFunc(strings.ToLower(input), func(r rune) bool {
+		return !unicode.IsLetter(r) && !unicode.IsNumber(r)
+	})
+	tokens := make([]string, 0, len(parts))
+	seen := make(map[string]struct{}, len(parts))
+	for _, part := range parts {
+		if len(part) <= 2 {
+			continue
+		}
+		if _, skip := artifactRankingStopWords[part]; skip {
+			continue
+		}
+		if _, exists := seen[part]; exists {
+			continue
+		}
+		seen[part] = struct{}{}
+		tokens = append(tokens, part)
+	}
+	return tokens
+}
+
+func appendUniqueString(items []string, value string) []string {
+	for _, item := range items {
+		if item == value {
+			return items
+		}
+	}
+	return append(items, value)
+}
+
+var artifactRankingStopWords = map[string]struct{}{
+	"agent":    {},
+	"and":      {},
+	"before":   {},
+	"changes":  {},
+	"checking": {},
+	"continue": {},
+	"current":  {},
+	"docs":     {},
+	"handoff":  {},
+	"internal": {},
+	"model":    {},
+	"project":  {},
+	"relay":    {},
+	"resume":   {},
+	"same":     {},
+	"session":  {},
+	"services": {},
+	"task":     {},
+	"user":     {},
+	"wrapper":  {},
+	"work":     {},
 }
 
 func limitDecisions(items []domain.Decision, limit int) []domain.Decision {

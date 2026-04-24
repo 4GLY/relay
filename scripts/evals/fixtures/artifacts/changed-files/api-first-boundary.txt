@@ -1,4 +1,0 @@
-docs/api.md
-docs/mcp.md
-internal/api/server.go
-internal/mcpserver/server.go

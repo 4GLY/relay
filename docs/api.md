@@ -390,6 +390,7 @@ Request body:
 Contract notes:
 - current `type` is effectively `resume`
 - current `target` is free-form, but `codex` is the primary path
+- `task_summary` is used both in the rendered packet body and to rank which supporting artifacts are most relevant to include
 - approved style heuristics are returned as `style_cues` unless `disable_style_cues` is true
 - packet output now includes `supporting_notes`, `supporting_decisions`, `supporting_questions`, `supporting_artifacts`, and `why_included`
 - each `style_cue` now carries the approved heuristic `canonical_text` and `why_included`

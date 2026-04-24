@@ -3,6 +3,9 @@ set -euo pipefail
 
 RESULT_FILE=""
 MODEL="${RELAY_EVAL_JUDGE_MODEL:-opus}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+
+source "${SCRIPT_DIR}/lib/claude_structured_output.sh"
 
 usage() {
   cat <<EOF
@@ -18,6 +21,9 @@ Outputs next to result.json:
   paired-comparison-prompt.md
   claude-judge.json
   paired-comparison.json
+
+Environment:
+  RELAY_EVAL_CLAUDE_STRUCTURED_MAX_ATTEMPTS controls structured-output retries. Default: 3.
 EOF
 }
 
@@ -150,15 +156,7 @@ EOF
     additionalProperties: false
   }')"
 
-  claude \
-    -p \
-    --output-format json \
-    --model "$MODEL" \
-    --tools "" \
-    --json-schema "$judge_schema" \
-    "$(cat "$prompt_file")" >"$raw_response_file"
-
-  jq -e '.structured_output' "$raw_response_file" >/dev/null
+  run_claude_structured_output "$MODEL" "$judge_schema" "$prompt_file" "$raw_response_file" "paired comparison judge"
 
   local judge_json preferred_packet preferred_continuation style_match
   judge_json="$(jq -c '.structured_output' "$raw_response_file")"

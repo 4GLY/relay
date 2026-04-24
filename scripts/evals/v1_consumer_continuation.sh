@@ -9,6 +9,9 @@ RUN_CODEX=1
 RUN_JUDGE=1
 REUSE_EXISTING=0
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd -P)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+
+source "${SCRIPT_DIR}/lib/claude_structured_output.sh"
 
 usage() {
   cat <<EOF
@@ -28,6 +31,7 @@ Options:
   --skip-codex            Do not run the Codex consumer
   --skip-judge            Do not run the Claude comparison judge
   --reuse-existing        Reuse existing consumer outputs when present
+  RELAY_EVAL_CLAUDE_STRUCTURED_MAX_ATTEMPTS controls structured-output retries. Default: 3.
 EOF
 }
 
@@ -156,13 +160,7 @@ run_claude_consumer() {
   local raw_response_file="$3"
   local output_file="$4"
 
-  claude \
-    -p \
-    --output-format json \
-    --model "$CLAUDE_MODEL" \
-    --tools "" \
-    --json-schema "$(cat "$schema_file")" \
-    "$(cat "$prompt_file")" >"$raw_response_file"
+  run_claude_structured_output "$CLAUDE_MODEL" "$(cat "$schema_file")" "$prompt_file" "$raw_response_file" "claude consumer continuation"
 
   jq -e '.structured_output' "$raw_response_file" >"$output_file"
 }
@@ -319,13 +317,7 @@ $(jq . "$codex_raw_file")
 $(jq . "$claude_output_file")
 EOF
 
-    claude \
-      -p \
-      --output-format json \
-      --model "$CLAUDE_MODEL" \
-      --tools "" \
-      --json-schema "$(cat "$judge_schema_file")" \
-      "$(cat "$comparison_prompt_file")" >"$comparison_raw_file"
+    run_claude_structured_output "$CLAUDE_MODEL" "$(cat "$judge_schema_file")" "$comparison_prompt_file" "$comparison_raw_file" "consumer continuation judge"
 
     jq -e '.structured_output' "$comparison_raw_file" >"$comparison_file"
 

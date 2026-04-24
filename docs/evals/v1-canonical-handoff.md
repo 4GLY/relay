@@ -96,8 +96,9 @@ The batch runner:
 - reuses the same acceptance contract for multiple scenarios
 - attaches richer evidence pointers including code paths plus run-generated changed-files manifests and PR-diff snapshots
 - runs the blind paired judge after each fixture
+- runs the retrieval baseline judge after each fixture so `retrieval-aware` can be compared against `ranking-only`
 - writes `batch-runs.jsonl` plus `batch-summary.json` and `batch-summary.md`
-- evaluates a release gate from style-aware win rate, average `style_match`, and budget-pass rate
+- evaluates a release gate from style-aware win rate, average `style_match`, retrieval-aware win rate, retrieval readiness/evidence scores, and budget-pass rate
 
 ## CI Gate
 
@@ -109,6 +110,10 @@ Workflow requirements:
 
 - repository secret `COPILOT_GITHUB_TOKEN` with a fine-grained PAT that has the GitHub `Copilot Requests` permission enabled
 - GitHub Actions runner with Node.js 24+ so `npm install -g @github/copilot` works and the repo is already opted into Node 24 JavaScript actions
+- current retrieval gate defaults:
+  - `RELAY_EVAL_MIN_RETRIEVAL_AWARE_WIN_RATE=0.6`
+  - `RELAY_EVAL_MIN_AVG_RETRIEVAL_CONTINUATION_READINESS=3.5`
+  - `RELAY_EVAL_MIN_AVG_RETRIEVAL_EVIDENCE_RELEVANCE=3.5`
 
 ## Protected Main Publish
 
@@ -144,6 +149,7 @@ That helper:
 - configures a temporary `COPILOT_HOME` with the repo marked as trusted
 - runs `scripts/evals/v1_usage_validation_batch.sh`
 - appends `batch-summary.md` to `GITHUB_STEP_SUMMARY` when running in Actions
+- fails when either the style-aware gate or the retrieval-aware gate falls below threshold
 
 Outputs land under:
 

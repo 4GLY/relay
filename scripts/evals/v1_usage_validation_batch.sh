@@ -12,6 +12,9 @@ BATCH_ID="${RELAY_EVAL_BATCH_ID:-v1-usage-validation-$(date -u +%Y%m%dT%H%M%SZ)}
 MIN_STYLE_AWARE_WIN_RATE="${RELAY_EVAL_MIN_STYLE_AWARE_WIN_RATE:-0.8}"
 MIN_AVG_STYLE_MATCH="${RELAY_EVAL_MIN_AVG_STYLE_MATCH:-4.0}"
 MIN_BUDGET_PASS_RATE="${RELAY_EVAL_MIN_BUDGET_PASS_RATE:-1.0}"
+MIN_RETRIEVAL_AWARE_WIN_RATE="${RELAY_EVAL_MIN_RETRIEVAL_AWARE_WIN_RATE:-0.6}"
+MIN_AVG_RETRIEVAL_CONTINUATION_READINESS="${RELAY_EVAL_MIN_AVG_RETRIEVAL_CONTINUATION_READINESS:-3.5}"
+MIN_AVG_RETRIEVAL_EVIDENCE_RELEVANCE="${RELAY_EVAL_MIN_AVG_RETRIEVAL_EVIDENCE_RELEVANCE:-3.5}"
 KEEP_ISSUED_KEY=0
 TEMP_KEY_ID=""
 TEMP_KEY_TOKEN=""
@@ -37,6 +40,12 @@ Options:
   --min-win-rate FLOAT  Minimum style-aware win rate gate. Default: ${MIN_STYLE_AWARE_WIN_RATE}
   --min-style-match N   Minimum average style_match gate. Default: ${MIN_AVG_STYLE_MATCH}
   --min-budget-rate F   Minimum budget-pass rate gate. Default: ${MIN_BUDGET_PASS_RATE}
+  --min-retrieval-win-rate FLOAT
+                       Minimum retrieval-aware win rate gate. Default: ${MIN_RETRIEVAL_AWARE_WIN_RATE}
+  --min-retrieval-readiness FLOAT
+                       Minimum average retrieval continuation readiness gate. Default: ${MIN_AVG_RETRIEVAL_CONTINUATION_READINESS}
+  --min-retrieval-evidence FLOAT
+                       Minimum average retrieval evidence relevance gate. Default: ${MIN_AVG_RETRIEVAL_EVIDENCE_RELEVANCE}
   --keep-issued-key     Keep an issued temporary key instead of revoking it
 EOF
 }
@@ -86,6 +95,18 @@ parse_args() {
         ;;
       --min-budget-rate)
         MIN_BUDGET_PASS_RATE="${2:?minimum budget pass rate required}"
+        shift 2
+        ;;
+      --min-retrieval-win-rate)
+        MIN_RETRIEVAL_AWARE_WIN_RATE="${2:?minimum retrieval-aware win rate required}"
+        shift 2
+        ;;
+      --min-retrieval-readiness)
+        MIN_AVG_RETRIEVAL_CONTINUATION_READINESS="${2:?minimum retrieval continuation readiness required}"
+        shift 2
+        ;;
+      --min-retrieval-evidence)
+        MIN_AVG_RETRIEVAL_EVIDENCE_RELEVANCE="${2:?minimum retrieval evidence relevance required}"
         shift 2
         ;;
       --keep-issued-key)
@@ -293,7 +314,7 @@ run_fixture() {
   local batch_runs_file="$2"
   local batch_dir="$3"
 
-  local fixture_slug scenario_label run_stamp fixture_id run_id project result_file comparison_file
+  local fixture_slug scenario_label run_stamp fixture_id run_id project result_file comparison_file retrieval_comparison_file
   fixture_slug="$(json_string '.id' "$fixture_json")"
   scenario_label="$(json_string '.scenario_label // .id' "$fixture_json")"
   run_stamp="$(date -u +%Y%m%dT%H%M%SZ)"
@@ -302,6 +323,7 @@ run_fixture() {
   project="relay-${fixture_id}"
   result_file="${OUTPUT_ROOT%/}/${run_id}/result.json"
   comparison_file="${OUTPUT_ROOT%/}/${run_id}/paired-comparison.json"
+  retrieval_comparison_file="${OUTPUT_ROOT%/}/${run_id}/retrieval-baseline-comparison.json"
 
   local repo_path handoff_path design_path task_summary capture_body decision_summary decision_reason question_summary
   local workflow artifact_type packet_type packet_target trace_decision trace_alternatives_json trace_rationale
@@ -366,6 +388,22 @@ run_fixture() {
 
   ./scripts/evals/v1_copilot_paired_judge.sh --result-file "$result_file" --model "$MODEL"
 
+  local -a retrieval_judge_cmd=(
+    ./scripts/evals/v1_retrieval_baseline_judge.sh
+    --result-file "$result_file"
+    --base-url "$BASE_URL"
+    --mcp-url "$MCP_URL"
+    --client-token "$CLIENT_TOKEN"
+    --model "$MODEL"
+  )
+  if [[ -n "$workflow" ]]; then
+    retrieval_judge_cmd+=(--workflow "$workflow")
+  fi
+  if [[ -n "$artifact_type" ]]; then
+    retrieval_judge_cmd+=(--artifact-type "$artifact_type")
+  fi
+  "${retrieval_judge_cmd[@]}"
+
   jq -nc \
     --arg recorded_at "$(python3 -c 'import datetime; print(datetime.datetime.now(datetime.UTC).isoformat())')" \
     --arg batch_id "$BATCH_ID" \
@@ -375,6 +413,7 @@ run_fixture() {
     --arg project "$project" \
     --arg result_file "$result_file" \
     --arg comparison_file "$comparison_file" \
+    --arg retrieval_comparison_file "$retrieval_comparison_file" \
     --arg judge_model "$MODEL" \
     '{
       recorded_at: $recorded_at,
@@ -385,6 +424,7 @@ run_fixture() {
       project: $project,
       result_file: $result_file,
       comparison_file: $comparison_file,
+      retrieval_comparison_file: $retrieval_comparison_file,
       judge_model: $judge_model
     }' >>"$batch_runs_file"
 }
@@ -432,6 +472,9 @@ main() {
     --min-style-aware-win-rate "$MIN_STYLE_AWARE_WIN_RATE" \
     --min-avg-style-match "$MIN_AVG_STYLE_MATCH" \
     --min-budget-pass-rate "$MIN_BUDGET_PASS_RATE" \
+    --min-retrieval-aware-win-rate "$MIN_RETRIEVAL_AWARE_WIN_RATE" \
+    --min-avg-retrieval-continuation-readiness "$MIN_AVG_RETRIEVAL_CONTINUATION_READINESS" \
+    --min-avg-retrieval-evidence-relevance "$MIN_AVG_RETRIEVAL_EVIDENCE_RELEVANCE" \
     --output-json "$batch_summary_json" \
     --output-md "$batch_summary_md"
 

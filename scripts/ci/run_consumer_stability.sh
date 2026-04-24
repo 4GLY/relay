@@ -42,6 +42,7 @@ Optional environment:
   RELAY_EVAL_MIN_CONSUMER_CLAUDE_STYLE_MATCH
   RELAY_EVAL_MIN_CONSUMER_CODEX_CONTINUATION_READINESS
   RELAY_EVAL_MIN_CONSUMER_CLAUDE_CONTINUATION_READINESS
+  CODEX_HOME
 EOF
 }
 
@@ -83,7 +84,7 @@ verify_codex_auth() {
   if codex login status >/dev/null 2>&1; then
     return 0
   fi
-  echo "Codex auth is required. In GitHub Actions, set OPENAI_API_KEY and run codex login --with-api-key before this script." >&2
+  echo "Codex auth is required. On the jump self-hosted runner, ensure CODEX_HOME points at the logged-in runner user's ~/.codex." >&2
   exit 1
 }
 

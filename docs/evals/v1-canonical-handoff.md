@@ -203,6 +203,12 @@ Any substituted model must be visible in the run inputs or output artifacts
 (`judge_model`, `codex_model`) so future comparisons do not mix different
 consumer populations.
 
+The manual `consumer-stability` workflow handles provider usage-limit exit code
+`75` as `blocked_by_model_limit`. In that case the workflow exits successfully
+after writing `stability/<prefix>/run-status.json`, because the useful result is
+that agent setup/auth was verified but canonical consumer evidence could not be
+collected under current provider capacity.
+
 The batch runner:
 
 - reuses the same acceptance contract for multiple scenarios

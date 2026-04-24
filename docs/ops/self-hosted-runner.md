@@ -132,6 +132,11 @@ service env cleared, and exits successfully so product changes are not blocked
 by temporary model capacity. Those degraded runs are not canonical benchmark
 evidence.
 
+The manual `consumer-stability` workflow also catches exit code `75`, writes
+`stability/<prefix>/run-status.json` with `status=blocked_by_model_limit`, and
+exits successfully. That keeps the workflow useful for verifying runner setup
+and Codex auth even when model capacity prevents a canonical stability result.
+
 ## Failure Modes
 
 - `jump-relay-evals` offline: PRs block because the required check cannot be

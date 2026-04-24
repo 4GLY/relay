@@ -56,7 +56,7 @@ concurrency:
 
 jobs:
   consumer-stability:
-    runs-on: [self-hosted, Linux, X64, relay-evals]
+    runs-on: [self-hosted, linux, x64, relay-evals]
     timeout-minutes: 90
     services:
       postgres:
@@ -73,7 +73,6 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     env:
-      CODEX_HOME: ${{ runner.temp }}/codex-home
       RELAY_ADDR: :8080
       RELAY_BASE_URL: http://127.0.0.1:8080
       RELAY_DATABASE_URL: postgresql://relay:relay@127.0.0.1:5432/relay?sslmode=disable
@@ -122,12 +121,21 @@ jobs:
             echo "Repository secret OPENAI_API_KEY is required for Codex consumer-stability." >&2
             exit 1
           fi
+          echo "CODEX_HOME=${RUNNER_TEMP}/codex-home" >> "${GITHUB_ENV}"
+          export CODEX_HOME="${RUNNER_TEMP}/codex-home"
           mkdir -p "${CODEX_HOME}"
           printenv OPENAI_API_KEY | codex login --with-api-key
           codex login status
 
       - name: Run consumer stability
         run: ./scripts/ci/run_consumer_stability.sh
+
+      - name: Clean up Codex auth
+        if: always()
+        run: |
+          if [[ -n "${CODEX_HOME:-}" ]]; then
+            rm -rf "${CODEX_HOME}"
+          fi
 
       - name: Upload consumer stability artifacts
         if: always()

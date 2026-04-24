@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"path/filepath"
 	"sort"
 	"strings"
 	"unicode"
@@ -543,11 +542,6 @@ func scoreArtifactForTask(item domain.Artifact, taskTokens []string, taskSummary
 		if strings.Contains(taskSummaryLower, sourcePathLower) {
 			score += 10
 			reasons = append(reasons, "source path matched the current task summary")
-		}
-		baseName := strings.ToLower(filepath.Base(sourcePathLower))
-		if baseName != "" && baseName != "." && strings.Contains(taskSummaryLower, baseName) {
-			score += 8
-			reasons = append(reasons, "file name matched the current task summary")
 		}
 	}
 

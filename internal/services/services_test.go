@@ -752,6 +752,21 @@ func TestBuildPacketRanksArtifactsByTaskSummary(t *testing.T) {
 	}
 }
 
+func TestScoreArtifactForTaskIgnoresGenericRepoRootName(t *testing.T) {
+	taskSummary := "Resume Relay contract work by checking API-visible behavior."
+	score, whyIncluded := scoreArtifactForTask(
+		domain.Artifact{Type: "git_commits", SourcePath: "/Users/hoon-ch/repos/relay", TrustLevel: "trusted"},
+		tokenizeRankingText(taskSummary),
+		strings.ToLower(taskSummary),
+	)
+	if score != 0 {
+		t.Fatalf("expected generic repo-root artifact to avoid task-match scoring, got score=%d why=%q", score, whyIncluded)
+	}
+	if whyIncluded != "recent trusted artifact retained as fallback evidence" {
+		t.Fatalf("expected fallback why_included, got %q", whyIncluded)
+	}
+}
+
 func containsArtifactPath(items []PacketArtifact, sourcePath string) bool {
 	for _, item := range items {
 		if item.SourcePath == sourcePath {

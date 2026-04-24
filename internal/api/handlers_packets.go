@@ -22,9 +22,13 @@ func (h Handler) handlePacketBuild(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h Handler) handleProjectShow(w http.ResponseWriter, r *http.Request) {
-	projectID := strings.TrimPrefix(r.URL.Path, "/v1/projects/")
+	projectID, action := projectPathParts(r.URL.Path)
 	if projectID == "" {
 		writeJSON(w, http.StatusBadRequest, contracts.Failure("relay show", "PROJECT_ID_REQUIRED", "missing project id in path", false, "project_id"))
+		return
+	}
+	if action == "graph" {
+		h.handleProjectGraph(w, r, projectID)
 		return
 	}
 	result, err := h.services.Show(r.Context(), services.ShowInput{ProjectID: projectID})
@@ -33,4 +37,26 @@ func (h Handler) handleProjectShow(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, contracts.Success("relay show", result))
+}
+
+func (h Handler) handleProjectGraph(w http.ResponseWriter, r *http.Request, projectID string) {
+	result, err := h.services.ProjectGraph(r.Context(), services.ProjectGraphInput{ProjectID: projectID})
+	if err != nil {
+		writeServiceError(w, "relay project graph", err)
+		return
+	}
+	writeJSON(w, http.StatusOK, contracts.Success("relay project graph", result))
+}
+
+func projectPathParts(path string) (projectID string, action string) {
+	trimmed := strings.Trim(strings.TrimPrefix(path, "/v1/projects/"), "/")
+	if trimmed == "" {
+		return "", ""
+	}
+	parts := strings.Split(trimmed, "/")
+	projectID = parts[0]
+	if len(parts) > 1 {
+		action = parts[1]
+	}
+	return projectID, action
 }

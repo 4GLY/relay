@@ -142,6 +142,10 @@ func (c *Client) Show(ctx context.Context, projectID string) (services.ShowResul
 	return doJSON[services.ShowResult](ctx, c.httpClient, c.clientToken, http.MethodGet, c.baseURL+"/v1/projects/"+projectID, nil)
 }
 
+func (c *Client) ProjectGraph(ctx context.Context, projectID string) (services.ProjectGraphResult, error) {
+	return doJSON[services.ProjectGraphResult](ctx, c.httpClient, c.clientToken, http.MethodGet, c.baseURL+"/v1/projects/"+projectID+"/graph", nil)
+}
+
 func (c *Client) IssueAPIKey(ctx context.Context, input services.IssueAPIKeyInput) (services.IssueAPIKeyResult, error) {
 	return doJSON[services.IssueAPIKeyResult](ctx, c.httpClient, c.adminToken, http.MethodPost, c.baseURL+"/v1/api-keys/issue", input)
 }

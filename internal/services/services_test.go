@@ -940,6 +940,77 @@ func TestShowByProjectID(t *testing.T) {
 	}
 }
 
+func TestProjectGraphBuildsCanonicalProjection(t *testing.T) {
+	projectID := lib.ProjectID("relay")
+	service := New(Dependencies{
+		Projects: &fakeProjectStore{
+			projects: map[string]domain.Project{
+				"relay": {ID: projectID, Name: "relay"},
+			},
+		},
+		Notes: &fakeNoteStore{
+			items: []domain.Note{
+				{ID: "note_1", ProjectID: projectID, Source: "chat", Body: "preserve the user's judgment style across sessions"},
+			},
+		},
+		Artifacts: &fakeArtifactStore{
+			items: []domain.Artifact{
+				{ID: "art_1", ProjectID: projectID, Type: "design_doc", SourcePath: "docs/design.md", TrustLevel: "trusted"},
+			},
+		},
+		Decisions: &fakeDecisionStore{
+			items: []domain.Decision{
+				{ID: "dec_1", ProjectID: projectID, Summary: "keep style-aware handoff first", SourceNoteIDs: []string{"note_1"}, SourceArtifactIDs: []string{"art_1"}},
+			},
+		},
+		OpenQuestions: &fakeOpenQuestionStore{
+			items: []domain.OpenQuestion{
+				{ID: "oq_1", ProjectID: projectID, Summary: "when to add retrieval-aware packet ranking", SourceArtifactIDs: []string{"art_1"}},
+			},
+		},
+		Packets: &fakePacketStore{},
+		APIKeys: &fakeAPIKeyStore{},
+	})
+
+	result, err := service.ProjectGraph(context.Background(), ProjectGraphInput{ProjectID: projectID})
+	if err != nil {
+		t.Fatalf("ProjectGraph returned error: %v", err)
+	}
+	if result.ProjectID != projectID {
+		t.Fatalf("expected project id %s, got %s", projectID, result.ProjectID)
+	}
+	if len(result.Nodes) != 5 {
+		t.Fatalf("expected 5 nodes, got %d", len(result.Nodes))
+	}
+	if len(result.Edges) != 7 {
+		t.Fatalf("expected 7 edges, got %d", len(result.Edges))
+	}
+
+	var sawProjectInclude bool
+	var sawDecisionDerived bool
+	var sawQuestionDerived bool
+	for _, edge := range result.Edges {
+		if edge.Type == "includes" && edge.From == projectID && edge.To == "dec_1" {
+			sawProjectInclude = true
+		}
+		if edge.Type == "derived_from" && edge.From == "dec_1" && edge.To == "art_1" {
+			sawDecisionDerived = true
+		}
+		if edge.Type == "derived_from" && edge.From == "oq_1" && edge.To == "art_1" {
+			sawQuestionDerived = true
+		}
+	}
+	if !sawProjectInclude {
+		t.Fatalf("expected project includes decision edge, got %#v", result.Edges)
+	}
+	if !sawDecisionDerived {
+		t.Fatalf("expected decision derived_from artifact edge, got %#v", result.Edges)
+	}
+	if !sawQuestionDerived {
+		t.Fatalf("expected open question derived_from artifact edge, got %#v", result.Edges)
+	}
+}
+
 func TestShowAllowsBoundProjectForProjectScopedKey(t *testing.T) {
 	projectID := lib.ProjectID("relay")
 	service := New(Dependencies{
@@ -994,6 +1065,43 @@ func TestShowRejectsOtherProjectForProjectScopedKey(t *testing.T) {
 	_, err := service.Show(ctx, ShowInput{ProjectID: otherID})
 	if err == nil {
 		t.Fatal("expected project-scoped key to reject a different project")
+	}
+	appErr, ok := err.(lib.AppError)
+	if !ok {
+		t.Fatalf("expected AppError, got %T", err)
+	}
+	if appErr.Code != "FORBIDDEN" {
+		t.Fatalf("expected FORBIDDEN, got %q", appErr.Code)
+	}
+}
+
+func TestProjectGraphRejectsOtherProjectForProjectScopedKey(t *testing.T) {
+	relayID := lib.ProjectID("relay")
+	otherID := lib.ProjectID("other")
+	service := New(Dependencies{
+		Projects: &fakeProjectStore{
+			projects: map[string]domain.Project{
+				"relay": {ID: relayID, Name: "relay"},
+				"other": {ID: otherID, Name: "other"},
+			},
+		},
+		Notes:         &fakeNoteStore{},
+		Artifacts:     &fakeArtifactStore{},
+		Decisions:     &fakeDecisionStore{},
+		OpenQuestions: &fakeOpenQuestionStore{},
+		Packets:       &fakePacketStore{},
+		APIKeys:       &fakeAPIKeyStore{},
+	})
+
+	ctx := ContextWithAuthInfo(context.Background(), AuthInfo{
+		KeyID:     "key_1",
+		Scope:     APIKeyScopeProject,
+		ProjectID: relayID,
+	})
+
+	_, err := service.ProjectGraph(ctx, ProjectGraphInput{ProjectID: otherID})
+	if err == nil {
+		t.Fatal("expected project-scoped key to reject a different project graph")
 	}
 	appErr, ok := err.(lib.AppError)
 	if !ok {

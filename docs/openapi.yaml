@@ -487,6 +487,48 @@ components:
           type: integer
         latest_packet_id:
           type: string
+    ProjectGraphNode:
+      type: object
+      required: [id, kind]
+      properties:
+        id:
+          type: string
+        kind:
+          type: string
+          enum: [project, note, artifact, decision, open_question]
+        title:
+          type: string
+        source:
+          type: string
+        source_path:
+          type: string
+        trust_level:
+          type: string
+    ProjectGraphEdge:
+      type: object
+      required: [type, from, to]
+      properties:
+        type:
+          type: string
+          enum: [includes, derived_from]
+        from:
+          type: string
+        to:
+          type: string
+    ProjectGraphResult:
+      type: object
+      required: [project_id, nodes, edges]
+      properties:
+        project_id:
+          type: string
+        nodes:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProjectGraphNode'
+        edges:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProjectGraphEdge'
     IssueAPIKeyInput:
       type: object
       required: [name]
@@ -638,6 +680,13 @@ components:
           properties:
             data:
               $ref: '#/components/schemas/ShowResult'
+    ProjectGraphResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/ProjectGraphResult'
     IssueAPIKeyResponse:
       allOf:
         - $ref: '#/components/schemas/SuccessEnvelope'
@@ -1090,6 +1139,44 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ShowResponse'
+        '401':
+          description: Missing or invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /v1/projects/{project_id}/graph:
+    get:
+      tags: [memory]
+      summary: Show canonical graph projection for a project id
+      operationId: showProjectGraph
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: project_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Project graph projection
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectGraphResponse'
         '401':
           description: Missing or invalid bearer token
           content:

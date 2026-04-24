@@ -94,28 +94,54 @@ func (s *fakeArtifactStore) ListByProject(_ context.Context, projectID string) (
 	return items, nil
 }
 
-type fakeDecisionStore struct{}
+type fakeDecisionStore struct{ items []domain.Decision }
 
 func (s *fakeDecisionStore) CreateDecision(_ context.Context, decision domain.Decision) (domain.Decision, error) {
+	s.items = append(s.items, decision)
 	return decision, nil
 }
-func (s *fakeDecisionStore) CountByProject(_ context.Context, _ string) (int, error) {
-	return 0, nil
+func (s *fakeDecisionStore) CountByProject(_ context.Context, projectID string) (int, error) {
+	count := 0
+	for _, item := range s.items {
+		if item.ProjectID == projectID {
+			count++
+		}
+	}
+	return count, nil
 }
-func (s *fakeDecisionStore) ListByProject(_ context.Context, _ string) ([]domain.Decision, error) {
-	return nil, nil
+func (s *fakeDecisionStore) ListByProject(_ context.Context, projectID string) ([]domain.Decision, error) {
+	var items []domain.Decision
+	for _, item := range s.items {
+		if item.ProjectID == projectID {
+			items = append(items, item)
+		}
+	}
+	return items, nil
 }
 
-type fakeOpenQuestionStore struct{}
+type fakeOpenQuestionStore struct{ items []domain.OpenQuestion }
 
 func (s *fakeOpenQuestionStore) CreateOpenQuestion(_ context.Context, question domain.OpenQuestion) (domain.OpenQuestion, error) {
+	s.items = append(s.items, question)
 	return question, nil
 }
-func (s *fakeOpenQuestionStore) CountByProject(_ context.Context, _ string) (int, error) {
-	return 0, nil
+func (s *fakeOpenQuestionStore) CountByProject(_ context.Context, projectID string) (int, error) {
+	count := 0
+	for _, item := range s.items {
+		if item.ProjectID == projectID {
+			count++
+		}
+	}
+	return count, nil
 }
-func (s *fakeOpenQuestionStore) ListByProject(_ context.Context, _ string) ([]domain.OpenQuestion, error) {
-	return nil, nil
+func (s *fakeOpenQuestionStore) ListByProject(_ context.Context, projectID string) ([]domain.OpenQuestion, error) {
+	var items []domain.OpenQuestion
+	for _, item := range s.items {
+		if item.ProjectID == projectID {
+			items = append(items, item)
+		}
+	}
+	return items, nil
 }
 
 type fakePacketStore struct{ latest domain.Packet }
@@ -231,6 +257,26 @@ func TestHandleProjectShowUsesProjectID(t *testing.T) {
 	}
 	if !bytes.Contains(rec.Body.Bytes(), []byte(projectID)) {
 		t.Fatalf("expected response to include project id, got %s", rec.Body.String())
+	}
+}
+
+func TestHandleProjectGraphUsesProjectID(t *testing.T) {
+	projectID := lib.ProjectID("relay")
+	handler := testHandler(projectID)
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/projects/"+projectID+"/graph", nil)
+	rec := httptest.NewRecorder()
+
+	handler.handleProjectShow(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
+	}
+	if !bytes.Contains(rec.Body.Bytes(), []byte(`"command":"relay project graph"`)) {
+		t.Fatalf("expected graph command, got %s", rec.Body.String())
+	}
+	if !bytes.Contains(rec.Body.Bytes(), []byte(`"type":"derived_from"`)) {
+		t.Fatalf("expected derived_from edges, got %s", rec.Body.String())
 	}
 }
 
@@ -890,11 +936,23 @@ func testHandler(projectID string, apiKeyStores ...*fakeAPIKeyStore) Handler {
 					{ID: "note_1", ProjectID: projectID, Source: "chat", Body: "hello"},
 				},
 			},
-			Artifacts:     &fakeArtifactStore{},
-			Decisions:     &fakeDecisionStore{},
-			OpenQuestions: &fakeOpenQuestionStore{},
-			Packets:       &fakePacketStore{},
-			APIKeys:       apiKeys,
+			Artifacts: &fakeArtifactStore{
+				items: []domain.Artifact{
+					{ID: "art_1", ProjectID: projectID, Type: "design_doc", SourcePath: "docs/design.md", TrustLevel: "trusted"},
+				},
+			},
+			Decisions: &fakeDecisionStore{
+				items: []domain.Decision{
+					{ID: "dec_1", ProjectID: projectID, Summary: "preserve style continuity", SourceNoteIDs: []string{"note_1"}, SourceArtifactIDs: []string{"art_1"}},
+				},
+			},
+			OpenQuestions: &fakeOpenQuestionStore{
+				items: []domain.OpenQuestion{
+					{ID: "oq_1", ProjectID: projectID, Summary: "how to rank retrieval evidence", SourceArtifactIDs: []string{"art_1"}},
+				},
+			},
+			Packets: &fakePacketStore{},
+			APIKeys: apiKeys,
 		}),
 	}
 }

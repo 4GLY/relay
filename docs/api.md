@@ -413,6 +413,26 @@ Response fields:
 - `open_question_count`
 - `latest_packet_id`
 
+### `GET /v1/projects/{project_id}/graph`
+
+Purpose:
+- project-scoped canonical graph projection for retrieval and packet-composer planning
+
+Path params:
+- `project_id`: canonical project id, not project name
+
+Response fields:
+- `project_id`
+- `nodes[]`
+- `edges[]`
+
+Contract notes:
+- this is a read-only projection over the existing relational stores; no separate graph database is involved
+- current node kinds are `project`, `note`, `artifact`, `decision`, `open_question`
+- current edge types are `includes` and `derived_from`
+- project containment is emitted as `includes`
+- packet nodes and packet `includes` edges are not part of this first slice yet because packet history is not listed independently
+
 ## Stable Error Codes
 
 Current known codes:

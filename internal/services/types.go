@@ -56,6 +56,32 @@ type ShowResult struct {
 	LatestPacketID    string `json:"latest_packet_id,omitempty"`
 }
 
+type ProjectGraphInput struct {
+	Project   string `json:"project"`
+	ProjectID string `json:"project_id"`
+}
+
+type ProjectGraphResult struct {
+	ProjectID string             `json:"project_id"`
+	Nodes     []ProjectGraphNode `json:"nodes"`
+	Edges     []ProjectGraphEdge `json:"edges"`
+}
+
+type ProjectGraphNode struct {
+	ID         string `json:"id"`
+	Kind       string `json:"kind"`
+	Title      string `json:"title,omitempty"`
+	Source     string `json:"source,omitempty"`
+	SourcePath string `json:"source_path,omitempty"`
+	TrustLevel string `json:"trust_level,omitempty"`
+}
+
+type ProjectGraphEdge struct {
+	Type string `json:"type"`
+	From string `json:"from"`
+	To   string `json:"to"`
+}
+
 type PacketBuildInput struct {
 	Project          string `json:"project"`
 	Type             string `json:"type"`

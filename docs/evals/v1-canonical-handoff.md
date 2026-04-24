@@ -78,6 +78,34 @@ The retrieval judge:
 - runs a blind paired judge over `retrieval-aware` vs `ranking-only`
 - writes `retrieval-aware-packet.json`, `ranking-only-packet.json`, and `retrieval-baseline-comparison.json`
 
+## Consumer Continuation Eval
+
+After an acceptance run, run real consumer agents against the style-aware packet:
+
+```bash
+./scripts/evals/v1_consumer_continuation.sh \
+  --result-file .gstack/projects/relay/<run_id>/result.json \
+  --claude-model opus
+```
+
+Use `--reuse-existing` to rerun only the comparison judge when both consumer
+outputs already exist.
+
+This eval asks a fresh Claude consumer and a fresh Codex consumer to continue
+from the packet only, then asks Claude/Opus to compare the two continuation
+outputs.
+
+It writes:
+
+- `.gstack/projects/relay/<run_id>/consumer-continuation-prompt.md`
+- `.gstack/projects/relay/<run_id>/claude-consumer-continuation.json`
+- `.gstack/projects/relay/<run_id>/codex-consumer-continuation.json`
+- `.gstack/projects/relay/<run_id>/consumer-continuation-comparison.json`
+
+This is intentionally optional for now. It validates actual model-to-model or
+session-to-session consumption behavior without making every PR depend on a
+second consumer-agent run.
+
 ## Repeated Usage Validation
 
 For the next-stage benchmark, run the fixture batch instead of a single canonical seed:
@@ -115,6 +143,8 @@ Workflow requirements:
   - `RELAY_EVAL_MIN_RETRIEVAL_AWARE_WIN_RATE=0.6`
   - `RELAY_EVAL_MIN_AVG_RETRIEVAL_CONTINUATION_READINESS=3.5`
   - `RELAY_EVAL_MIN_AVG_RETRIEVAL_EVIDENCE_RELEVANCE=3.5`
+
+Runner operations live in `docs/ops/self-hosted-runner.md`.
 
 ## Protected Main Publish
 

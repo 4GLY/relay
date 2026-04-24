@@ -160,6 +160,21 @@ Use `--fixture-limit 0` only when the full five-fixture consumer run is worth
 the extra model time. The first threshold candidate should be based on at least
 three consumer continuation runs.
 
+The same stability check is available as a manual GitHub Actions workflow:
+
+```bash
+gh workflow run consumer-stability.yml \
+  -f runs=3 \
+  -f fixture_limit=1 \
+  -f judge_model=opus
+```
+
+Workflow requirements:
+
+- self-hosted Linux runner labeled `relay-evals`
+- repository secret `CLAUDE_CODE_OAUTH_TOKEN`
+- repository secret `OPENAI_API_KEY` for headless Codex CLI login
+
 The batch runner:
 
 - reuses the same acceptance contract for multiple scenarios

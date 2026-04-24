@@ -173,7 +173,35 @@ Workflow requirements:
 
 - self-hosted Linux runner labeled `relay-evals`
 - repository secret `CLAUDE_CODE_OAUTH_TOKEN`
-- repository secret `OPENAI_API_KEY` for headless Codex CLI login
+- jump runner `hoon-ch` account has an existing Codex login at `/home/hoon-ch/.codex`
+
+The workflow installs the Codex CLI binary during the job, but it does not log
+in with an OpenAI API key. It points `CODEX_HOME` at the trusted jump runner's
+existing Codex auth state and fails fast if `codex login status` is not healthy.
+
+## Model Limit Fallback Policy
+
+Consumer stability is a manual evidence-gathering workflow, not the release
+gate. When Claude or Codex hits a usage limit, do not silently replace the model
+and treat the result as the same benchmark.
+
+Use this order:
+
+1. Reduce cost first: lower `runs`, keep `fixture_limit=1`, and rerun the same
+   model after its limit resets.
+2. If only Codex is limited, run the normal `usage-validation-gate` as the
+   release signal and postpone `consumer-stability`; record the Codex leg as
+   blocked rather than failed product quality.
+3. If only Claude/Opus is limited, postpone judge-heavy consumer stability or
+   rerun with a cheaper explicitly named Claude model. Mark the run as
+   exploratory, not canonical.
+4. If both are limited, fall back to packet-only/local deterministic checks and
+   keep the release gate on `usage-validation-gate`; do not promote consumer
+   stability thresholds from that run.
+
+Any substituted model must be visible in the run inputs or output artifacts
+(`judge_model`, `codex_model`) so future comparisons do not mix different
+consumer populations.
 
 The batch runner:
 
@@ -203,6 +231,7 @@ Workflow requirements:
   - `RELAY_EVAL_MIN_AVG_RETRIEVAL_CONTINUATION_READINESS=3.5`
   - `RELAY_EVAL_MIN_AVG_RETRIEVAL_EVIDENCE_RELEVANCE=3.5`
 - Claude structured-output eval calls retry up to `RELAY_EVAL_CLAUDE_STRUCTURED_MAX_ATTEMPTS=3` by default to absorb transient `error_max_structured_output_retries` failures
+- Claude provider usage-limit responses are treated as eval capacity failures. The PR workflow marks the run degraded, runs deterministic `go test ./...` with CI service env cleared as the required-check fallback, and does not treat the degraded run as canonical benchmark evidence.
 
 Runner operations live in `docs/ops/self-hosted-runner.md`.
 

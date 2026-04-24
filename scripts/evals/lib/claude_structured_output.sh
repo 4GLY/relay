@@ -39,9 +39,17 @@ run_claude_structured_output() {
     fi
 
     cp "$attempt_response_file" "$raw_response_file" 2>/dev/null || true
+    local result_text
+    result_text="$(jq -r '.result // empty' "$attempt_response_file" 2>/dev/null || true)"
+    if [[ "$result_text" == *"hit your limit"* || "$result_text" == *"usage limit"* || "$result_text" == *"rate limit"* ]]; then
+      echo "${label}: Claude usage limit reached; ${result_text}" >&2
+      echo "${label}: stop retrying and rerun after the provider limit resets or use an explicitly marked fallback model" >&2
+      return 75
+    fi
+
     if (( attempt < max_attempts )); then
       local failure_reason
-      failure_reason="$(jq -r '.subtype // (.errors[0]? // empty) // .type // "unknown structured-output failure"' "$attempt_response_file" 2>/dev/null || printf 'invalid claude response')"
+      failure_reason="$(jq -r '.result // .subtype // (.errors[0]? // empty) // .type // "unknown structured-output failure"' "$attempt_response_file" 2>/dev/null || printf 'invalid claude response')"
       echo "${label}: attempt ${attempt}/${max_attempts} failed (${failure_reason}); retrying" >&2
       sleep "$retry_sleep_seconds"
     fi

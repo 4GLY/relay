@@ -81,21 +81,56 @@ Then rerun the `usage-validation` workflow on a PR.
 ## Codex Auth
 
 The manual `consumer-stability` workflow also runs Codex as a packet consumer.
-It installs `@openai/codex` during the job and logs in with repository secret
-`OPENAI_API_KEY` using an isolated `CODEX_HOME` under the runner temp
-directory.
+It installs `@openai/codex` during the job, but authentication is owned by the
+trusted jump runner account instead of a repository `OPENAI_API_KEY` secret.
 
-Required setup:
+Current setup:
 
 ```bash
-gh secret set OPENAI_API_KEY --repo 4GLY/relay --body "$OPENAI_API_KEY"
+ssh jump 'test -f /home/hoon-ch/.codex/auth.json'
 ```
+
+The workflow sets `CODEX_HOME=/home/hoon-ch/.codex` and fails fast when the
+runner user's Codex login is missing or expired. The workflow installs the
+Codex CLI binary after `actions/setup-node`, so the host shell does not need a
+global `codex` binary for normal operation. Rotate Codex auth on `jump` with
+the normal interactive Codex login flow for the `hoon-ch` account.
 
 Then run the workflow manually:
 
 ```bash
 gh workflow run consumer-stability.yml -f runs=3 -f fixture_limit=1 -f judge_model=opus
 ```
+
+## Model Limits
+
+`consumer-stability` uses real Claude and Codex consumer calls, so it can be
+blocked by provider usage limits. Treat usage limits as eval capacity failures,
+not Relay product failures.
+
+Fallback order:
+
+1. Lower cost first: use fewer `runs`, keep `fixture_limit=1`, and rerun after
+   the provider limit resets.
+2. If Codex is limited, keep the PR/release decision on `usage-validation-gate`
+   and postpone the Codex consumer comparison.
+3. If Claude/Opus is limited, either wait for reset or explicitly choose a
+   cheaper `judge_model`; mark that run exploratory.
+4. If both are limited, run only deterministic packet/API checks and do not
+   update consumer-stability thresholds from that run.
+
+Do not silently swap providers or accounts for canonical stability numbers.
+If a substitute model is used, make it explicit in workflow inputs and artifact
+metadata.
+
+The Claude structured-output helper detects common limit messages such as
+`You've hit your limit` and stops retrying immediately, because short retries
+cannot fix provider quota exhaustion. It returns exit code `75` for this
+capacity failure. The required PR workflow catches that code, marks the run as
+degraded in the step summary, runs deterministic `go test ./...` with CI
+service env cleared, and exits successfully so product changes are not blocked
+by temporary model capacity. Those degraded runs are not canonical benchmark
+evidence.
 
 ## Failure Modes
 
@@ -107,6 +142,11 @@ gh workflow run consumer-stability.yml -f runs=3 -f fixture_limit=1 -f judge_mod
 - Claude auth failure: `scripts/ci/run_usage_validation_gate.sh` fails before
   the batch judge starts. Rotate `CLAUDE_CODE_OAUTH_TOKEN` and rerun.
 - Codex auth failure: `consumer-stability` fails before the stability run
-  starts. Set or rotate `OPENAI_API_KEY`.
+  starts. Refresh the `hoon-ch` Codex login on `jump` and confirm
+  `/home/hoon-ch/.codex/auth.json` exists. If a Codex binary is available in
+  the shell, also run `CODEX_HOME=/home/hoon-ch/.codex codex login status`.
+- Model usage limit: reduce `runs`/`fixture_limit`, wait for reset, or mark the
+  substituted model run as exploratory. Do not mix it into canonical stability
+  thresholds.
 - Long busy state: confirm whether a job is actually running in GitHub Actions
   before restarting; restarting during a live job abandons the job.

@@ -118,14 +118,26 @@ set -a; source .env; set +a
   --model opus
 ```
 
+To include real consumer-agent continuation checks for every fixture, add:
+
+```bash
+./scripts/evals/v1_usage_validation_batch.sh \
+  --fixtures-file scripts/evals/fixtures/v1_usage_validation.json \
+  --base-url "${RELAY_BASE_URL:-https://relay.4gly.dev}" \
+  --model opus \
+  --consumer-continuation
+```
+
 The batch runner:
 
 - reuses the same acceptance contract for multiple scenarios
 - attaches richer evidence pointers including code paths plus run-generated changed-files manifests and PR-diff snapshots
 - runs the blind paired judge after each fixture
 - runs the retrieval baseline judge after each fixture so `retrieval-aware` can be compared against `ranking-only`
+- optionally runs the real Claude/Codex consumer continuation eval after each fixture when `--consumer-continuation` is set
 - writes `batch-runs.jsonl` plus `batch-summary.json` and `batch-summary.md`
 - evaluates a release gate from style-aware win rate, average `style_match`, retrieval-aware win rate, retrieval readiness/evidence scores, and budget-pass rate
+- reports consumer continuation metrics when present, but does not gate releases on them yet
 
 ## CI Gate
 

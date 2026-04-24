@@ -15,6 +15,8 @@ MIN_BUDGET_PASS_RATE="${RELAY_EVAL_MIN_BUDGET_PASS_RATE:-1.0}"
 MIN_RETRIEVAL_AWARE_WIN_RATE="${RELAY_EVAL_MIN_RETRIEVAL_AWARE_WIN_RATE:-0.6}"
 MIN_AVG_RETRIEVAL_CONTINUATION_READINESS="${RELAY_EVAL_MIN_AVG_RETRIEVAL_CONTINUATION_READINESS:-3.5}"
 MIN_AVG_RETRIEVAL_EVIDENCE_RELEVANCE="${RELAY_EVAL_MIN_AVG_RETRIEVAL_EVIDENCE_RELEVANCE:-3.5}"
+RUN_CONSUMER_CONTINUATION="${RELAY_EVAL_RUN_CONSUMER_CONTINUATION:-0}"
+CODEX_CONSUMER_MODEL="${RELAY_EVAL_CODEX_CONSUMER_MODEL:-}"
 KEEP_ISSUED_KEY=0
 TEMP_KEY_ID=""
 TEMP_KEY_TOKEN=""
@@ -46,6 +48,10 @@ Options:
                        Minimum average retrieval continuation readiness gate. Default: ${MIN_AVG_RETRIEVAL_CONTINUATION_READINESS}
   --min-retrieval-evidence FLOAT
                        Minimum average retrieval evidence relevance gate. Default: ${MIN_AVG_RETRIEVAL_EVIDENCE_RELEVANCE}
+  --consumer-continuation
+                       Also run real Claude and Codex packet-only consumer continuation evals
+  --codex-consumer-model MODEL
+                       Optional Codex model for consumer continuation. Default: Codex CLI config
   --keep-issued-key     Keep an issued temporary key instead of revoking it
 EOF
 }
@@ -107,6 +113,14 @@ parse_args() {
         ;;
       --min-retrieval-evidence)
         MIN_AVG_RETRIEVAL_EVIDENCE_RELEVANCE="${2:?minimum retrieval evidence relevance required}"
+        shift 2
+        ;;
+      --consumer-continuation)
+        RUN_CONSUMER_CONTINUATION=1
+        shift
+        ;;
+      --codex-consumer-model)
+        CODEX_CONSUMER_MODEL="${2:?Codex consumer model required}"
         shift 2
         ;;
       --keep-issued-key)
@@ -314,7 +328,7 @@ run_fixture() {
   local batch_runs_file="$2"
   local batch_dir="$3"
 
-  local fixture_slug scenario_label run_stamp fixture_id run_id project result_file comparison_file retrieval_comparison_file
+  local fixture_slug scenario_label run_stamp fixture_id run_id project result_file comparison_file retrieval_comparison_file consumer_comparison_file
   fixture_slug="$(json_string '.id' "$fixture_json")"
   scenario_label="$(json_string '.scenario_label // .id' "$fixture_json")"
   run_stamp="$(date -u +%Y%m%dT%H%M%SZ)"
@@ -324,6 +338,7 @@ run_fixture() {
   result_file="${OUTPUT_ROOT%/}/${run_id}/result.json"
   comparison_file="${OUTPUT_ROOT%/}/${run_id}/paired-comparison.json"
   retrieval_comparison_file="${OUTPUT_ROOT%/}/${run_id}/retrieval-baseline-comparison.json"
+  consumer_comparison_file="${OUTPUT_ROOT%/}/${run_id}/consumer-continuation-comparison.json"
 
   local repo_path handoff_path design_path task_summary capture_body decision_summary decision_reason question_summary
   local workflow artifact_type packet_type packet_target trace_decision trace_alternatives_json trace_rationale
@@ -404,6 +419,18 @@ run_fixture() {
   fi
   "${retrieval_judge_cmd[@]}"
 
+  if [[ "$RUN_CONSUMER_CONTINUATION" == "1" || "$RUN_CONSUMER_CONTINUATION" == "true" ]]; then
+    local -a consumer_continuation_cmd=(
+      ./scripts/evals/v1_consumer_continuation.sh
+      --result-file "$result_file"
+      --claude-model "$MODEL"
+    )
+    if [[ -n "$CODEX_CONSUMER_MODEL" ]]; then
+      consumer_continuation_cmd+=(--codex-model "$CODEX_CONSUMER_MODEL")
+    fi
+    "${consumer_continuation_cmd[@]}"
+  fi
+
   jq -nc \
     --arg recorded_at "$(python3 -c 'import datetime; print(datetime.datetime.now(datetime.UTC).isoformat())')" \
     --arg batch_id "$BATCH_ID" \
@@ -414,7 +441,9 @@ run_fixture() {
     --arg result_file "$result_file" \
     --arg comparison_file "$comparison_file" \
     --arg retrieval_comparison_file "$retrieval_comparison_file" \
+    --arg consumer_comparison_file "$consumer_comparison_file" \
     --arg judge_model "$MODEL" \
+    --argjson consumer_continuation_enabled "$(if [[ "$RUN_CONSUMER_CONTINUATION" == "1" || "$RUN_CONSUMER_CONTINUATION" == "true" ]]; then printf 'true'; else printf 'false'; fi)" \
     '{
       recorded_at: $recorded_at,
       batch_id: $batch_id,
@@ -425,6 +454,8 @@ run_fixture() {
       result_file: $result_file,
       comparison_file: $comparison_file,
       retrieval_comparison_file: $retrieval_comparison_file,
+      consumer_comparison_file: (if $consumer_continuation_enabled then $consumer_comparison_file else null end),
+      consumer_continuation_enabled: $consumer_continuation_enabled,
       judge_model: $judge_model
     }' >>"$batch_runs_file"
 }
@@ -435,6 +466,9 @@ main() {
   require_command jq
   require_command python3
   require_command claude
+  if [[ "$RUN_CONSUMER_CONTINUATION" == "1" || "$RUN_CONSUMER_CONTINUATION" == "true" ]]; then
+    require_command codex
+  fi
 
   if [[ ! -f "$FIXTURES_FILE" ]]; then
     echo "fixtures file not found: $FIXTURES_FILE" >&2

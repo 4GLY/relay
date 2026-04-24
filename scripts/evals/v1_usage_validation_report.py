@@ -33,6 +33,10 @@ def build_run_summary(record):
     retrieval_comparison = None
     if retrieval_comparison_path:
         retrieval_comparison = load_json(Path(retrieval_comparison_path).resolve())
+    consumer_comparison_path = record.get("consumer_comparison_file")
+    consumer_comparison = None
+    if consumer_comparison_path:
+        consumer_comparison = load_json(Path(consumer_comparison_path).resolve())
     style_packet = load_json(Path(result["style_packet_file"]).resolve())
     rubric = result.get("rubric_scores", {})
 
@@ -52,6 +56,14 @@ def build_run_summary(record):
         "retrieval_preferred_variant": retrieval_comparison.get("preferred_variant") if retrieval_comparison else None,
         "retrieval_continuation_readiness": retrieval_comparison.get("continuation_readiness") if retrieval_comparison else None,
         "retrieval_evidence_relevance": retrieval_comparison.get("evidence_relevance") if retrieval_comparison else None,
+        "consumer_comparison_file": consumer_comparison_path,
+        "consumer_preferred_consumer": consumer_comparison.get("preferred_consumer") if consumer_comparison else None,
+        "consumer_codex_packet_only": consumer_comparison.get("codex_packet_only_continuation") if consumer_comparison else None,
+        "consumer_claude_packet_only": consumer_comparison.get("claude_packet_only_continuation") if consumer_comparison else None,
+        "consumer_codex_style_match": consumer_comparison.get("codex_style_match") if consumer_comparison else None,
+        "consumer_claude_style_match": consumer_comparison.get("claude_style_match") if consumer_comparison else None,
+        "consumer_codex_continuation_readiness": consumer_comparison.get("codex_continuation_readiness") if consumer_comparison else None,
+        "consumer_claude_continuation_readiness": consumer_comparison.get("claude_continuation_readiness") if consumer_comparison else None,
         "result_file": str(result_path),
     }
 
@@ -74,6 +86,12 @@ def render_markdown(summary):
         f"- retrieval-aware win rate: `{summary['retrieval_aware_win_rate']:.2%}`" if summary["retrieval_aware_win_rate"] is not None else "- retrieval-aware win rate: `n/a`",
         f"- avg retrieval continuation readiness: `{summary['avg_retrieval_continuation_readiness']:.2f}`" if summary["avg_retrieval_continuation_readiness"] is not None else "- avg retrieval continuation readiness: `n/a`",
         f"- avg retrieval evidence relevance: `{summary['avg_retrieval_evidence_relevance']:.2f}`" if summary["avg_retrieval_evidence_relevance"] is not None else "- avg retrieval evidence relevance: `n/a`",
+        f"- consumer continuation runs: `{summary['consumer_continuation_runs']}`",
+        f"- consumer packet-only pass rate: `{summary['consumer_packet_only_pass_rate']:.2%}`" if summary["consumer_packet_only_pass_rate"] is not None else "- consumer packet-only pass rate: `n/a`",
+        f"- avg consumer Codex style_match: `{summary['avg_consumer_codex_style_match']:.2f}`" if summary["avg_consumer_codex_style_match"] is not None else "- avg consumer Codex style_match: `n/a`",
+        f"- avg consumer Claude style_match: `{summary['avg_consumer_claude_style_match']:.2f}`" if summary["avg_consumer_claude_style_match"] is not None else "- avg consumer Claude style_match: `n/a`",
+        f"- avg consumer Codex readiness: `{summary['avg_consumer_codex_continuation_readiness']:.2f}`" if summary["avg_consumer_codex_continuation_readiness"] is not None else "- avg consumer Codex readiness: `n/a`",
+        f"- avg consumer Claude readiness: `{summary['avg_consumer_claude_continuation_readiness']:.2f}`" if summary["avg_consumer_claude_continuation_readiness"] is not None else "- avg consumer Claude readiness: `n/a`",
         f"- avg handoff duration: `{summary['avg_total_handoff_duration_ms']:.1f} ms`" if summary["avg_total_handoff_duration_ms"] is not None else "- avg handoff duration: `n/a`",
         f"- avg artifact count: `{summary['avg_artifact_count']:.2f}`" if summary["avg_artifact_count"] is not None else "- avg artifact count: `n/a`",
         f"- gate pass: `{str(gate['pass']).lower()}`",
@@ -104,8 +122,8 @@ def render_markdown(summary):
         "",
         "## Per Scenario",
         "",
-        "| scenario | style preferred | style_match | retrieval preferred | retrieval readiness | retrieval relevance | artifacts | handoff_ms | budget |",
-        "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+        "| scenario | style preferred | style_match | retrieval preferred | retrieval readiness | retrieval relevance | consumer preferred | codex style | claude style | artifacts | handoff_ms | budget |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ])
     for run in summary["runs"]:
         preferred = run["preferred_continuation"] or "unscored"
@@ -113,9 +131,12 @@ def render_markdown(summary):
         retrieval_preferred = run["retrieval_preferred_variant"] or "unscored"
         retrieval_readiness = "n/a" if run["retrieval_continuation_readiness"] is None else run["retrieval_continuation_readiness"]
         retrieval_relevance = "n/a" if run["retrieval_evidence_relevance"] is None else run["retrieval_evidence_relevance"]
+        consumer_preferred = run["consumer_preferred_consumer"] or "unscored"
+        codex_style = "n/a" if run["consumer_codex_style_match"] is None else run["consumer_codex_style_match"]
+        claude_style = "n/a" if run["consumer_claude_style_match"] is None else run["consumer_claude_style_match"]
         handoff_ms = "n/a" if run["total_handoff_duration_ms"] is None else run["total_handoff_duration_ms"]
         lines.append(
-            f"| {run['scenario_label']} | {preferred} | {style_match} | {retrieval_preferred} | {retrieval_readiness} | {retrieval_relevance} | {run['artifact_count']} | {handoff_ms} | {str(run['budget_pass']).lower()} |"
+            f"| {run['scenario_label']} | {preferred} | {style_match} | {retrieval_preferred} | {retrieval_readiness} | {retrieval_relevance} | {consumer_preferred} | {codex_style} | {claude_style} | {run['artifact_count']} | {handoff_ms} | {str(run['budget_pass']).lower()} |"
         )
     return "\n".join(lines) + "\n"
 
@@ -142,6 +163,16 @@ def main():
     style_matches = [run["style_match"] for run in paired_runs if run["style_match"] is not None]
     retrieval_continuation_readiness = [run["retrieval_continuation_readiness"] for run in retrieval_runs if run["retrieval_continuation_readiness"] is not None]
     retrieval_evidence_relevance = [run["retrieval_evidence_relevance"] for run in retrieval_runs if run["retrieval_evidence_relevance"] is not None]
+    consumer_runs = [run for run in run_summaries if run["consumer_preferred_consumer"] is not None]
+    consumer_packet_only_passes = sum(
+        1
+        for run in consumer_runs
+        if run["consumer_codex_packet_only"] is True and run["consumer_claude_packet_only"] is True
+    )
+    consumer_codex_style_matches = [run["consumer_codex_style_match"] for run in consumer_runs if run["consumer_codex_style_match"] is not None]
+    consumer_claude_style_matches = [run["consumer_claude_style_match"] for run in consumer_runs if run["consumer_claude_style_match"] is not None]
+    consumer_codex_readiness = [run["consumer_codex_continuation_readiness"] for run in consumer_runs if run["consumer_codex_continuation_readiness"] is not None]
+    consumer_claude_readiness = [run["consumer_claude_continuation_readiness"] for run in consumer_runs if run["consumer_claude_continuation_readiness"] is not None]
     durations = [run["total_handoff_duration_ms"] for run in run_summaries if run["total_handoff_duration_ms"] is not None]
     artifact_counts = [run["artifact_count"] for run in run_summaries]
     style_aware_wins = sum(1 for run in paired_runs if run["preferred_continuation"] == "style-aware")
@@ -152,6 +183,7 @@ def main():
     avg_style_match = mean_or_none(style_matches)
     avg_retrieval_continuation_readiness = mean_or_none(retrieval_continuation_readiness)
     avg_retrieval_evidence_relevance = mean_or_none(retrieval_evidence_relevance)
+    consumer_packet_only_pass_rate = None if not consumer_runs else consumer_packet_only_passes / len(consumer_runs)
     budget_pass_rate = None if not run_summaries else budget_pass_runs / len(run_summaries)
     gate_reasons = []
     if style_aware_win_rate is None or style_aware_win_rate < args.min_style_aware_win_rate:
@@ -179,6 +211,13 @@ def main():
         "retrieval_aware_win_rate": retrieval_aware_win_rate,
         "avg_retrieval_continuation_readiness": avg_retrieval_continuation_readiness,
         "avg_retrieval_evidence_relevance": avg_retrieval_evidence_relevance,
+        "consumer_continuation_runs": len(consumer_runs),
+        "consumer_packet_only_passes": consumer_packet_only_passes,
+        "consumer_packet_only_pass_rate": consumer_packet_only_pass_rate,
+        "avg_consumer_codex_style_match": mean_or_none(consumer_codex_style_matches),
+        "avg_consumer_claude_style_match": mean_or_none(consumer_claude_style_matches),
+        "avg_consumer_codex_continuation_readiness": mean_or_none(consumer_codex_readiness),
+        "avg_consumer_claude_continuation_readiness": mean_or_none(consumer_claude_readiness),
         "avg_total_handoff_duration_ms": mean_or_none(durations),
         "max_total_handoff_duration_ms": None if not durations else max(durations),
         "avg_artifact_count": mean_or_none(artifact_counts),

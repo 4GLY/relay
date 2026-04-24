@@ -11,6 +11,7 @@ on:
 permissions:
   contents: write
   packages: write
+  pull-requests: write
 
 jobs:
   build-and-sync-manifest:
@@ -61,25 +62,31 @@ jobs:
           path.write_text(text)
           PY
 
-      - name: Commit manifest update
+      - name: Open manifest sync PR
         env:
-          RELAY_PUSH_TOKEN: ${{ secrets.RELAY_PUSH_TOKEN }}
-          RELAY_PUSH_USERNAME: ${{ vars.RELAY_PUSH_USERNAME }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           if git diff --quiet -- deploy/k8s/deployment.yaml; then
             exit 0
           fi
-          if [[ -z "${RELAY_PUSH_TOKEN}" ]]; then
-            echo "Repository secret RELAY_PUSH_TOKEN is required to push deploy/k8s updates on protected main." >&2
+          if [[ "$(gh api repos/${{ github.repository }} --jq '.allow_auto_merge')" != "true" ]]; then
+            echo "Repository setting allow_auto_merge must be enabled for manifest sync PRs." >&2
             exit 1
           fi
-          if [[ -z "${RELAY_PUSH_USERNAME}" ]]; then
-            echo "Repository variable RELAY_PUSH_USERNAME is required to identify the bypass actor for protected main pushes." >&2
-            exit 1
-          fi
+          branch="automation/relay-api-deploy-${{ github.sha }}"
+          title="chore: deploy relay-api image sha-${{ github.sha }}"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git remote set-url origin "https://${RELAY_PUSH_USERNAME}:${RELAY_PUSH_TOKEN}@github.com/${{ github.repository }}.git"
+          git checkout -b "${branch}"
           git add deploy/k8s/deployment.yaml
-          git commit -m "chore: deploy relay-api image sha-${{ github.sha }}"
-          git push origin HEAD:main
+          git commit -m "${title}"
+          git push --force-with-lease origin HEAD:"${branch}"
+          pr_url="$(gh pr list --state open --base main --head "${branch}" --json url --jq '.[0].url')"
+          if [[ -z "${pr_url}" ]]; then
+            pr_url="$(gh pr create \
+              --base main \
+              --head "${branch}" \
+              --title "${title}" \
+              --body $'Automated manifest sync after image publish.\n\n- built image: `ghcr.io/4gly/relay-api:sha-${{ github.sha }}`\n- updated file: `deploy/k8s/deployment.yaml`')"
+          fi
+          gh pr merge --auto --squash "${pr_url}"

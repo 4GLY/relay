@@ -97,18 +97,20 @@ Workflow requirements:
 
 The repo also uses `.github/workflows/publish-relay-api.yml` to build `ghcr.io/4gly/relay-api:sha-<commit>` and sync `deploy/k8s/deployment.yaml`.
 
-When `main` has required status checks, the default `GITHUB_TOKEN` cannot push that manifest update back to the protected branch.
+When `main` has required status checks, having the workflow push a manifest commit directly back to the protected branch conflicts with branch protection.
 
-Workflow requirement:
-
-- repository secret `RELAY_PUSH_TOKEN` with a token that is allowed to bypass the protected `main` branch for manifest-sync pushes
-- repository variable `RELAY_PUSH_USERNAME` with the GitHub login that owns that bypass token
-
-Behavior:
+Current behavior:
 
 - the workflow still uses `GITHUB_TOKEN` for GHCR publish
-- it uses `RELAY_PUSH_USERNAME` plus `RELAY_PUSH_TOKEN` only for the final `git push origin HEAD:main`
-- if either value is missing, the workflow now fails with a direct configuration error instead of a generic protected-branch rejection
+- when `deploy/k8s/deployment.yaml` changes, it commits that diff onto an automation branch
+- it opens a PR back to `main`
+- it enables auto-merge so the PR lands only after the normal `usage-validation` required check passes
+
+Repository requirement:
+
+- repository setting `allow_auto_merge=true`
+
+This keeps `main` protected while preserving the image-publish plus manifest-sync path.
 
 Local and CI both use the same helper:
 

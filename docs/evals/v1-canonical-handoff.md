@@ -48,16 +48,15 @@ The runner writes:
 After an acceptance run, ask an external model to judge the paired packets:
 
 ```bash
-./scripts/evals/v1_copilot_paired_judge.sh \
+./scripts/evals/v1_claude_paired_judge.sh \
   --result-file .gstack/projects/relay/<run_id>/result.json \
-  --model claude-opus-4.7
+  --model opus
 ```
 
 The judge script writes:
 
 - `.gstack/projects/relay/<run_id>/paired-comparison-prompt.md`
-- `.gstack/projects/relay/<run_id>/copilot-opus-judge.jsonl`
-- `.gstack/projects/relay/<run_id>/copilot-opus-judge.md`
+- `.gstack/projects/relay/<run_id>/claude-judge.json`
 - `.gstack/projects/relay/<run_id>/paired-comparison.json`
 
 The judge is intentionally blind to which packet is style-aware. It maps packet A/B back to `style-aware` or `control` only after the model returns its preference.
@@ -69,7 +68,7 @@ After an acceptance run, you can also compare the new retrieval-aware packet pat
 ```bash
 ./scripts/evals/v1_retrieval_baseline_judge.sh \
   --result-file .gstack/projects/relay/<run_id>/result.json \
-  --model claude-opus-4.7
+  --model opus
 ```
 
 The retrieval judge:
@@ -88,7 +87,7 @@ set -a; source .env; set +a
 ./scripts/evals/v1_usage_validation_batch.sh \
   --fixtures-file scripts/evals/fixtures/v1_usage_validation.json \
   --base-url "${RELAY_BASE_URL:-https://relay.4gly.dev}" \
-  --model claude-opus-4.7
+  --model opus
 ```
 
 The batch runner:
@@ -108,8 +107,10 @@ It runs the same repeated usage-validation benchmark against a local `relay-api`
 
 Workflow requirements:
 
-- repository secret `COPILOT_GITHUB_TOKEN` with a fine-grained PAT that has the GitHub `Copilot Requests` permission enabled
-- GitHub Actions runner with Node.js 24+ so `npm install -g @github/copilot` works and the repo is already opted into Node 24 JavaScript actions
+- self-hosted Linux runner labeled `relay-evals`
+- repository secret `CLAUDE_CODE_OAUTH_TOKEN` for headless `claude` CLI evaluation in GitHub Actions
+- local operator runs can also reuse an existing `claude auth login` session
+- GitHub Actions runner with Node.js 24+ so `npm install -g @anthropic-ai/claude-code` works and the repo is already opted into Node 24 JavaScript actions
 - current retrieval gate defaults:
   - `RELAY_EVAL_MIN_RETRIEVAL_AWARE_WIN_RATE=0.6`
   - `RELAY_EVAL_MIN_AVG_RETRIEVAL_CONTINUATION_READINESS=3.5`
@@ -146,7 +147,7 @@ That helper:
 
 - runs migrations
 - starts `relay-api` locally
-- configures a temporary `COPILOT_HOME` with the repo marked as trusted
+- verifies `claude` authentication from `CLAUDE_CODE_OAUTH_TOKEN`, `ANTHROPIC_API_KEY`, or an existing `claude auth login` session
 - runs `scripts/evals/v1_usage_validation_batch.sh`
 - appends `batch-summary.md` to `GITHUB_STEP_SUMMARY` when running in Actions
 - fails when either the style-aware gate or the retrieval-aware gate falls below threshold

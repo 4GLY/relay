@@ -7,7 +7,7 @@ MCP_URL="${RELAY_MCP_URL:-${BASE_URL%/}/mcp}"
 OUTPUT_ROOT="${RELAY_ACCEPTANCE_OUTPUT_ROOT:-.gstack/projects/relay-ci}"
 BATCH_ID="${RELAY_EVAL_BATCH_ID:-v1-usage-validation-ci-$(date -u +%Y%m%dT%H%M%SZ)}"
 FIXTURES_FILE="${RELAY_EVAL_FIXTURES_FILE:-scripts/evals/fixtures/v1_usage_validation.json}"
-MODEL="${RELAY_EVAL_JUDGE_MODEL:-claude-opus-4.7}"
+MODEL="${RELAY_EVAL_JUDGE_MODEL:-opus}"
 API_PID=""
 
 usage() {
@@ -31,8 +31,8 @@ Optional environment:
   RELAY_EVAL_BATCH_ID
   RELAY_EVAL_FIXTURES_FILE
   RELAY_EVAL_JUDGE_MODEL
-  COPILOT_GITHUB_TOKEN
-  COPILOT_HOME
+  CLAUDE_CODE_OAUTH_TOKEN
+  ANTHROPIC_API_KEY
 EOF
 }
 
@@ -56,36 +56,21 @@ wait_for_healthz() {
   return 1
 }
 
-setup_copilot_home() {
-  local copilot_home
-  copilot_home="${COPILOT_HOME:-${RUNNER_TEMP:-${TMPDIR:-/tmp}}/relay-copilot-ci}"
-  mkdir -p "$copilot_home"
-  COPILOT_HOME="$copilot_home"
-  export COPILOT_HOME
+verify_claude_auth() {
+  if [[ -n "${CLAUDE_CODE_OAUTH_TOKEN:-}" ]]; then
+    return 0
+  fi
 
-  python3 - <<'PY'
-import json
-import os
-from pathlib import Path
+  if [[ -n "${ANTHROPIC_API_KEY:-}" ]]; then
+    return 0
+  fi
 
-copilot_home = Path(os.environ["COPILOT_HOME"])
-repo_root = Path(os.environ["REPO_ROOT"])
-config_path = copilot_home / "config.json"
+  if claude auth status >/dev/null 2>&1; then
+    return 0
+  fi
 
-config = {}
-if config_path.exists():
-    config = json.loads(config_path.read_text())
-
-trusted = list(config.get("trustedFolders", []))
-repo_root_str = str(repo_root)
-if repo_root_str not in trusted:
-    trusted.append(repo_root_str)
-
-config["trustedFolders"] = trusted
-config["banner"] = "never"
-config["autoUpdate"] = False
-config_path.write_text(json.dumps(config, indent=2) + "\n")
-PY
+  echo "Claude auth is required. Set CLAUDE_CODE_OAUTH_TOKEN, ANTHROPIC_API_KEY, or log in with claude auth login." >&2
+  exit 1
 }
 
 cleanup() {
@@ -105,7 +90,7 @@ main() {
   require_command curl
   require_command jq
   require_command python3
-  require_command copilot
+  require_command claude
 
   if [[ -z "${RELAY_DATABASE_URL:-}" ]]; then
     echo "RELAY_DATABASE_URL is required" >&2
@@ -125,7 +110,7 @@ main() {
   export RELAY_EVAL_FIXTURES_FILE="$FIXTURES_FILE"
   export RELAY_EVAL_JUDGE_MODEL="$MODEL"
 
-  setup_copilot_home
+  verify_claude_auth
   trap cleanup EXIT
 
   mkdir -p "${OUTPUT_ROOT%/}"

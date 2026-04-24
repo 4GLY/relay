@@ -144,6 +144,7 @@ set -a; source .env; set +a
 The stability runner writes:
 
 - `.gstack/projects/relay/stability/<prefix>/fixtures.json`
+- `.gstack/projects/relay/stability/<prefix>/run-status.json`
 - `.gstack/projects/relay/stability/<prefix>/consumer-stability-summary.json`
 - `.gstack/projects/relay/stability/<prefix>/consumer-stability-summary.md`
 
@@ -208,6 +209,14 @@ The manual `consumer-stability` workflow handles provider usage-limit exit code
 after writing `stability/<prefix>/run-status.json`, because the useful result is
 that agent setup/auth was verified but canonical consumer evidence could not be
 collected under current provider capacity.
+
+`run-status.json` is the machine-readable contract for downstream automation:
+
+- `status=completed` means the stability run collected real Claude and Codex
+  consumer evidence and `canonical_benchmark_evidence=true`.
+- `status=blocked_by_model_limit` means the runner/auth path was verified, but
+  provider capacity prevented canonical consumer evidence, so
+  `canonical_benchmark_evidence=false`.
 
 The batch runner:
 

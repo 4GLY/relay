@@ -25,6 +25,10 @@ def load_status(path: Path):
 
 
 def evidence_kind(path: Path, payload: dict):
+    batch_id = str(payload.get("batch_id") or "")
+    if batch_id.startswith("consumer-stability-"):
+        return "consumer_usage_validation_batch"
+
     declared = payload.get("evidence_kind")
     if declared:
         return declared

@@ -78,6 +78,25 @@ gh secret set CLAUDE_CODE_OAUTH_TOKEN --repo 4GLY/relay --body "$CLAUDE_CODE_OAU
 
 Then rerun the `usage-validation` workflow on a PR.
 
+## Codex Auth
+
+The manual `consumer-stability` workflow also runs Codex as a packet consumer.
+It installs `@openai/codex` during the job and logs in with repository secret
+`OPENAI_API_KEY` using an isolated `CODEX_HOME` under the runner temp
+directory.
+
+Required setup:
+
+```bash
+gh secret set OPENAI_API_KEY --repo 4GLY/relay --body "$OPENAI_API_KEY"
+```
+
+Then run the workflow manually:
+
+```bash
+gh workflow run consumer-stability.yml -f runs=3 -f fixture_limit=1 -f judge_model=opus
+```
+
 ## Failure Modes
 
 - `jump-relay-evals` offline: PRs block because the required check cannot be
@@ -87,5 +106,7 @@ Then rerun the `usage-validation` workflow on a PR.
   `docker system df` and prune only after confirming the runner is idle.
 - Claude auth failure: `scripts/ci/run_usage_validation_gate.sh` fails before
   the batch judge starts. Rotate `CLAUDE_CODE_OAUTH_TOKEN` and rerun.
+- Codex auth failure: `consumer-stability` fails before the stability run
+  starts. Set or rotate `OPENAI_API_KEY`.
 - Long busy state: confirm whether a job is actually running in GitHub Actions
   before restarting; restarting during a live job abandons the job.

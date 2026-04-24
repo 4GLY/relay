@@ -128,6 +128,29 @@ To include real consumer-agent continuation checks for every fixture, add:
   --consumer-continuation
 ```
 
+To measure consumer-score stability before turning it into a release gate, run
+the same consumer batch repeatedly:
+
+```bash
+set -a; source .env; set +a
+./scripts/evals/v1_consumer_continuation_stability.sh \
+  --fixtures-file scripts/evals/fixtures/v1_usage_validation.json \
+  --fixture-limit 1 \
+  --runs 3 \
+  --base-url "${RELAY_BASE_URL:-https://relay.4gly.dev}" \
+  --model opus
+```
+
+The stability runner writes:
+
+- `.gstack/projects/relay/stability/<prefix>/fixtures.json`
+- `.gstack/projects/relay/stability/<prefix>/consumer-stability-summary.json`
+- `.gstack/projects/relay/stability/<prefix>/consumer-stability-summary.md`
+
+Use `--fixture-limit 0` only when the full five-fixture consumer run is worth
+the extra model time. The first threshold candidate should be based on at least
+three consumer continuation runs.
+
 The batch runner:
 
 - reuses the same acceptance contract for multiple scenarios

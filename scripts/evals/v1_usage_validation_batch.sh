@@ -475,11 +475,12 @@ main() {
     exit 1
   fi
 
-  local batch_dir batch_runs_file batch_summary_json batch_summary_md fixture_count
+  local batch_dir batch_runs_file batch_summary_json batch_summary_md run_status_json fixture_count
   batch_dir="${OUTPUT_ROOT%/}/batches/${BATCH_ID}"
   batch_runs_file="${batch_dir}/batch-runs.jsonl"
   batch_summary_json="${batch_dir}/batch-summary.json"
   batch_summary_md="${batch_dir}/batch-summary.md"
+  run_status_json="${batch_dir}/run-status.json"
   mkdir -p "$batch_dir"
   cp "$FIXTURES_FILE" "${batch_dir}/fixtures.json"
 
@@ -512,10 +513,38 @@ main() {
     --output-json "$batch_summary_json" \
     --output-md "$batch_summary_md"
 
-  printf 'batch_runs: %s\nsummary_json: %s\nsummary_md: %s\n' \
+  jq -n \
+    --slurpfile summary "$batch_summary_json" \
+    --arg status "completed" \
+    --arg evidence_kind "usage_validation_gate" \
+    --arg batch_id "$BATCH_ID" \
+    --arg judge_model "$MODEL" \
+    --arg batch_runs "$batch_runs_file" \
+    --arg summary_json "$batch_summary_json" \
+    --arg summary_md "$batch_summary_md" \
+    --argjson fixture_count "$fixture_count" \
+    --argjson consumer_continuation_enabled "$(if [[ "$RUN_CONSUMER_CONTINUATION" == "1" || "$RUN_CONSUMER_CONTINUATION" == "true" ]]; then printf 'true'; else printf 'false'; fi)" \
+    '{
+      status: $status,
+      evidence_kind: $evidence_kind,
+      canonical_benchmark_evidence: true,
+      batch_id: $batch_id,
+      judge_model: $judge_model,
+      fixture_count: $fixture_count,
+      consumer_continuation_enabled: $consumer_continuation_enabled,
+      gate_pass: ($summary[0].gate.pass // false),
+      gate_reasons: ($summary[0].gate.reasons // []),
+      batch_runs: $batch_runs,
+      summary_json: $summary_json,
+      summary_md: $summary_md,
+      reason: "usage validation completed with real judge evidence"
+    }' >"$run_status_json"
+
+  printf 'batch_runs: %s\nsummary_json: %s\nsummary_md: %s\nrun_status_json: %s\n' \
     "$batch_runs_file" \
     "$batch_summary_json" \
-    "$batch_summary_md"
+    "$batch_summary_md" \
+    "$run_status_json"
 }
 
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then

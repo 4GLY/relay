@@ -142,6 +142,16 @@ contract with `status=completed` and `canonical_benchmark_evidence=true`.
 Downstream automation should read this file first and only promote threshold
 candidates from completed runs.
 
+The PR `usage-validation-gate` now writes the same style of machine-readable
+status under `.gstack/projects/relay-ci/batches/<batch_id>/run-status.json`:
+
+- `status=completed`: the batch finished with real Claude judge evidence.
+- `status=blocked_by_model_limit`: provider capacity stopped the canonical
+  judge run, and the workflow fell back to deterministic Go tests.
+
+Automation should read `run-status.json` before parsing human Markdown
+summaries. The Markdown is for people. The JSON file is the contract.
+
 ## Failure Modes
 
 - `jump-relay-evals` offline: PRs block because the required check cannot be

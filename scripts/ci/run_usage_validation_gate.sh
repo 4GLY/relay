@@ -126,6 +126,14 @@ main() {
 
   wait_for_healthz "$BASE_URL"
 
+  local batch_dir summary_json summary_md run_status_json
+  batch_dir="${OUTPUT_ROOT%/}/batches/${BATCH_ID}"
+  summary_json="${batch_dir}/batch-summary.json"
+  summary_md="${batch_dir}/batch-summary.md"
+  run_status_json="${batch_dir}/run-status.json"
+
+  local batch_status
+  set +e
   (
     cd "$REPO_ROOT"
     ./scripts/evals/v1_usage_validation_batch.sh \
@@ -136,20 +144,52 @@ main() {
       --batch-id "$BATCH_ID" \
       --output-root "$OUTPUT_ROOT"
   )
+  batch_status="$?"
+  set -e
 
-  local batch_dir summary_json summary_md
-  batch_dir="${OUTPUT_ROOT%/}/batches/${BATCH_ID}"
-  summary_json="${batch_dir}/batch-summary.json"
-  summary_md="${batch_dir}/batch-summary.md"
+  if [[ "$batch_status" -eq 75 ]]; then
+    mkdir -p "$batch_dir"
+    jq -n \
+      --arg status "blocked_by_model_limit" \
+      --arg evidence_kind "usage_validation_gate" \
+      --arg batch_id "$BATCH_ID" \
+      --arg judge_model "$MODEL" \
+      --arg github_run_id "${GITHUB_RUN_ID:-}" \
+      --arg github_run_attempt "${GITHUB_RUN_ATTEMPT:-}" \
+      '{
+        status: $status,
+        evidence_kind: $evidence_kind,
+        canonical_benchmark_evidence: false,
+        batch_id: $batch_id,
+        judge_model: $judge_model,
+        github_run_id: $github_run_id,
+        github_run_attempt: $github_run_attempt,
+        reason: "provider usage limit reached before usage validation could complete"
+      }' >"$run_status_json"
+    printf 'batch_dir=%s\nrun_status_json=%s\napi_log=%s\n' \
+      "$batch_dir" \
+      "$run_status_json" \
+      "$api_log"
+    exit 75
+  fi
+  if [[ "$batch_status" -ne 0 ]]; then
+    exit "$batch_status"
+  fi
+
   if [[ ! -f "$summary_json" ]]; then
     echo "missing batch summary: $summary_json" >&2
     exit 1
   fi
+  if [[ ! -f "$run_status_json" ]]; then
+    echo "missing run status: $run_status_json" >&2
+    exit 1
+  fi
 
-  printf 'batch_dir=%s\nsummary_json=%s\nsummary_md=%s\napi_log=%s\n' \
+  printf 'batch_dir=%s\nsummary_json=%s\nsummary_md=%s\nrun_status_json=%s\napi_log=%s\n' \
     "$batch_dir" \
     "$summary_json" \
     "$summary_md" \
+    "$run_status_json" \
     "$api_log"
 
   if [[ -n "${GITHUB_STEP_SUMMARY:-}" && -f "$summary_md" ]]; then

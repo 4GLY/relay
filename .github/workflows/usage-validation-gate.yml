@@ -41,11 +41,12 @@ jobs:
       RELAY_API_TOKEN: relay-admin-token-ci
       RELAY_ACCEPTANCE_OUTPUT_ROOT: .gstack/projects/relay-ci
       RELAY_EVAL_BATCH_ID: usage-validation-pr-${{ github.run_id }}-${{ github.run_attempt }}
-      RELAY_EVAL_JUDGE_MODEL: claude-opus-4.7
+      RELAY_EVAL_JUDGE_MODEL: opus
       RELAY_EVAL_MIN_RETRIEVAL_AWARE_WIN_RATE: "0.6"
       RELAY_EVAL_MIN_AVG_RETRIEVAL_CONTINUATION_READINESS: "3.5"
       RELAY_EVAL_MIN_AVG_RETRIEVAL_EVIDENCE_RELEVANCE: "3.5"
-      COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -60,13 +61,13 @@ jobs:
         with:
           node-version: "24"
 
-      - name: Install Copilot CLI
-        run: npm install -g @github/copilot
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code
 
-      - name: Verify Copilot token is configured
+      - name: Verify Claude auth is configured
         run: |
-          if [[ -z "${COPILOT_GITHUB_TOKEN}" ]]; then
-            echo "Repository secret COPILOT_GITHUB_TOKEN is required for usage-validation-gate." >&2
+          if [[ -z "${CLAUDE_CODE_OAUTH_TOKEN}" && -z "${ANTHROPIC_API_KEY}" ]]; then
+            echo "Repository secret CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY is required for usage-validation-gate." >&2
             exit 1
           fi
 

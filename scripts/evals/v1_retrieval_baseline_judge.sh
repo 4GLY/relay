@@ -5,7 +5,7 @@ RESULT_FILE=""
 BASE_URL="${RELAY_BASE_URL:-https://relay.4gly.dev}"
 MCP_URL="${RELAY_MCP_URL:-${BASE_URL%/}/mcp}"
 CLIENT_TOKEN="${RELAY_CLIENT_TOKEN:-${RELAY_MCP_TOKEN:-}}"
-MODEL="${RELAY_EVAL_JUDGE_MODEL:-claude-opus-4.7}"
+MODEL="${RELAY_EVAL_JUDGE_MODEL:-opus}"
 WORKFLOW="${RELAY_EVAL_PACKET_WORKFLOW:-}"
 ARTIFACT_TYPE="${RELAY_EVAL_PACKET_ARTIFACT_TYPE:-}"
 
@@ -22,7 +22,7 @@ Options:
   --base-url URL       Relay API base URL. Default: ${BASE_URL}
   --mcp-url URL        Relay MCP URL. Default: \$base_url/mcp
   --client-token TOKEN Issued client token for public MCP calls
-  --model MODEL        Judge model for copilot CLI. Default: ${MODEL}
+  --model MODEL        Judge model for claude CLI. Default: ${MODEL}
   --workflow NAME      Optional workflow selector to reuse while building packets
   --artifact-type TYPE Optional artifact_type selector to reuse while building packets
 EOF
@@ -124,46 +124,9 @@ structured_content() {
   jq -c '.result.structuredContent' <<<"$response"
 }
 
-extract_judge_json() {
-  python3 - "$1" <<'PY'
-import json
-import re
-import sys
-from pathlib import Path
-
-text = Path(sys.argv[1]).read_text()
-matches = re.findall(r"\{[\s\S]*\}", text)
-for candidate in matches:
-    try:
-        print(json.dumps(json.loads(candidate), indent=2, sort_keys=True))
-        raise SystemExit(0)
-    except json.JSONDecodeError:
-        continue
-raise SystemExit("judge response did not contain parseable JSON")
-PY
-}
-
-extract_copilot_message() {
-  python3 - "$1" <<'PY'
-import json
-import sys
-from pathlib import Path
-
-for line in Path(sys.argv[1]).read_text().splitlines():
-    try:
-        event = json.loads(line)
-    except json.JSONDecodeError:
-        continue
-    if event.get("type") == "assistant.message":
-        content = event.get("data", {}).get("content", "")
-        if content:
-            print(content)
-PY
-}
-
 main() {
   parse_args "$@"
-  require_command copilot
+  require_command claude
   require_command jq
   require_command python3
 
@@ -191,12 +154,11 @@ main() {
     exit 1
   fi
 
-  local retrieval_packet_file ranking_packet_file prompt_file raw_jsonl_file raw_file comparison_file ledger_file
+  local retrieval_packet_file ranking_packet_file prompt_file raw_response_file comparison_file ledger_file judge_schema
   retrieval_packet_file="${result_dir}/retrieval-aware-packet.json"
   ranking_packet_file="${result_dir}/ranking-only-packet.json"
   prompt_file="${result_dir}/retrieval-baseline-prompt.md"
-  raw_jsonl_file="${result_dir}/copilot-opus-retrieval-judge.jsonl"
-  raw_file="${result_dir}/copilot-opus-retrieval-judge.md"
+  raw_response_file="${result_dir}/claude-retrieval-judge.json"
   comparison_file="${result_dir}/retrieval-baseline-comparison.json"
   ledger_file="${output_root}/usage-validation.jsonl"
 
@@ -268,21 +230,12 @@ The target behavior:
 - Prefer the packet that surfaces the most relevant evidence for the current task.
 - Prefer the packet that lets the next agent continue with fewer wrong assumptions.
 
-Return only JSON with this exact shape:
-
-\`\`\`json
-{
-  "preferred_packet": "A",
-  "continuation_readiness_a": 1,
-  "continuation_readiness_b": 1,
-  "evidence_relevance_a": 1,
-  "evidence_relevance_b": 1,
-  "reason": "short reason",
-  "risks": ["short risk"]
-}
-\`\`\`
-
-Use a 1-5 score for continuation_readiness and evidence_relevance.
+Scoring guidance:
+- preferred_packet: choose A or B.
+- continuation_readiness_*: use 1-5 for how ready the next agent is to continue.
+- evidence_relevance_*: use 1-5 for how relevant the surfaced evidence is.
+- reason: short reason.
+- risks: short list of concrete risks.
 
 Current task summary:
 - ${task_summary}
@@ -296,20 +249,44 @@ $(printf '%s' "$packet_a_body")
 $(printf '%s' "$packet_b_body")
 EOF
 
-  copilot \
-    --model "$MODEL" \
-    --silent \
-    --stream off \
-    --no-custom-instructions \
-    --disable-builtin-mcps \
-    --output-format json \
-    --allow-all-tools \
-    -p "$(cat "$prompt_file")" >"$raw_jsonl_file"
+  judge_schema="$(jq -nc '{
+    type: "object",
+    properties: {
+      preferred_packet: {type: "string", enum: ["A", "B"]},
+      continuation_readiness_a: {type: "integer", minimum: 1, maximum: 5},
+      continuation_readiness_b: {type: "integer", minimum: 1, maximum: 5},
+      evidence_relevance_a: {type: "integer", minimum: 1, maximum: 5},
+      evidence_relevance_b: {type: "integer", minimum: 1, maximum: 5},
+      reason: {type: "string"},
+      risks: {
+        type: "array",
+        items: {type: "string"}
+      }
+    },
+    required: [
+      "preferred_packet",
+      "continuation_readiness_a",
+      "continuation_readiness_b",
+      "evidence_relevance_a",
+      "evidence_relevance_b",
+      "reason",
+      "risks"
+    ],
+    additionalProperties: false
+  }')"
 
-  extract_copilot_message "$raw_jsonl_file" >"$raw_file"
+  claude \
+    -p \
+    --output-format json \
+    --model "$MODEL" \
+    --tools "" \
+    --json-schema "$judge_schema" \
+    "$(cat "$prompt_file")" >"$raw_response_file"
+
+  jq -e '.structured_output' "$raw_response_file" >/dev/null
 
   local judge_json preferred_packet preferred_variant continuation_readiness evidence_relevance
-  judge_json="$(extract_judge_json "$raw_file")"
+  judge_json="$(jq -c '.structured_output' "$raw_response_file")"
   preferred_packet="$(jq -r '.preferred_packet' <<<"$judge_json")"
   case "$preferred_packet" in
     A)
@@ -338,8 +315,7 @@ EOF
     --arg retrieval_packet_file "$retrieval_packet_file" \
     --arg ranking_packet_file "$ranking_packet_file" \
     --arg prompt_file "$prompt_file" \
-    --arg raw_jsonl_file "$raw_jsonl_file" \
-    --arg raw_file "$raw_file" \
+    --arg raw_response_file "$raw_response_file" \
     --arg model "$MODEL" \
     --arg packet_a_kind "$packet_a_kind" \
     --arg packet_b_kind "$packet_b_kind" \
@@ -352,8 +328,7 @@ EOF
       retrieval_packet_file: $retrieval_packet_file,
       ranking_packet_file: $ranking_packet_file,
       prompt_file: $prompt_file,
-      raw_jsonl_file: $raw_jsonl_file,
-      raw_file: $raw_file,
+      raw_response_file: $raw_response_file,
       judge_model: $model,
       mapping: {
         A: $packet_a_kind,
@@ -390,8 +365,8 @@ EOF
       evidence_relevance: $evidence_relevance
     }' >>"$ledger_file"
 
-  printf 'retrieval_packet: %s\nranking_packet: %s\nprompt: %s\nraw_jsonl: %s\nraw: %s\ncomparison: %s\nledger: %s\n' \
-    "$retrieval_packet_file" "$ranking_packet_file" "$prompt_file" "$raw_jsonl_file" "$raw_file" "$comparison_file" "$ledger_file"
+  printf 'retrieval_packet: %s\nranking_packet: %s\nprompt: %s\nraw_response: %s\ncomparison: %s\nledger: %s\n' \
+    "$retrieval_packet_file" "$ranking_packet_file" "$prompt_file" "$raw_response_file" "$comparison_file" "$ledger_file"
 }
 
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then

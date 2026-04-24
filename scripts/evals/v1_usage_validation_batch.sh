@@ -7,7 +7,7 @@ CLIENT_TOKEN="${RELAY_CLIENT_TOKEN:-${RELAY_MCP_TOKEN:-}}"
 ADMIN_TOKEN="${RELAY_ADMIN_TOKEN:-${RELAY_API_TOKEN:-}}"
 FIXTURES_FILE="${RELAY_EVAL_FIXTURES_FILE:-scripts/evals/fixtures/v1_usage_validation.json}"
 OUTPUT_ROOT="${RELAY_ACCEPTANCE_OUTPUT_ROOT:-.gstack/projects/relay}"
-MODEL="${RELAY_EVAL_JUDGE_MODEL:-claude-opus-4.7}"
+MODEL="${RELAY_EVAL_JUDGE_MODEL:-opus}"
 BATCH_ID="${RELAY_EVAL_BATCH_ID:-v1-usage-validation-$(date -u +%Y%m%dT%H%M%SZ)}"
 MIN_STYLE_AWARE_WIN_RATE="${RELAY_EVAL_MIN_STYLE_AWARE_WIN_RATE:-0.8}"
 MIN_AVG_STYLE_MATCH="${RELAY_EVAL_MIN_AVG_STYLE_MATCH:-4.0}"
@@ -34,7 +34,7 @@ Options:
   --mcp-url URL         Relay MCP URL. Default: \$base_url/mcp
   --client-token TOKEN  Issued client token for normal /v1 and /mcp calls
   --admin-token TOKEN   Bootstrap admin token for issuing or revoking temp keys
-  --model MODEL         Judge model for copilot CLI. Default: ${MODEL}
+  --model MODEL         Judge model for claude CLI. Default: ${MODEL}
   --batch-id ID         Batch id for output grouping
   --output-root DIR     Output root. Default: ${OUTPUT_ROOT}
   --min-win-rate FLOAT  Minimum style-aware win rate gate. Default: ${MIN_STYLE_AWARE_WIN_RATE}
@@ -386,7 +386,7 @@ run_fixture() {
   RELAY_ACCEPTANCE_PROPOSAL_SOURCE_REFS_JSON="$proposal_source_refs_json" \
     ./scripts/acceptance/v1_canonical_handoff.sh --base-url "$BASE_URL" --mcp-url "$MCP_URL"
 
-  ./scripts/evals/v1_copilot_paired_judge.sh --result-file "$result_file" --model "$MODEL"
+  ./scripts/evals/v1_claude_paired_judge.sh --result-file "$result_file" --model "$MODEL"
 
   local -a retrieval_judge_cmd=(
     ./scripts/evals/v1_retrieval_baseline_judge.sh
@@ -434,7 +434,7 @@ main() {
   require_command curl
   require_command jq
   require_command python3
-  require_command copilot
+  require_command claude
 
   if [[ ! -f "$FIXTURES_FILE" ]]; then
     echo "fixtures file not found: $FIXTURES_FILE" >&2

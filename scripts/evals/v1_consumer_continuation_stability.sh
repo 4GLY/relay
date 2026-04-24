@@ -171,11 +171,12 @@ main() {
     exit 1
   fi
 
-  local stability_dir fixture_subset summary_json summary_md
+  local stability_dir fixture_subset summary_json summary_md run_status_json
   stability_dir="${OUTPUT_ROOT%/}/stability/${BATCH_PREFIX}"
   fixture_subset="${stability_dir}/fixtures.json"
   summary_json="${stability_dir}/consumer-stability-summary.json"
   summary_md="${stability_dir}/consumer-stability-summary.md"
+  run_status_json="${stability_dir}/run-status.json"
   mkdir -p "$stability_dir"
 
   if (( FIXTURE_LIMIT == 0 )); then
@@ -233,10 +234,37 @@ main() {
     --output-json "$summary_json" \
     --output-md "$summary_md"
 
-  printf 'stability_dir: %s\nsummary_json: %s\nsummary_md: %s\n' \
+  jq -n \
+    --arg status "completed" \
+    --arg prefix "$BATCH_PREFIX" \
+    --arg judge_model "$MODEL" \
+    --arg codex_model "${CODEX_CONSUMER_MODEL:-codex-config-default}" \
+    --arg summary_json "$summary_json" \
+    --arg summary_md "$summary_md" \
+    --arg fixtures_file "$fixture_subset" \
+    --argjson runs "$RUNS" \
+    --argjson fixture_limit "$FIXTURE_LIMIT" \
+    --argjson fixture_count "$(jq 'length' "$fixture_subset")" \
+    '{
+      status: $status,
+      canonical_benchmark_evidence: true,
+      batch_prefix: $prefix,
+      judge_model: $judge_model,
+      codex_model: $codex_model,
+      runs: $runs,
+      fixture_limit: $fixture_limit,
+      fixture_count: $fixture_count,
+      summary_json: $summary_json,
+      summary_md: $summary_md,
+      fixtures_file: $fixtures_file,
+      reason: "consumer stability completed with real Claude and Codex consumer evidence"
+    }' >"$run_status_json"
+
+  printf 'stability_dir: %s\nsummary_json: %s\nsummary_md: %s\nrun_status_json: %s\n' \
     "$stability_dir" \
     "$summary_json" \
-    "$summary_md"
+    "$summary_md" \
+    "$run_status_json"
 }
 
 main "$@"

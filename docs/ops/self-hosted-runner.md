@@ -137,6 +137,11 @@ The manual `consumer-stability` workflow also catches exit code `75`, writes
 exits successfully. That keeps the workflow useful for verifying runner setup
 and Codex auth even when model capacity prevents a canonical stability result.
 
+For completed runs, the stability runner writes the same `run-status.json`
+contract with `status=completed` and `canonical_benchmark_evidence=true`.
+Downstream automation should read this file first and only promote threshold
+candidates from completed runs.
+
 ## Failure Modes
 
 - `jump-relay-evals` offline: PRs block because the required check cannot be

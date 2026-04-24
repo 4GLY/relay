@@ -103,12 +103,14 @@ Current behavior:
 
 - the workflow still uses `GITHUB_TOKEN` for GHCR publish
 - when `deploy/k8s/deployment.yaml` changes, it commits that diff onto an automation branch
-- it opens a PR back to `main`
+- it opens a PR back to `main` using a real repo token so the PR events still trigger downstream workflows
 - it enables auto-merge so the PR lands only after the normal `usage-validation` required check passes
 
 Repository requirement:
 
 - repository setting `allow_auto_merge=true`
+- repository secret `RELAY_PUSH_TOKEN` with a repo-scoped token for branch push and PR creation
+- repository variable `RELAY_PUSH_USERNAME` with the GitHub login that owns that token
 
 This keeps `main` protected while preserving the image-publish plus manifest-sync path.
 

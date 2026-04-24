@@ -64,10 +64,20 @@ jobs:
 
       - name: Open manifest sync PR
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.RELAY_PUSH_TOKEN }}
+          RELAY_PUSH_TOKEN: ${{ secrets.RELAY_PUSH_TOKEN }}
+          RELAY_PUSH_USERNAME: ${{ vars.RELAY_PUSH_USERNAME }}
         run: |
           if git diff --quiet -- deploy/k8s/deployment.yaml; then
             exit 0
+          fi
+          if [[ -z "${RELAY_PUSH_TOKEN}" ]]; then
+            echo "Repository secret RELAY_PUSH_TOKEN is required to create manifest sync PRs that trigger downstream workflows." >&2
+            exit 1
+          fi
+          if [[ -z "${RELAY_PUSH_USERNAME}" ]]; then
+            echo "Repository variable RELAY_PUSH_USERNAME is required to identify the manifest sync actor." >&2
+            exit 1
           fi
           if [[ "$(gh api repos/${{ github.repository }} --jq '.allow_auto_merge')" != "true" ]]; then
             echo "Repository setting allow_auto_merge must be enabled for manifest sync PRs." >&2
@@ -77,6 +87,7 @@ jobs:
           title="chore: deploy relay-api image sha-${{ github.sha }}"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin "https://${RELAY_PUSH_USERNAME}:${RELAY_PUSH_TOKEN}@github.com/${{ github.repository }}.git"
           git checkout -b "${branch}"
           git add deploy/k8s/deployment.yaml
           git commit -m "${title}"

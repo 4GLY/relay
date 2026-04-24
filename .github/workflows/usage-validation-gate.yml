@@ -79,4 +79,4 @@ jobs:
         with:
           name: usage-validation-gate-${{ github.run_id }}-${{ github.run_attempt }}
           path: .gstack/projects/relay-ci
-          if-no-files-found: error
+          if-no-files-found: ignore

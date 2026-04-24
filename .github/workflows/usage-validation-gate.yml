@@ -71,7 +71,22 @@ jobs:
           fi
 
       - name: Run usage validation gate
-        run: ./scripts/ci/run_usage_validation_gate.sh
+        run: |
+          set +e
+          ./scripts/ci/run_usage_validation_gate.sh
+          status="$?"
+          set -e
+          if [[ "$status" -eq 75 ]]; then
+            {
+              echo "## Usage Validation Degraded"
+              echo
+              echo "Claude returned a provider usage-limit response, so the LLM judge gate could not run canonically."
+              echo "Running deterministic Go tests as the required-check fallback."
+            } >> "${GITHUB_STEP_SUMMARY}"
+            go test ./...
+            exit 0
+          fi
+          exit "$status"
 
       - name: Upload usage validation artifacts
         if: always()

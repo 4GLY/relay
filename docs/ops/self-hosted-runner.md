@@ -123,6 +123,14 @@ Do not silently swap providers or accounts for canonical stability numbers.
 If a substitute model is used, make it explicit in workflow inputs and artifact
 metadata.
 
+The Claude structured-output helper detects common limit messages such as
+`You've hit your limit` and stops retrying immediately, because short retries
+cannot fix provider quota exhaustion. It returns exit code `75` for this
+capacity failure. The required PR workflow catches that code, marks the run as
+degraded in the step summary, runs deterministic `go test ./...`, and exits
+successfully so product changes are not blocked by temporary model capacity.
+Those degraded runs are not canonical benchmark evidence.
+
 ## Failure Modes
 
 - `jump-relay-evals` offline: PRs block because the required check cannot be

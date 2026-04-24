@@ -231,6 +231,7 @@ Workflow requirements:
   - `RELAY_EVAL_MIN_AVG_RETRIEVAL_CONTINUATION_READINESS=3.5`
   - `RELAY_EVAL_MIN_AVG_RETRIEVAL_EVIDENCE_RELEVANCE=3.5`
 - Claude structured-output eval calls retry up to `RELAY_EVAL_CLAUDE_STRUCTURED_MAX_ATTEMPTS=3` by default to absorb transient `error_max_structured_output_retries` failures
+- Claude provider usage-limit responses are treated as eval capacity failures. The PR workflow marks the run degraded, runs deterministic `go test ./...` as the required-check fallback, and does not treat the degraded run as canonical benchmark evidence.
 
 Runner operations live in `docs/ops/self-hosted-runner.md`.
 

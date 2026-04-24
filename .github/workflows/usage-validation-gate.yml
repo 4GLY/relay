@@ -1,0 +1,76 @@
+name: usage-validation-gate
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: usage-validation-gate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  usage-validation:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: relay
+          POSTGRES_USER: relay
+          POSTGRES_PASSWORD: relay
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U relay -d relay"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      RELAY_ADDR: :8080
+      RELAY_BASE_URL: http://127.0.0.1:8080
+      RELAY_DATABASE_URL: postgresql://relay:relay@127.0.0.1:5432/relay?sslmode=disable
+      RELAY_ADMIN_TOKEN: relay-admin-token-ci
+      RELAY_API_TOKEN: relay-admin-token-ci
+      RELAY_ACCEPTANCE_OUTPUT_ROOT: .gstack/projects/relay-ci
+      RELAY_EVAL_BATCH_ID: usage-validation-pr-${{ github.run_id }}-${{ github.run_attempt }}
+      RELAY_EVAL_JUDGE_MODEL: claude-opus-4.7
+      COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install Copilot CLI
+        run: npm install -g @github/copilot
+
+      - name: Verify Copilot token is configured
+        run: |
+          if [[ -z "${COPILOT_GITHUB_TOKEN}" ]]; then
+            echo "Repository secret COPILOT_GITHUB_TOKEN is required for usage-validation-gate." >&2
+            exit 1
+          fi
+
+      - name: Run usage validation gate
+        run: ./scripts/ci/run_usage_validation_gate.sh
+
+      - name: Upload usage validation artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: usage-validation-gate-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .gstack/projects/relay-ci
+          if-no-files-found: error

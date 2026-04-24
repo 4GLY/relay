@@ -82,6 +82,31 @@ The batch runner:
 - writes `batch-runs.jsonl` plus `batch-summary.json` and `batch-summary.md`
 - evaluates a release gate from style-aware win rate, average `style_match`, and budget-pass rate
 
+## CI Gate
+
+The repo now includes a PR gate workflow at `.github/workflows/usage-validation-gate.yml`.
+
+It runs the same repeated usage-validation benchmark against a local `relay-api` instance backed by a disposable Postgres service, then fails the job when the batch gate fails.
+
+Workflow requirements:
+
+- repository secret `COPILOT_GITHUB_TOKEN` with a fine-grained PAT that has the GitHub `Copilot Requests` permission enabled
+- GitHub Actions runner with Node.js 22+ so `npm install -g @github/copilot` works
+
+Local and CI both use the same helper:
+
+```bash
+scripts/ci/run_usage_validation_gate.sh
+```
+
+That helper:
+
+- runs migrations
+- starts `relay-api` locally
+- configures a temporary `COPILOT_HOME` with the repo marked as trusted
+- runs `scripts/evals/v1_usage_validation_batch.sh`
+- appends `batch-summary.md` to `GITHUB_STEP_SUMMARY` when running in Actions
+
 Outputs land under:
 
 - `.gstack/projects/relay/batches/<batch_id>/fixtures.json`

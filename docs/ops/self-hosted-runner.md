@@ -127,9 +127,10 @@ The Claude structured-output helper detects common limit messages such as
 `You've hit your limit` and stops retrying immediately, because short retries
 cannot fix provider quota exhaustion. It returns exit code `75` for this
 capacity failure. The required PR workflow catches that code, marks the run as
-degraded in the step summary, runs deterministic `go test ./...`, and exits
-successfully so product changes are not blocked by temporary model capacity.
-Those degraded runs are not canonical benchmark evidence.
+degraded in the step summary, runs deterministic `go test ./...` with CI
+service env cleared, and exits successfully so product changes are not blocked
+by temporary model capacity. Those degraded runs are not canonical benchmark
+evidence.
 
 ## Failure Modes
 

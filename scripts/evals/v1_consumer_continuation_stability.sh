@@ -12,6 +12,12 @@ CODEX_CONSUMER_MODEL="${RELAY_EVAL_CODEX_CONSUMER_MODEL:-}"
 RUNS="${RELAY_EVAL_CONSUMER_STABILITY_RUNS:-3}"
 FIXTURE_LIMIT="${RELAY_EVAL_CONSUMER_STABILITY_FIXTURE_LIMIT:-1}"
 BATCH_PREFIX="${RELAY_EVAL_CONSUMER_STABILITY_PREFIX:-consumer-continuation-stability-$(date -u +%Y%m%dT%H%M%SZ)}"
+MIN_CONSUMER_RUNS="${RELAY_EVAL_MIN_CONSUMER_RUNS:-3}"
+MIN_PACKET_ONLY_PASS_RATE="${RELAY_EVAL_MIN_CONSUMER_PACKET_ONLY_PASS_RATE:-1.0}"
+MIN_CODEX_STYLE_MATCH="${RELAY_EVAL_MIN_CONSUMER_CODEX_STYLE_MATCH:-4.0}"
+MIN_CLAUDE_STYLE_MATCH="${RELAY_EVAL_MIN_CONSUMER_CLAUDE_STYLE_MATCH:-4.0}"
+MIN_CODEX_CONTINUATION_READINESS="${RELAY_EVAL_MIN_CONSUMER_CODEX_CONTINUATION_READINESS:-4.0}"
+MIN_CLAUDE_CONTINUATION_READINESS="${RELAY_EVAL_MIN_CONSUMER_CLAUDE_CONTINUATION_READINESS:-4.0}"
 
 usage() {
   cat <<EOF
@@ -33,6 +39,12 @@ Options:
   --codex-consumer-model M   Optional Codex consumer model. Default: Codex CLI config
   --batch-prefix PREFIX      Prefix for generated batch IDs. Default: ${BATCH_PREFIX}
   --output-root DIR          Output root. Default: ${OUTPUT_ROOT}
+  --min-consumer-runs N      Soft-gate minimum consumer continuation runs. Default: ${MIN_CONSUMER_RUNS}
+  --min-packet-only-rate F   Soft-gate minimum packet-only pass rate. Default: ${MIN_PACKET_ONLY_PASS_RATE}
+  --min-codex-style N        Soft-gate minimum Codex style_match. Default: ${MIN_CODEX_STYLE_MATCH}
+  --min-claude-style N       Soft-gate minimum Claude style_match. Default: ${MIN_CLAUDE_STYLE_MATCH}
+  --min-codex-readiness N    Soft-gate minimum Codex continuation readiness. Default: ${MIN_CODEX_CONTINUATION_READINESS}
+  --min-claude-readiness N   Soft-gate minimum Claude continuation readiness. Default: ${MIN_CLAUDE_CONTINUATION_READINESS}
 EOF
 }
 
@@ -83,6 +95,30 @@ parse_args() {
         OUTPUT_ROOT="${2:?output root required}"
         shift 2
         ;;
+      --min-consumer-runs)
+        MIN_CONSUMER_RUNS="${2:?minimum consumer runs required}"
+        shift 2
+        ;;
+      --min-packet-only-rate)
+        MIN_PACKET_ONLY_PASS_RATE="${2:?minimum packet-only pass rate required}"
+        shift 2
+        ;;
+      --min-codex-style)
+        MIN_CODEX_STYLE_MATCH="${2:?minimum Codex style_match required}"
+        shift 2
+        ;;
+      --min-claude-style)
+        MIN_CLAUDE_STYLE_MATCH="${2:?minimum Claude style_match required}"
+        shift 2
+        ;;
+      --min-codex-readiness)
+        MIN_CODEX_CONTINUATION_READINESS="${2:?minimum Codex continuation readiness required}"
+        shift 2
+        ;;
+      --min-claude-readiness)
+        MIN_CLAUDE_CONTINUATION_READINESS="${2:?minimum Claude continuation readiness required}"
+        shift 2
+        ;;
       -h|--help)
         usage
         exit 0
@@ -125,6 +161,7 @@ main() {
 
   validate_positive_integer "--runs" "$RUNS"
   validate_positive_integer "--fixture-limit" "$FIXTURE_LIMIT"
+  validate_positive_integer "--min-consumer-runs" "$MIN_CONSUMER_RUNS"
   if (( RUNS == 0 )); then
     echo "--runs must be greater than 0" >&2
     exit 1
@@ -187,6 +224,12 @@ main() {
 
   ./scripts/evals/v1_consumer_stability_report.py \
     "${batch_summary_args[@]}" \
+    --min-consumer-runs "$MIN_CONSUMER_RUNS" \
+    --min-packet-only-pass-rate "$MIN_PACKET_ONLY_PASS_RATE" \
+    --min-codex-style-match "$MIN_CODEX_STYLE_MATCH" \
+    --min-claude-style-match "$MIN_CLAUDE_STYLE_MATCH" \
+    --min-codex-continuation-readiness "$MIN_CODEX_CONTINUATION_READINESS" \
+    --min-claude-continuation-readiness "$MIN_CLAUDE_CONTINUATION_READINESS" \
     --output-json "$summary_json" \
     --output-md "$summary_md"
 

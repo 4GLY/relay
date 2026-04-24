@@ -58,7 +58,37 @@ def collect_runs(batch_summaries):
     return runs
 
 
-def build_summary(batch_summary_paths):
+def build_soft_gate(summary, thresholds):
+    reasons = []
+    metrics = summary["metrics"]
+    if summary["consumer_continuation_runs"] < thresholds["min_consumer_runs"]:
+        reasons.append("consumer continuation run count is below threshold")
+    if summary["packet_only_pass_rate"] is None or summary["packet_only_pass_rate"] < thresholds["min_packet_only_pass_rate"]:
+        reasons.append("packet-only pass rate is below threshold")
+    if metrics["codex_style_match"]["min"] is None or metrics["codex_style_match"]["min"] < thresholds["min_codex_style_match"]:
+        reasons.append("minimum Codex style_match is below threshold")
+    if metrics["claude_style_match"]["min"] is None or metrics["claude_style_match"]["min"] < thresholds["min_claude_style_match"]:
+        reasons.append("minimum Claude style_match is below threshold")
+    if (
+        metrics["codex_continuation_readiness"]["min"] is None
+        or metrics["codex_continuation_readiness"]["min"] < thresholds["min_codex_continuation_readiness"]
+    ):
+        reasons.append("minimum Codex continuation readiness is below threshold")
+    if (
+        metrics["claude_continuation_readiness"]["min"] is None
+        or metrics["claude_continuation_readiness"]["min"] < thresholds["min_claude_continuation_readiness"]
+    ):
+        reasons.append("minimum Claude continuation readiness is below threshold")
+
+    return {
+        "pass": len(reasons) == 0,
+        "strict": False,
+        "thresholds": thresholds,
+        "reasons": reasons,
+    }
+
+
+def build_summary(batch_summary_paths, thresholds):
     runs = collect_runs(batch_summary_paths)
     packet_only_passes = [
         run
@@ -133,7 +163,7 @@ def build_summary(batch_summary_paths):
         "min_claude_continuation_readiness": metrics["claude_continuation_readiness"]["min"] if candidate_ready else None,
     }
 
-    return {
+    summary = {
         "batch_summary_files": [str(path) for path in batch_summary_paths],
         "batch_count": len(batch_summary_paths),
         "consumer_continuation_runs": len(runs),
@@ -145,6 +175,8 @@ def build_summary(batch_summary_paths):
         "scenarios": scenarios,
         "runs": runs,
     }
+    summary["soft_gate"] = build_soft_gate(summary, thresholds)
+    return summary
 
 
 def fmt(value, digits=2):
@@ -157,6 +189,7 @@ def fmt(value, digits=2):
 
 def render_markdown(summary):
     candidate = summary["threshold_candidate"]
+    soft_gate = summary["soft_gate"]
     lines = [
         "# Relay Consumer Continuation Stability",
         "",
@@ -192,12 +225,33 @@ def render_markdown(summary):
             f"- min Codex continuation readiness: `{fmt(candidate['min_codex_continuation_readiness'])}`",
             f"- min Claude continuation readiness: `{fmt(candidate['min_claude_continuation_readiness'])}`",
             "",
+            "## Soft Gate",
+            "",
+            f"- pass: `{str(soft_gate['pass']).lower()}`",
+            f"- strict: `{str(soft_gate['strict']).lower()}`",
+            f"- min consumer continuation runs: `{soft_gate['thresholds']['min_consumer_runs']}`",
+            f"- min packet-only pass rate: `{fmt(soft_gate['thresholds']['min_packet_only_pass_rate'])}`",
+            f"- min Codex style_match: `{fmt(soft_gate['thresholds']['min_codex_style_match'])}`",
+            f"- min Claude style_match: `{fmt(soft_gate['thresholds']['min_claude_style_match'])}`",
+            f"- min Codex continuation readiness: `{fmt(soft_gate['thresholds']['min_codex_continuation_readiness'])}`",
+            f"- min Claude continuation readiness: `{fmt(soft_gate['thresholds']['min_claude_continuation_readiness'])}`",
+        ]
+    )
+    if soft_gate["reasons"]:
+        lines.extend(["", "Soft gate blockers:"])
+        for reason in soft_gate["reasons"]:
+            lines.append(f"- {reason}")
+
+    lines.extend(
+        [
+            "",
             "## Per Scenario",
             "",
             "| scenario | runs | packet-only | preferred | codex style min/avg | claude style min/avg | codex ready min/avg | claude ready min/avg |",
             "| --- | --- | --- | --- | --- | --- | --- | --- |",
         ]
     )
+
     for scenario in summary["scenarios"]:
         lines.append(
             "| {scenario} | {runs} | {packet_only:.2%} | `{preferred}` | {codex_style_min}/{codex_style_avg} | {claude_style_min}/{claude_style_avg} | {codex_ready_min}/{codex_ready_avg} | {claude_ready_min}/{claude_ready_avg} |".format(
@@ -222,6 +276,12 @@ def main():
     parser = argparse.ArgumentParser(description="Aggregate Relay consumer continuation stability results.")
     parser.add_argument("--batch-summary", action="append", default=[], help="Path to a batch-summary.json file")
     parser.add_argument("--batch-summary-glob", action="append", default=[], help="Glob for batch-summary.json files")
+    parser.add_argument("--min-consumer-runs", type=int, default=3, help="Soft-gate minimum consumer continuation runs")
+    parser.add_argument("--min-packet-only-pass-rate", type=float, default=1.0, help="Soft-gate minimum packet-only pass rate")
+    parser.add_argument("--min-codex-style-match", type=float, default=4.0, help="Soft-gate minimum Codex style_match")
+    parser.add_argument("--min-claude-style-match", type=float, default=4.0, help="Soft-gate minimum Claude style_match")
+    parser.add_argument("--min-codex-continuation-readiness", type=float, default=4.0, help="Soft-gate minimum Codex continuation readiness")
+    parser.add_argument("--min-claude-continuation-readiness", type=float, default=4.0, help="Soft-gate minimum Claude continuation readiness")
     parser.add_argument("--output-json", required=True, help="Path to write stability JSON")
     parser.add_argument("--output-md", required=True, help="Path to write stability Markdown")
     args = parser.parse_args()
@@ -233,7 +293,15 @@ def main():
     if not paths:
         raise SystemExit("at least one --batch-summary or --batch-summary-glob is required")
 
-    summary = build_summary(paths)
+    thresholds = {
+        "min_consumer_runs": args.min_consumer_runs,
+        "min_packet_only_pass_rate": args.min_packet_only_pass_rate,
+        "min_codex_style_match": args.min_codex_style_match,
+        "min_claude_style_match": args.min_claude_style_match,
+        "min_codex_continuation_readiness": args.min_codex_continuation_readiness,
+        "min_claude_continuation_readiness": args.min_claude_continuation_readiness,
+    }
+    summary = build_summary(paths, thresholds)
     output_json = Path(args.output_json).resolve()
     output_md = Path(args.output_md).resolve()
     output_json.parent.mkdir(parents=True, exist_ok=True)

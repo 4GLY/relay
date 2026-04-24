@@ -8,6 +8,9 @@ CLIENT_TOKEN="${RELAY_CLIENT_TOKEN:-${RELAY_MCP_TOKEN:-}}"
 MODEL="${RELAY_EVAL_JUDGE_MODEL:-opus}"
 WORKFLOW="${RELAY_EVAL_PACKET_WORKFLOW:-}"
 ARTIFACT_TYPE="${RELAY_EVAL_PACKET_ARTIFACT_TYPE:-}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+
+source "${SCRIPT_DIR}/lib/claude_structured_output.sh"
 
 usage() {
   cat <<EOF
@@ -25,6 +28,7 @@ Options:
   --model MODEL        Judge model for claude CLI. Default: ${MODEL}
   --workflow NAME      Optional workflow selector to reuse while building packets
   --artifact-type TYPE Optional artifact_type selector to reuse while building packets
+  RELAY_EVAL_CLAUDE_STRUCTURED_MAX_ATTEMPTS controls structured-output retries. Default: 3.
 EOF
 }
 
@@ -275,15 +279,7 @@ EOF
     additionalProperties: false
   }')"
 
-  claude \
-    -p \
-    --output-format json \
-    --model "$MODEL" \
-    --tools "" \
-    --json-schema "$judge_schema" \
-    "$(cat "$prompt_file")" >"$raw_response_file"
-
-  jq -e '.structured_output' "$raw_response_file" >/dev/null
+  run_claude_structured_output "$MODEL" "$judge_schema" "$prompt_file" "$raw_response_file" "retrieval baseline judge"
 
   local judge_json preferred_packet preferred_variant continuation_readiness evidence_relevance
   judge_json="$(jq -c '.structured_output' "$raw_response_file")"

@@ -178,6 +178,7 @@ Workflow requirements:
   - `RELAY_EVAL_MIN_RETRIEVAL_AWARE_WIN_RATE=0.6`
   - `RELAY_EVAL_MIN_AVG_RETRIEVAL_CONTINUATION_READINESS=3.5`
   - `RELAY_EVAL_MIN_AVG_RETRIEVAL_EVIDENCE_RELEVANCE=3.5`
+- Claude structured-output eval calls retry up to `RELAY_EVAL_CLAUDE_STRUCTURED_MAX_ATTEMPTS=3` by default to absorb transient `error_max_structured_output_retries` failures
 
 Runner operations live in `docs/ops/self-hosted-runner.md`.
 

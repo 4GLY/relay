@@ -147,6 +147,15 @@ The stability runner writes:
 - `.gstack/projects/relay/stability/<prefix>/consumer-stability-summary.json`
 - `.gstack/projects/relay/stability/<prefix>/consumer-stability-summary.md`
 
+The stability summary includes a non-blocking soft gate. Defaults:
+
+- `min_consumer_runs=3`
+- `min_packet_only_pass_rate=1.0`
+- `min_codex_style_match=4.0`
+- `min_claude_style_match=4.0`
+- `min_codex_continuation_readiness=4.0`
+- `min_claude_continuation_readiness=4.0`
+
 Use `--fixture-limit 0` only when the full five-fixture consumer run is worth
 the extra model time. The first threshold candidate should be based on at least
 three consumer continuation runs.

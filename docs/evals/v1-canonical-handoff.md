@@ -107,8 +107,9 @@ It runs the same repeated usage-validation benchmark against a local `relay-api`
 
 Workflow requirements:
 
-- repository secret `ANTHROPIC_API_KEY` for headless `claude` CLI evaluation in GitHub Actions
-- local operator runs can still reuse `CLAUDE_CODE_OAUTH_TOKEN` or an existing `claude auth login` session
+- self-hosted Linux runner labeled `relay-evals`
+- repository secret `CLAUDE_CODE_OAUTH_TOKEN` for headless `claude` CLI evaluation in GitHub Actions
+- local operator runs can also reuse an existing `claude auth login` session
 - GitHub Actions runner with Node.js 24+ so `npm install -g @anthropic-ai/claude-code` works and the repo is already opted into Node 24 JavaScript actions
 - current retrieval gate defaults:
   - `RELAY_EVAL_MIN_RETRIEVAL_AWARE_WIN_RATE=0.6`

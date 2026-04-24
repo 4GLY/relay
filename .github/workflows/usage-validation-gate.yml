@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   usage-validation:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64, relay-evals]
     services:
       postgres:
         image: postgres:16
@@ -45,7 +45,7 @@ jobs:
       RELAY_EVAL_MIN_RETRIEVAL_AWARE_WIN_RATE: "0.6"
       RELAY_EVAL_MIN_AVG_RETRIEVAL_CONTINUATION_READINESS: "3.5"
       RELAY_EVAL_MIN_AVG_RETRIEVAL_EVIDENCE_RELEVANCE: "3.5"
-      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -65,8 +65,8 @@ jobs:
 
       - name: Verify Claude auth is configured
         run: |
-          if [[ -z "${ANTHROPIC_API_KEY}" ]]; then
-            echo "Repository secret ANTHROPIC_API_KEY is required for usage-validation-gate." >&2
+          if [[ -z "${CLAUDE_CODE_OAUTH_TOKEN}" ]]; then
+            echo "Repository secret CLAUDE_CODE_OAUTH_TOKEN is required for usage-validation-gate." >&2
             exit 1
           fi
 

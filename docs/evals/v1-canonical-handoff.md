@@ -102,12 +102,13 @@ When `main` has required status checks, the default `GITHUB_TOKEN` cannot push t
 Workflow requirement:
 
 - repository secret `RELAY_PUSH_TOKEN` with a token that is allowed to bypass the protected `main` branch for manifest-sync pushes
+- repository variable `RELAY_PUSH_USERNAME` with the GitHub login that owns that bypass token
 
 Behavior:
 
 - the workflow still uses `GITHUB_TOKEN` for GHCR publish
-- it uses `RELAY_PUSH_TOKEN` only for the final `git push origin HEAD:main`
-- if the secret is missing, the workflow now fails with a direct configuration error instead of a generic protected-branch rejection
+- it uses `RELAY_PUSH_USERNAME` plus `RELAY_PUSH_TOKEN` only for the final `git push origin HEAD:main`
+- if either value is missing, the workflow now fails with a direct configuration error instead of a generic protected-branch rejection
 
 Local and CI both use the same helper:
 

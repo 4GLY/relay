@@ -64,6 +64,7 @@ jobs:
       - name: Commit manifest update
         env:
           RELAY_PUSH_TOKEN: ${{ secrets.RELAY_PUSH_TOKEN }}
+          RELAY_PUSH_USERNAME: ${{ vars.RELAY_PUSH_USERNAME }}
         run: |
           if git diff --quiet -- deploy/k8s/deployment.yaml; then
             exit 0
@@ -72,9 +73,13 @@ jobs:
             echo "Repository secret RELAY_PUSH_TOKEN is required to push deploy/k8s updates on protected main." >&2
             exit 1
           fi
+          if [[ -z "${RELAY_PUSH_USERNAME}" ]]; then
+            echo "Repository variable RELAY_PUSH_USERNAME is required to identify the bypass actor for protected main pushes." >&2
+            exit 1
+          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git remote set-url origin "https://x-access-token:${RELAY_PUSH_TOKEN}@github.com/${{ github.repository }}.git"
+          git remote set-url origin "https://${RELAY_PUSH_USERNAME}:${RELAY_PUSH_TOKEN}@github.com/${{ github.repository }}.git"
           git add deploy/k8s/deployment.yaml
           git commit -m "chore: deploy relay-api image sha-${{ github.sha }}"
           git push origin HEAD:main

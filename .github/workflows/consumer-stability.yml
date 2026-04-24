@@ -120,7 +120,38 @@ jobs:
           codex login status
 
       - name: Run consumer stability
-        run: ./scripts/ci/run_consumer_stability.sh
+        run: |
+          set +e
+          ./scripts/ci/run_consumer_stability.sh
+          status="$?"
+          set -e
+          if [[ "$status" -eq 75 ]]; then
+            {
+              echo "## Consumer Stability Blocked By Model Limit"
+              echo
+              echo "Claude or Codex returned a provider usage-limit response, so this run is not canonical benchmark evidence."
+              echo "The workflow preflight already verified agent CLI installation and Codex auth."
+              echo "Rerun after the provider limit resets, or use an explicitly marked fallback model for exploratory evidence."
+            } >> "${GITHUB_STEP_SUMMARY}"
+            mkdir -p .gstack/projects/relay-consumer-stability/stability/${RELAY_EVAL_CONSUMER_STABILITY_PREFIX}
+            jq -n \
+              --arg status "blocked_by_model_limit" \
+              --arg run_id "${GITHUB_RUN_ID}" \
+              --arg attempt "${GITHUB_RUN_ATTEMPT}" \
+              --arg judge_model "${RELAY_EVAL_JUDGE_MODEL}" \
+              --arg codex_model "${RELAY_EVAL_CODEX_CONSUMER_MODEL:-codex-config-default}" \
+              '{
+                status: $status,
+                canonical_benchmark_evidence: false,
+                github_run_id: $run_id,
+                github_run_attempt: $attempt,
+                judge_model: $judge_model,
+                codex_model: $codex_model,
+                reason: "provider usage limit reached before consumer stability could complete"
+              }' > ".gstack/projects/relay-consumer-stability/stability/${RELAY_EVAL_CONSUMER_STABILITY_PREFIX}/run-status.json"
+            exit 0
+          fi
+          exit "$status"
 
       - name: Upload consumer stability artifacts
         if: always()

@@ -309,6 +309,21 @@ automation should read:
 - `gate_pass` and `gate_reasons` mirror the aggregate report when the batch
   completed.
 
+To summarize local or downloaded run-status artifacts across usage-validation
+and consumer-stability runs:
+
+```bash
+./scripts/evals/relay_evidence_status.py
+./scripts/evals/relay_evidence_status.py --json
+```
+
+Use strict mode when automation needs to fail unless canonical evidence exists:
+
+```bash
+./scripts/evals/relay_evidence_status.py --strict-release
+./scripts/evals/relay_evidence_status.py --strict-consumer
+```
+
 Each fixture now declares `evidence_paths` instead of checking in static sample files. The batch runner generates:
 
 - `changed-files.txt` from the current working-tree diff for those paths, with a fallback to the declared path set when the tree is clean

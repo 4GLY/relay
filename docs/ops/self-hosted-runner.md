@@ -152,6 +152,15 @@ status under `.gstack/projects/relay-ci/batches/<batch_id>/run-status.json`:
 Automation should read `run-status.json` before parsing human Markdown
 summaries. The Markdown is for people. The JSON file is the contract.
 
+For a local operator summary after downloading Actions artifacts, run:
+
+```bash
+./scripts/evals/relay_evidence_status.py
+```
+
+It scans the standard Relay output roots, reports the latest
+usage-validation and consumer-stability status, and prints the next action.
+
 ## Failure Modes
 
 - `jump-relay-evals` offline: PRs block because the required check cannot be

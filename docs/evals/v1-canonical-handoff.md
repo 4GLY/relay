@@ -93,6 +93,22 @@ Workflow requirements:
 - repository secret `COPILOT_GITHUB_TOKEN` with a fine-grained PAT that has the GitHub `Copilot Requests` permission enabled
 - GitHub Actions runner with Node.js 22+ so `npm install -g @github/copilot` works
 
+## Protected Main Publish
+
+The repo also uses `.github/workflows/publish-relay-api.yml` to build `ghcr.io/4gly/relay-api:sha-<commit>` and sync `deploy/k8s/deployment.yaml`.
+
+When `main` has required status checks, the default `GITHUB_TOKEN` cannot push that manifest update back to the protected branch.
+
+Workflow requirement:
+
+- repository secret `RELAY_PUSH_TOKEN` with a token that is allowed to bypass the protected `main` branch for manifest-sync pushes
+
+Behavior:
+
+- the workflow still uses `GITHUB_TOKEN` for GHCR publish
+- it uses `RELAY_PUSH_TOKEN` only for the final `git push origin HEAD:main`
+- if the secret is missing, the workflow now fails with a direct configuration error instead of a generic protected-branch rejection
+
 Local and CI both use the same helper:
 
 ```bash

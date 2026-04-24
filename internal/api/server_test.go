@@ -280,6 +280,26 @@ func TestHandleProjectGraphUsesProjectID(t *testing.T) {
 	}
 }
 
+func TestHandleProjectRetrieveUsesQueryParam(t *testing.T) {
+	projectID := lib.ProjectID("relay")
+	handler := testHandler(projectID)
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/projects/"+projectID+"/retrieve?query=design&limit=5", nil)
+	rec := httptest.NewRecorder()
+
+	handler.handleProjectShow(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
+	}
+	if !bytes.Contains(rec.Body.Bytes(), []byte(`"command":"relay project retrieve"`)) {
+		t.Fatalf("expected retrieve command, got %s", rec.Body.String())
+	}
+	if !bytes.Contains(rec.Body.Bytes(), []byte(`"kind":"artifact"`)) {
+		t.Fatalf("expected artifact hit in retrieval response, got %s", rec.Body.String())
+	}
+}
+
 func TestProtectedRoutesRequireBearerToken(t *testing.T) {
 	projectID := lib.ProjectID("relay")
 	mux := buildMux(testHandler(projectID), config.Config{APIToken: "secret-token"}, testRuntime(projectID))

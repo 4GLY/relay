@@ -41,6 +41,10 @@ func (b stubBackend) Show(_ context.Context, _ string) (services.ShowResult, err
 	return services.ShowResult{}, nil
 }
 
+func (b stubBackend) ProjectRetrieve(_ context.Context, _ string, _ string, _ int) (services.ProjectRetrieveResult, error) {
+	return services.ProjectRetrieveResult{}, nil
+}
+
 func (b stubBackend) IssueAPIKey(_ context.Context, _ services.IssueAPIKeyInput) (services.IssueAPIKeyResult, error) {
 	return services.IssueAPIKeyResult{}, nil
 }
@@ -109,6 +113,7 @@ func TestListToolsDeterministicWithoutAdmin(t *testing.T) {
 		"relay_capture",
 		"relay_health",
 		"relay_promote",
+		"relay_retrieve_project",
 		"relay_show_project",
 	}
 	if len(names) != len(expected) {
@@ -301,6 +306,52 @@ type captureInputBackend struct {
 func (b *captureInputBackend) Capture(_ context.Context, input services.CaptureInput) (services.CaptureResult, error) {
 	b.input = input
 	return services.CaptureResult{ProjectID: lib.ProjectID(input.Project)}, nil
+}
+
+type retrieveInputBackend struct {
+	stubBackend
+	input services.ProjectRetrieveInput
+}
+
+func (b *retrieveInputBackend) ProjectRetrieve(_ context.Context, projectID string, query string, limit int) (services.ProjectRetrieveResult, error) {
+	b.input = services.ProjectRetrieveInput{ProjectID: projectID, Query: query, Limit: limit}
+	return services.ProjectRetrieveResult{ProjectID: projectID, Query: query}, nil
+}
+
+func TestRetrieveProjectToolForwardsQuery(t *testing.T) {
+	backend := &retrieveInputBackend{}
+	server := New(backend)
+
+	serverTransport, clientTransport := mcp.NewInMemoryTransports()
+	ctx := context.Background()
+	go func() {
+		_ = server.Run(ctx, serverTransport)
+	}()
+
+	client := mcp.NewClient(&mcp.Implementation{Name: "relay-mcp-test-client", Version: "v1.0.0"}, nil)
+	session, err := client.Connect(ctx, clientTransport, nil)
+	if err != nil {
+		t.Fatalf("connect: %v", err)
+	}
+	defer session.Close()
+
+	result, err := session.CallTool(ctx, &mcp.CallToolParams{
+		Name: "relay_retrieve_project",
+		Arguments: map[string]any{
+			"project_id": "proj_relay",
+			"query":      "continue api packet boundary work",
+			"limit":      5,
+		},
+	})
+	if err != nil {
+		t.Fatalf("call retrieve tool: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("unexpected tool error: %#v", result)
+	}
+	if backend.input.ProjectID != "proj_relay" || backend.input.Query != "continue api packet boundary work" || backend.input.Limit != 5 {
+		t.Fatalf("unexpected retrieve input: %#v", backend.input)
+	}
 }
 
 func TestServiceBackedStdIOAdminToolIssuesAPIKey(t *testing.T) {

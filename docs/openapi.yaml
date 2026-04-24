@@ -529,6 +529,45 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ProjectGraphEdge'
+    ProjectRetrieveHit:
+      type: object
+      required: [kind, id, score]
+      properties:
+        kind:
+          type: string
+          enum: [note, artifact, decision, open_question]
+        id:
+          type: string
+        score:
+          type: integer
+        title:
+          type: string
+        excerpt:
+          type: string
+        source:
+          type: string
+        source_path:
+          type: string
+        trust_level:
+          type: string
+        why_included:
+          type: string
+        source_ref_ids:
+          type: array
+          items:
+            type: string
+    ProjectRetrieveResult:
+      type: object
+      required: [project_id, query, hits]
+      properties:
+        project_id:
+          type: string
+        query:
+          type: string
+        hits:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProjectRetrieveHit'
     IssueAPIKeyInput:
       type: object
       required: [name]
@@ -687,6 +726,13 @@ components:
           properties:
             data:
               $ref: '#/components/schemas/ProjectGraphResult'
+    ProjectRetrieveResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/ProjectRetrieveResult'
     IssueAPIKeyResponse:
       allOf:
         - $ref: '#/components/schemas/SuccessEnvelope'
@@ -1177,6 +1223,60 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProjectGraphResponse'
+        '401':
+          description: Missing or invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /v1/projects/{project_id}/retrieve:
+    get:
+      tags: [memory]
+      summary: Retrieve query-conditioned project context
+      operationId: retrieveProject
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: project_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: query
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Query-conditioned project retrieval result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectRetrieveResponse'
+        '400':
+          description: Missing query or invalid limit
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
         '401':
           description: Missing or invalid bearer token
           content:

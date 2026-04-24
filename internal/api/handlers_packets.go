@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"strconv"
 	"strings"
 
 	"relay/internal/contracts"
@@ -31,6 +32,10 @@ func (h Handler) handleProjectShow(w http.ResponseWriter, r *http.Request) {
 		h.handleProjectGraph(w, r, projectID)
 		return
 	}
+	if action == "retrieve" {
+		h.handleProjectRetrieve(w, r, projectID)
+		return
+	}
 	result, err := h.services.Show(r.Context(), services.ShowInput{ProjectID: projectID})
 	if err != nil {
 		writeServiceError(w, "relay show", err)
@@ -46,6 +51,29 @@ func (h Handler) handleProjectGraph(w http.ResponseWriter, r *http.Request, proj
 		return
 	}
 	writeJSON(w, http.StatusOK, contracts.Success("relay project graph", result))
+}
+
+func (h Handler) handleProjectRetrieve(w http.ResponseWriter, r *http.Request, projectID string) {
+	query := strings.TrimSpace(r.URL.Query().Get("query"))
+	limit := 0
+	if rawLimit := strings.TrimSpace(r.URL.Query().Get("limit")); rawLimit != "" {
+		parsed, err := strconv.Atoi(rawLimit)
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, contracts.Failure("relay project retrieve", "INVALID_LIMIT", "limit must be an integer", false, "limit"))
+			return
+		}
+		limit = parsed
+	}
+	result, err := h.services.ProjectRetrieve(r.Context(), services.ProjectRetrieveInput{
+		ProjectID: projectID,
+		Query:     query,
+		Limit:     limit,
+	})
+	if err != nil {
+		writeServiceError(w, "relay project retrieve", err)
+		return
+	}
+	writeJSON(w, http.StatusOK, contracts.Success("relay project retrieve", result))
 }
 
 func projectPathParts(path string) (projectID string, action string) {

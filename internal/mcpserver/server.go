@@ -16,6 +16,7 @@ type Backend interface {
 	Promote(ctx context.Context, input services.PromoteInput) (services.PromoteResult, error)
 	BuildPacket(ctx context.Context, input services.PacketBuildInput) (services.PacketBuildResult, error)
 	Show(ctx context.Context, projectID string) (services.ShowResult, error)
+	ProjectRetrieve(ctx context.Context, projectID string, query string, limit int) (services.ProjectRetrieveResult, error)
 	IssueAPIKey(ctx context.Context, input services.IssueAPIKeyInput) (services.IssueAPIKeyResult, error)
 	ListAPIKeys(ctx context.Context) (services.ListAPIKeysResult, error)
 	RevokeAPIKey(ctx context.Context, input services.RevokeAPIKeyInput) (services.RevokeAPIKeyResult, error)
@@ -74,6 +75,11 @@ func (s *Server) registerTools() {
 		Title:       "Relay Show Project",
 		Description: "Inspect aggregate Relay project state by canonical project id.",
 	}, s.showProjectTool)
+	mcp.AddTool(s.server, &mcp.Tool{
+		Name:        "relay_retrieve_project",
+		Title:       "Relay Retrieve Project",
+		Description: "Retrieve query-conditioned Relay context across notes, artifacts, decisions, and open questions.",
+	}, s.retrieveProjectTool)
 
 	if s.backend.HasAdminToken() {
 		mcp.AddTool(s.server, &mcp.Tool{
@@ -222,6 +228,17 @@ func (s *Server) showProjectTool(ctx context.Context, _ *mcp.CallToolRequest, in
 	return nil, result, err
 }
 
+type retrieveProjectInput struct {
+	ProjectID string `json:"project_id" jsonschema:"Required canonical Relay project id, not the project name"`
+	Query     string `json:"query" jsonschema:"Required task or question text to retrieve relevant Relay context for"`
+	Limit     int    `json:"limit,omitempty" jsonschema:"Optional maximum number of hits to return. Defaults to 12"`
+}
+
+func (s *Server) retrieveProjectTool(ctx context.Context, _ *mcp.CallToolRequest, input retrieveProjectInput) (*mcp.CallToolResult, services.ProjectRetrieveResult, error) {
+	result, err := s.backend.ProjectRetrieve(ctx, input.ProjectID, input.Query, input.Limit)
+	return nil, result, err
+}
+
 type issueAPIKeyInput struct {
 	Name      string `json:"name" jsonschema:"Human-readable key name"`
 	Scope     string `json:"scope,omitempty" jsonschema:"Optional key scope. Valid values: global or project. Defaults to global"`
@@ -294,6 +311,14 @@ func (b serviceBackend) BuildPacket(ctx context.Context, input services.PacketBu
 
 func (b serviceBackend) Show(ctx context.Context, projectID string) (services.ShowResult, error) {
 	return b.service.Show(ctx, services.ShowInput{ProjectID: projectID})
+}
+
+func (b serviceBackend) ProjectRetrieve(ctx context.Context, projectID string, query string, limit int) (services.ProjectRetrieveResult, error) {
+	return b.service.ProjectRetrieve(ctx, services.ProjectRetrieveInput{
+		ProjectID: projectID,
+		Query:     query,
+		Limit:     limit,
+	})
 }
 
 func (b serviceBackend) IssueAPIKey(ctx context.Context, input services.IssueAPIKeyInput) (services.IssueAPIKeyResult, error) {

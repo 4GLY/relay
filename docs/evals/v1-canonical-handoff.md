@@ -91,7 +91,7 @@ It runs the same repeated usage-validation benchmark against a local `relay-api`
 Workflow requirements:
 
 - repository secret `COPILOT_GITHUB_TOKEN` with a fine-grained PAT that has the GitHub `Copilot Requests` permission enabled
-- GitHub Actions runner with Node.js 22+ so `npm install -g @github/copilot` works
+- GitHub Actions runner with Node.js 24+ so `npm install -g @github/copilot` works and the repo is already opted into Node 24 JavaScript actions
 
 ## Protected Main Publish
 

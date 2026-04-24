@@ -7,9 +7,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -144,6 +146,14 @@ func (c *Client) Show(ctx context.Context, projectID string) (services.ShowResul
 
 func (c *Client) ProjectGraph(ctx context.Context, projectID string) (services.ProjectGraphResult, error) {
 	return doJSON[services.ProjectGraphResult](ctx, c.httpClient, c.clientToken, http.MethodGet, c.baseURL+"/v1/projects/"+projectID+"/graph", nil)
+}
+
+func (c *Client) ProjectRetrieve(ctx context.Context, projectID string, query string, limit int) (services.ProjectRetrieveResult, error) {
+	endpoint := c.baseURL + "/v1/projects/" + projectID + "/retrieve?query=" + url.QueryEscape(query)
+	if limit > 0 {
+		endpoint += "&limit=" + strconv.Itoa(limit)
+	}
+	return doJSON[services.ProjectRetrieveResult](ctx, c.httpClient, c.clientToken, http.MethodGet, endpoint, nil)
 }
 
 func (c *Client) IssueAPIKey(ctx context.Context, input services.IssueAPIKeyInput) (services.IssueAPIKeyResult, error) {

@@ -433,11 +433,36 @@ Contract notes:
 - project containment is emitted as `includes`
 - packet nodes and packet `includes` edges are not part of this first slice yet because packet history is not listed independently
 
+### `GET /v1/projects/{project_id}/retrieve`
+
+Purpose:
+- query-conditioned retrieval across project notes, artifacts, decisions, and open questions
+
+Path params:
+- `project_id`: canonical project id, not project name
+
+Query params:
+- `query`: required task or question text
+- `limit`: optional max hit count, defaults to `12`
+
+Response fields:
+- `project_id`
+- `query`
+- `hits[]`
+
+Contract notes:
+- this is the first semantic-retrieval layer, implemented as a graph-complement ranking pass over existing project memory
+- current hits are lexical and provenance-aware, not embedding-backed yet
+- `decision` and `open_question` hits can receive extra score when their linked notes or artifacts also match the query
+- `kind` is one of `note`, `artifact`, `decision`, `open_question`
+- `why_included` explains why a hit surfaced for the current query
+
 ## Stable Error Codes
 
 Current known codes:
 
 - `INVALID_JSON`
+- `INVALID_LIMIT`
 - `UNAUTHORIZED`
 - `FORBIDDEN`
 - `PROJECT_ID_REQUIRED`

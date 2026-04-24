@@ -752,6 +752,130 @@ func TestBuildPacketRanksArtifactsByTaskSummary(t *testing.T) {
 	}
 }
 
+func TestProjectRetrieveReturnsQueryConditionedHits(t *testing.T) {
+	projectID := lib.ProjectID("relay")
+	service := New(Dependencies{
+		Projects: &fakeProjectStore{
+			projects: map[string]domain.Project{
+				"relay": {ID: projectID, Name: "relay"},
+			},
+		},
+		Notes: &fakeNoteStore{
+			items: []domain.Note{
+				{ID: "note_api", ProjectID: projectID, Source: "chat", Body: "The API packet contract should stay narrow and explicit."},
+				{ID: "note_misc", ProjectID: projectID, Source: "chat", Body: "Remember to check worker poll timings later."},
+			},
+		},
+		Artifacts: &fakeArtifactStore{
+			items: []domain.Artifact{
+				{ID: "art_api", ProjectID: projectID, Type: "design_doc", SourcePath: "docs/api.md", TrustLevel: "trusted"},
+				{ID: "art_ops", ProjectID: projectID, Type: "runbook", SourcePath: "docs/ops.md", TrustLevel: "trusted"},
+			},
+		},
+		Decisions: &fakeDecisionStore{
+			items: []domain.Decision{
+				{ID: "dec_api", ProjectID: projectID, Summary: "avoid wrapper drift", SourceArtifactIDs: []string{"art_api"}, SourceNoteIDs: []string{"note_api"}},
+			},
+		},
+		OpenQuestions: &fakeOpenQuestionStore{
+			items: []domain.OpenQuestion{
+				{ID: "oq_api", ProjectID: projectID, Summary: "should retrieval rerank packet evidence", SourceArtifactIDs: []string{"art_api"}},
+			},
+		},
+		Packets: &fakePacketStore{},
+		APIKeys: &fakeAPIKeyStore{},
+	})
+
+	result, err := service.ProjectRetrieve(context.Background(), ProjectRetrieveInput{
+		ProjectID: projectID,
+		Query:     "continue api packet contract work by checking docs/api.md",
+		Limit:     6,
+	})
+	if err != nil {
+		t.Fatalf("ProjectRetrieve returned error: %v", err)
+	}
+	if result.ProjectID != projectID {
+		t.Fatalf("expected project id %s, got %s", projectID, result.ProjectID)
+	}
+	if len(result.Hits) == 0 {
+		t.Fatal("expected retrieval hits")
+	}
+	if !containsRetrieveHit(result.Hits, "artifact", "art_api") {
+		t.Fatalf("expected docs/api.md artifact hit, got %#v", result.Hits)
+	}
+	decisionHit := findRetrieveHit(result.Hits, "decision", "dec_api")
+	if decisionHit == nil {
+		t.Fatalf("expected decision hit boosted by graph support, got %#v", result.Hits)
+	}
+	if !strings.Contains(decisionHit.WhyIncluded, "connected canonical evidence") {
+		t.Fatalf("expected graph-support reason, got %#v", decisionHit)
+	}
+	if !containsRetrieveHit(result.Hits, "note", "note_api") {
+		t.Fatalf("expected relevant note hit, got %#v", result.Hits)
+	}
+}
+
+func TestBuildPacketUsesQueryConditionedRetrievalAcrossEvidence(t *testing.T) {
+	projectID := lib.ProjectID("relay")
+	service := New(Dependencies{
+		Projects: &fakeProjectStore{
+			projects: map[string]domain.Project{
+				"relay": {ID: projectID, Name: "relay"},
+			},
+		},
+		Notes: &fakeNoteStore{
+			items: []domain.Note{
+				{ID: "note_api", ProjectID: projectID, Source: "chat", Body: "API boundary and packet contract stability matter more than wrappers."},
+				{ID: "note_misc", ProjectID: projectID, Source: "chat", Body: "Later revisit worker queue poll settings."},
+			},
+		},
+		Artifacts: &fakeArtifactStore{
+			items: []domain.Artifact{
+				{ID: "art_api", ProjectID: projectID, Type: "design_doc", SourcePath: "docs/api.md", TrustLevel: "trusted"},
+				{ID: "art_worker", ProjectID: projectID, Type: "code_path", SourcePath: "cmd/relay-worker/main.go", TrustLevel: "trusted"},
+			},
+		},
+		Decisions: &fakeDecisionStore{
+			items: []domain.Decision{
+				{ID: "dec_api", ProjectID: projectID, Summary: "keep the API-first boundary narrow", Why: "packet contract should stay stable", SourceArtifactIDs: []string{"art_api"}, SourceNoteIDs: []string{"note_api"}},
+				{ID: "dec_worker", ProjectID: projectID, Summary: "worker polls every 5s", Why: "default operational cadence"},
+			},
+		},
+		OpenQuestions: &fakeOpenQuestionStore{
+			items: []domain.OpenQuestion{
+				{ID: "oq_api", ProjectID: projectID, Summary: "should retrieve expose graph-aware ranking", SourceArtifactIDs: []string{"art_api"}},
+			},
+		},
+		Packets: &fakePacketStore{},
+		APIKeys: &fakeAPIKeyStore{},
+	})
+
+	result, err := service.BuildPacket(context.Background(), PacketBuildInput{
+		Project:     "relay",
+		Type:        "resume",
+		Target:      "codex",
+		TaskSummary: "Continue API boundary and packet contract work before touching wrappers.",
+	})
+	if err != nil {
+		t.Fatalf("BuildPacket returned error: %v", err)
+	}
+	if len(result.SupportingNotes) == 0 || result.SupportingNotes[0].NoteID != "note_api" {
+		t.Fatalf("expected retrieval to prioritize api note, got %#v", result.SupportingNotes)
+	}
+	if len(result.SupportingDecisions) == 0 || result.SupportingDecisions[0].DecisionID != "dec_api" {
+		t.Fatalf("expected retrieval to prioritize api decision, got %#v", result.SupportingDecisions)
+	}
+	if len(result.SupportingArtifacts) == 0 || result.SupportingArtifacts[0].ArtifactID != "art_api" {
+		t.Fatalf("expected retrieval to prioritize api artifact, got %#v", result.SupportingArtifacts)
+	}
+	if !strings.Contains(result.SupportingNotes[0].Evidence, "retrieved against the current task summary") {
+		t.Fatalf("expected note evidence to reflect retrieval selection, got %#v", result.SupportingNotes[0])
+	}
+	if !containsWhyIncludedReason(result.WhyIncluded, "query-conditioned retrieval matched the current task summary") {
+		t.Fatalf("expected retrieval reason in why_included, got %#v", result.WhyIncluded)
+	}
+}
+
 func TestScoreArtifactForTaskIgnoresGenericRepoRootName(t *testing.T) {
 	taskSummary := "Resume Relay contract work by checking API-visible behavior."
 	score, whyIncluded := scoreArtifactForTask(
@@ -770,6 +894,33 @@ func TestScoreArtifactForTaskIgnoresGenericRepoRootName(t *testing.T) {
 func containsArtifactPath(items []PacketArtifact, sourcePath string) bool {
 	for _, item := range items {
 		if item.SourcePath == sourcePath {
+			return true
+		}
+	}
+	return false
+}
+
+func containsRetrieveHit(items []ProjectRetrieveHit, kind string, id string) bool {
+	for _, item := range items {
+		if item.Kind == kind && item.ID == id {
+			return true
+		}
+	}
+	return false
+}
+
+func findRetrieveHit(items []ProjectRetrieveHit, kind string, id string) *ProjectRetrieveHit {
+	for i := range items {
+		if items[i].Kind == kind && items[i].ID == id {
+			return &items[i]
+		}
+	}
+	return nil
+}
+
+func containsWhyIncludedReason(items []string, fragment string) bool {
+	for _, item := range items {
+		if strings.Contains(item, fragment) {
 			return true
 		}
 	}

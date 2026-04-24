@@ -56,11 +56,12 @@ func (s Service) BuildPacket(ctx context.Context, input PacketBuildInput) (Packe
 	if taskSummary == "" {
 		taskSummary = fmt.Sprintf("resume work on %s", project.Name)
 	}
-	selectedDecisions := limitDecisions(decisions, 3)
-	selectedQuestions := limitQuestions(questions, 3)
-	selectedArtifacts := selectArtifacts(artifacts, taskSummary, 8)
-	selectedNotes := limitNotes(notes, 3)
-	supportingNotes := summarizeNotes(selectedNotes)
+	retrievalHits := buildProjectRetrieveHits(taskSummary, 24, notes, artifacts, decisions, questions)
+	selectedNotes, noteEvidence := selectRetrievedNotes(retrievalHits, notes, 3)
+	selectedDecisions := selectRetrievedDecisions(retrievalHits, decisions, 3)
+	selectedQuestions := selectRetrievedQuestions(retrievalHits, questions, 3)
+	selectedArtifacts := selectRetrievedArtifacts(retrievalHits, artifacts, taskSummary, 8)
+	supportingNotes := summarizeNotes(selectedNotes, noteEvidence)
 	supportingDecisions := summarizeDecisions(selectedDecisions)
 	supportingQuestions := summarizeQuestions(selectedQuestions)
 	supportingArtifacts := summarizeArtifacts(selectedArtifacts)
@@ -69,6 +70,9 @@ func (s Service) BuildPacket(ctx context.Context, input PacketBuildInput) (Packe
 		return PacketBuildResult{}, err
 	}
 	whyIncluded := buildWhyIncluded(supportingNotes, supportingDecisions, supportingQuestions, supportingArtifacts, styleCues)
+	if retrievalReason := summarizeRetrievalReason(retrievalHits, selectedNotes, selectedDecisions, selectedQuestions, selectedArtifacts); retrievalReason != "" {
+		whyIncluded = append(whyIncluded, retrievalReason)
+	}
 	renderedBody := buildResumeBody(packetRenderInput{
 		ProjectName:         project.Name,
 		TaskSummary:         taskSummary,
@@ -371,14 +375,20 @@ func (s Service) createPacketSnapshot(ctx context.Context, projectID string, res
 	return snapshot, nil
 }
 
-func summarizeNotes(items []domain.Note) []PacketNote {
+func summarizeNotes(items []domain.Note, evidenceByID map[string]string) []PacketNote {
 	summaries := make([]PacketNote, 0, len(items))
 	for _, item := range items {
+		evidence := "recent raw capture"
+		if evidenceByID != nil {
+			if override, ok := evidenceByID[item.ID]; ok && strings.TrimSpace(override) != "" {
+				evidence = override
+			}
+		}
 		summaries = append(summaries, PacketNote{
 			NoteID:   item.ID,
 			Source:   item.Source,
 			Excerpt:  summarizeText(item.Body, 220),
-			Evidence: "recent raw capture",
+			Evidence: evidence,
 		})
 	}
 	return summaries

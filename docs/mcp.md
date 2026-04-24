@@ -24,6 +24,7 @@ This is the shortest useful remote MCP session:
 2. `relay_promote` turns that raw note into a durable decision or question.
 3. `relay_build_packet` produces an agent-ready `resume` packet.
 4. `relay_show_project` checks aggregate state using the canonical `project_id`.
+5. `relay_retrieve_project` surfaces query-conditioned context before the next packet or action.
 
 Example with the bundled raw HTTP helper:
 
@@ -145,6 +146,7 @@ Expected shape:
 - `relay_promote`
 - `relay_build_packet`
 - `relay_show_project`
+- `relay_retrieve_project`
 
 API key issue, list, and revoke are not part of the public MCP surface.
 Use the HTTP API or the local skill for those operator tasks.
@@ -317,6 +319,32 @@ Output:
 - `decision_count`
 - `open_question_count`
 - `latest_packet_id`
+
+### `relay_retrieve_project`
+
+Use:
+- retrieve query-conditioned context before planning the next step
+- inspect which notes, artifacts, decisions, and open questions currently match a task
+
+Input:
+
+```json
+{
+  "project_id": "proj_xxx",
+  "query": "continue api packet boundary work",
+  "limit": 8
+}
+```
+
+Output:
+- `project_id`
+- `query`
+- `hits`
+
+Notes:
+- this is the first public retrieval layer for agents
+- `decision` and `open_question` hits can surface because their linked notes or artifacts matched the query
+- `why_included` explains the ranking signal for each hit
 
 ## Transport Notes
 

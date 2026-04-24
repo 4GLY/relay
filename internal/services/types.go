@@ -82,6 +82,32 @@ type ProjectGraphEdge struct {
 	To   string `json:"to"`
 }
 
+type ProjectRetrieveInput struct {
+	Project   string `json:"project"`
+	ProjectID string `json:"project_id"`
+	Query     string `json:"query"`
+	Limit     int    `json:"limit,omitempty"`
+}
+
+type ProjectRetrieveResult struct {
+	ProjectID string               `json:"project_id"`
+	Query     string               `json:"query"`
+	Hits      []ProjectRetrieveHit `json:"hits"`
+}
+
+type ProjectRetrieveHit struct {
+	Kind         string   `json:"kind"`
+	ID           string   `json:"id"`
+	Score        int      `json:"score"`
+	Title        string   `json:"title,omitempty"`
+	Excerpt      string   `json:"excerpt,omitempty"`
+	Source       string   `json:"source,omitempty"`
+	SourcePath   string   `json:"source_path,omitempty"`
+	TrustLevel   string   `json:"trust_level,omitempty"`
+	WhyIncluded  string   `json:"why_included,omitempty"`
+	SourceRefIDs []string `json:"source_ref_ids,omitempty"`
+}
+
 type PacketBuildInput struct {
 	Project          string `json:"project"`
 	Type             string `json:"type"`

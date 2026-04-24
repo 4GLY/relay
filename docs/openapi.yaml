@@ -387,6 +387,8 @@ components:
           description: Optional current-task summary used in the rendered packet body and supporting-artifact ranking.
         disable_style_cues:
           type: boolean
+        disable_retrieval:
+          type: boolean
         persist_snapshot:
           type: boolean
         idempotency_key:
@@ -418,6 +420,9 @@ components:
           type: string
         task_summary:
           type: string
+        retrieval_mode:
+          type: string
+          enum: [query-conditioned, ranking-only]
         body:
           type: string
         rendered_body:
@@ -510,10 +515,17 @@ components:
       properties:
         type:
           type: string
-          enum: [includes, derived_from]
+          enum: [includes, derived_from, possible_support, possible_answer]
         from:
           type: string
         to:
+          type: string
+        status:
+          type: string
+          enum: [candidate]
+        score:
+          type: integer
+        why_included:
           type: string
     ProjectGraphResult:
       type: object

@@ -192,6 +192,7 @@ type buildPacketInput struct {
 	ArtifactType     string `json:"artifact_type,omitempty" jsonschema:"Optional artifact selector for style-memory cues"`
 	TaskSummary      string `json:"task_summary,omitempty" jsonschema:"Optional current task summary to bind into the packet"`
 	DisableStyleCues bool   `json:"disable_style_cues,omitempty" jsonschema:"When true, build the packet without approved style-memory cues"`
+	DisableRetrieval bool   `json:"disable_retrieval,omitempty" jsonschema:"When true, skip query-conditioned retrieval and fall back to ranking-only packet evidence selection"`
 	PersistSnapshot  bool   `json:"persist_snapshot,omitempty" jsonschema:"When true, persist an immutable packet snapshot for deterministic replay"`
 	IdempotencyKey   string `json:"idempotency_key,omitempty" jsonschema:"Optional but recommended key when persist_snapshot is true"`
 }
@@ -213,6 +214,7 @@ func (s *Server) buildPacketTool(ctx context.Context, _ *mcp.CallToolRequest, in
 		ArtifactType:     input.ArtifactType,
 		TaskSummary:      input.TaskSummary,
 		DisableStyleCues: input.DisableStyleCues,
+		DisableRetrieval: input.DisableRetrieval,
 		PersistSnapshot:  input.PersistSnapshot,
 		IdempotencyKey:   input.IdempotencyKey,
 	})

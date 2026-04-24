@@ -815,6 +815,54 @@ func TestProjectRetrieveReturnsQueryConditionedHits(t *testing.T) {
 	}
 }
 
+func TestProjectRetrieveUsesInferredSupportWhenCanonicalLinkIsMissing(t *testing.T) {
+	projectID := lib.ProjectID("relay")
+	service := New(Dependencies{
+		Projects: &fakeProjectStore{
+			projects: map[string]domain.Project{
+				"relay": {ID: projectID, Name: "relay"},
+			},
+		},
+		Notes: &fakeNoteStore{
+			items: []domain.Note{
+				{ID: "note_api", ProjectID: projectID, Source: "chat", Body: "docs/api.md keeps the packet contract explicit and narrow for agents."},
+			},
+		},
+		Artifacts: &fakeArtifactStore{
+			items: []domain.Artifact{
+				{ID: "art_api", ProjectID: projectID, Type: "design_doc", SourcePath: "docs/api.md", TrustLevel: "trusted"},
+			},
+		},
+		Decisions: &fakeDecisionStore{
+			items: []domain.Decision{
+				{ID: "dec_inferred", ProjectID: projectID, Summary: "prefer the documented contract", Why: "avoid drift across wrappers"},
+			},
+		},
+		OpenQuestions: &fakeOpenQuestionStore{},
+		Packets:       &fakePacketStore{},
+		APIKeys:       &fakeAPIKeyStore{},
+	})
+
+	result, err := service.ProjectRetrieve(context.Background(), ProjectRetrieveInput{
+		ProjectID: projectID,
+		Query:     "continue api packet contract work by checking docs/api.md",
+		Limit:     6,
+	})
+	if err != nil {
+		t.Fatalf("ProjectRetrieve returned error: %v", err)
+	}
+	decisionHit := findRetrieveHit(result.Hits, "decision", "dec_inferred")
+	if decisionHit == nil {
+		t.Fatalf("expected decision hit supported by inferred evidence, got %#v", result.Hits)
+	}
+	if !strings.Contains(decisionHit.WhyIncluded, "inferred support also matched the query") {
+		t.Fatalf("expected inferred-support reason, got %#v", decisionHit)
+	}
+	if !containsString(decisionHit.SourceRefIDs, "note_api") {
+		t.Fatalf("expected inferred note ref in source_ref_ids, got %#v", decisionHit.SourceRefIDs)
+	}
+}
+
 func TestBuildPacketUsesQueryConditionedRetrievalAcrossEvidence(t *testing.T) {
 	projectID := lib.ProjectID("relay")
 	service := New(Dependencies{
@@ -873,6 +921,75 @@ func TestBuildPacketUsesQueryConditionedRetrievalAcrossEvidence(t *testing.T) {
 	}
 	if !containsWhyIncludedReason(result.WhyIncluded, "query-conditioned retrieval matched the current task summary") {
 		t.Fatalf("expected retrieval reason in why_included, got %#v", result.WhyIncluded)
+	}
+	if result.RetrievalMode != "query-conditioned" {
+		t.Fatalf("expected retrieval mode query-conditioned, got %#v", result.RetrievalMode)
+	}
+}
+
+func TestBuildPacketDisableRetrievalUsesRankingOnlyBaseline(t *testing.T) {
+	projectID := lib.ProjectID("relay")
+	service := New(Dependencies{
+		Projects: &fakeProjectStore{
+			projects: map[string]domain.Project{
+				"relay": {ID: projectID, Name: "relay"},
+			},
+		},
+		Notes: &fakeNoteStore{
+			items: []domain.Note{
+				{ID: "note_api", ProjectID: projectID, Source: "chat", Body: "API boundary and packet contract stability matter more than wrappers."},
+				{ID: "note_worker", ProjectID: projectID, Source: "chat", Body: "Worker poll cadence can wait until the packet contract is stable."},
+			},
+		},
+		Artifacts: &fakeArtifactStore{
+			items: []domain.Artifact{
+				{ID: "art_api", ProjectID: projectID, Type: "design_doc", SourcePath: "docs/api.md", TrustLevel: "trusted"},
+				{ID: "art_worker", ProjectID: projectID, Type: "code_path", SourcePath: "cmd/relay-worker/main.go", TrustLevel: "trusted"},
+			},
+		},
+		Decisions: &fakeDecisionStore{
+			items: []domain.Decision{
+				{ID: "dec_api", ProjectID: projectID, Summary: "keep the API-first boundary narrow", Why: "packet contract should stay stable"},
+				{ID: "dec_worker", ProjectID: projectID, Summary: "worker polls every 5s", Why: "default operational cadence"},
+			},
+		},
+		OpenQuestions: &fakeOpenQuestionStore{
+			items: []domain.OpenQuestion{
+				{ID: "oq_api", ProjectID: projectID, Summary: "should retrieve expose graph-aware ranking"},
+				{ID: "oq_worker", ProjectID: projectID, Summary: "should worker polling stay at five seconds"},
+			},
+		},
+		Packets: &fakePacketStore{},
+		APIKeys: &fakeAPIKeyStore{},
+	})
+
+	result, err := service.BuildPacket(context.Background(), PacketBuildInput{
+		Project:          "relay",
+		Type:             "resume",
+		Target:           "codex",
+		TaskSummary:      "Continue API boundary and packet contract work before touching wrappers.",
+		DisableRetrieval: true,
+	})
+	if err != nil {
+		t.Fatalf("BuildPacket returned error: %v", err)
+	}
+	if len(result.SupportingNotes) == 0 || result.SupportingNotes[0].NoteID != "note_api" {
+		t.Fatalf("expected ranking-only baseline to prefer api note, got %#v", result.SupportingNotes)
+	}
+	if len(result.SupportingDecisions) == 0 || result.SupportingDecisions[0].DecisionID != "dec_api" {
+		t.Fatalf("expected ranking-only baseline to prefer api decision, got %#v", result.SupportingDecisions)
+	}
+	if len(result.SupportingArtifacts) == 0 || result.SupportingArtifacts[0].ArtifactID != "art_api" {
+		t.Fatalf("expected ranking-only baseline to prefer api artifact, got %#v", result.SupportingArtifacts)
+	}
+	if !strings.Contains(result.SupportingNotes[0].Evidence, "ranked directly against the current task summary") {
+		t.Fatalf("expected note evidence to reflect ranking-only baseline, got %#v", result.SupportingNotes[0])
+	}
+	if result.RetrievalMode != "ranking-only" {
+		t.Fatalf("expected retrieval mode ranking-only, got %#v", result.RetrievalMode)
+	}
+	if !containsWhyIncludedReason(result.WhyIncluded, "ranking-only packet mode kept recent and task-ranked evidence without query-conditioned retrieval") {
+		t.Fatalf("expected ranking-only reason in why_included, got %#v", result.WhyIncluded)
 	}
 }
 
@@ -1159,6 +1276,61 @@ func TestProjectGraphBuildsCanonicalProjection(t *testing.T) {
 	}
 	if !sawQuestionDerived {
 		t.Fatalf("expected open question derived_from artifact edge, got %#v", result.Edges)
+	}
+}
+
+func TestProjectGraphIncludesInferredCandidateEdges(t *testing.T) {
+	projectID := lib.ProjectID("relay")
+	service := New(Dependencies{
+		Projects: &fakeProjectStore{
+			projects: map[string]domain.Project{
+				"relay": {ID: projectID, Name: "relay"},
+			},
+		},
+		Notes: &fakeNoteStore{
+			items: []domain.Note{
+				{ID: "note_api", ProjectID: projectID, Source: "chat", Body: "docs/api.md keeps the packet contract explicit and narrow for agents."},
+			},
+		},
+		Artifacts: &fakeArtifactStore{
+			items: []domain.Artifact{
+				{ID: "art_api", ProjectID: projectID, Type: "design_doc", SourcePath: "docs/api.md", TrustLevel: "trusted"},
+			},
+		},
+		Decisions: &fakeDecisionStore{
+			items: []domain.Decision{
+				{ID: "dec_inferred", ProjectID: projectID, Summary: "prefer the documented contract", Why: "avoid drift across wrappers"},
+			},
+		},
+		OpenQuestions: &fakeOpenQuestionStore{
+			items: []domain.OpenQuestion{
+				{ID: "oq_inferred", ProjectID: projectID, Summary: "which api packet contract doc should the next agent inspect first"},
+			},
+		},
+		Packets: &fakePacketStore{},
+		APIKeys: &fakeAPIKeyStore{},
+	})
+
+	result, err := service.ProjectGraph(context.Background(), ProjectGraphInput{ProjectID: projectID})
+	if err != nil {
+		t.Fatalf("ProjectGraph returned error: %v", err)
+	}
+
+	var sawPossibleSupport bool
+	var sawPossibleAnswer bool
+	for _, edge := range result.Edges {
+		if edge.Type == projectGraphEdgePossibleSupport && edge.From == "dec_inferred" && edge.To == "note_api" && edge.Status == inferredEdgeStatusCandidate && edge.Score > 0 {
+			sawPossibleSupport = true
+		}
+		if edge.Type == projectGraphEdgePossibleAnswer && edge.From == "oq_inferred" && edge.To == "note_api" && edge.Status == inferredEdgeStatusCandidate && edge.Score > 0 {
+			sawPossibleAnswer = true
+		}
+	}
+	if !sawPossibleSupport {
+		t.Fatalf("expected inferred possible_support edge, got %#v", result.Edges)
+	}
+	if !sawPossibleAnswer {
+		t.Fatalf("expected inferred possible_answer edge, got %#v", result.Edges)
 	}
 }
 

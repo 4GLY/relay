@@ -391,11 +391,12 @@ Contract notes:
 - current `type` is effectively `resume`
 - current `target` is free-form, but `codex` is the primary path
 - `task_summary` is used both in the rendered packet body and to rank which supporting artifacts are most relevant to include
+- `disable_retrieval` turns off query-conditioned retrieval and keeps a ranking-only baseline for notes, decisions, questions, and artifacts
 - approved style heuristics are returned as `style_cues` unless `disable_style_cues` is true
 - packet output now includes `supporting_notes`, `supporting_decisions`, `supporting_questions`, `supporting_artifacts`, and `why_included`
 - each `style_cue` now carries the approved heuristic `canonical_text` and `why_included`
 - `persist_snapshot` writes an immutable packet snapshot and returns `snapshot_id`
-- packet output includes `schema_version`, `rendered_body`, `approved_heuristic_ids`, and `missing_context`
+- packet output includes `schema_version`, `rendered_body`, `approved_heuristic_ids`, `missing_context`, and `retrieval_mode`
 
 ### `GET /v1/projects/{project_id}`
 
@@ -429,8 +430,10 @@ Response fields:
 Contract notes:
 - this is a read-only projection over the existing relational stores; no separate graph database is involved
 - current node kinds are `project`, `note`, `artifact`, `decision`, `open_question`
-- current edge types are `includes` and `derived_from`
+- current canonical edge types are `includes` and `derived_from`
+- inferred candidate edge types are `possible_support` and `possible_answer`
 - project containment is emitted as `includes`
+- inferred edges carry `status=candidate`, `score`, and `why_included`
 - packet nodes and packet `includes` edges are not part of this first slice yet because packet history is not listed independently
 
 ### `GET /v1/projects/{project_id}/retrieve`
@@ -454,6 +457,7 @@ Contract notes:
 - this is the first semantic-retrieval layer, implemented as a graph-complement ranking pass over existing project memory
 - current hits are lexical and provenance-aware, not embedding-backed yet
 - `decision` and `open_question` hits can receive extra score when their linked notes or artifacts also match the query
+- `decision` and `open_question` hits can also receive a smaller boost from inferred candidate edges when relevant notes or artifacts match the query
 - `kind` is one of `note`, `artifact`, `decision`, `open_question`
 - `why_included` explains why a hit surfaced for the current query
 

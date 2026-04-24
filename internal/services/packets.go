@@ -56,11 +56,26 @@ func (s Service) BuildPacket(ctx context.Context, input PacketBuildInput) (Packe
 	if taskSummary == "" {
 		taskSummary = fmt.Sprintf("resume work on %s", project.Name)
 	}
-	retrievalHits := buildProjectRetrieveHits(taskSummary, 24, notes, artifacts, decisions, questions)
-	selectedNotes, noteEvidence := selectRetrievedNotes(retrievalHits, notes, 3)
-	selectedDecisions := selectRetrievedDecisions(retrievalHits, decisions, 3)
-	selectedQuestions := selectRetrievedQuestions(retrievalHits, questions, 3)
-	selectedArtifacts := selectRetrievedArtifacts(retrievalHits, artifacts, taskSummary, 8)
+	retrievalMode := "query-conditioned"
+	var retrievalHits []ProjectRetrieveHit
+	var selectedNotes []domain.Note
+	var noteEvidence map[string]string
+	var selectedDecisions []domain.Decision
+	var selectedQuestions []domain.OpenQuestion
+	var selectedArtifacts []artifactSelection
+	if input.DisableRetrieval {
+		retrievalMode = "ranking-only"
+		selectedNotes, noteEvidence = selectRankedNotes(notes, taskSummary, 3)
+		selectedDecisions = selectRankedDecisions(decisions, taskSummary, 3)
+		selectedQuestions = selectRankedQuestions(questions, taskSummary, 3)
+		selectedArtifacts = selectArtifacts(artifacts, taskSummary, 8)
+	} else {
+		retrievalHits = buildProjectRetrieveHits(taskSummary, 24, notes, artifacts, decisions, questions)
+		selectedNotes, noteEvidence = selectRetrievedNotes(retrievalHits, notes, 3)
+		selectedDecisions = selectRetrievedDecisions(retrievalHits, decisions, 3)
+		selectedQuestions = selectRetrievedQuestions(retrievalHits, questions, 3)
+		selectedArtifacts = selectRetrievedArtifacts(retrievalHits, artifacts, taskSummary, 8)
+	}
 	supportingNotes := summarizeNotes(selectedNotes, noteEvidence)
 	supportingDecisions := summarizeDecisions(selectedDecisions)
 	supportingQuestions := summarizeQuestions(selectedQuestions)
@@ -72,6 +87,8 @@ func (s Service) BuildPacket(ctx context.Context, input PacketBuildInput) (Packe
 	whyIncluded := buildWhyIncluded(supportingNotes, supportingDecisions, supportingQuestions, supportingArtifacts, styleCues)
 	if retrievalReason := summarizeRetrievalReason(retrievalHits, selectedNotes, selectedDecisions, selectedQuestions, selectedArtifacts); retrievalReason != "" {
 		whyIncluded = append(whyIncluded, retrievalReason)
+	} else if input.DisableRetrieval {
+		whyIncluded = append(whyIncluded, "ranking-only packet mode kept recent and task-ranked evidence without query-conditioned retrieval")
 	}
 	renderedBody := buildResumeBody(packetRenderInput{
 		ProjectName:         project.Name,
@@ -111,6 +128,7 @@ func (s Service) BuildPacket(ctx context.Context, input PacketBuildInput) (Packe
 		Type:                 created.Type,
 		Target:               created.Target,
 		TaskSummary:          taskSummary,
+		RetrievalMode:        retrievalMode,
 		Body:                 created.Body,
 		RenderedBody:         created.Body,
 		StyleCues:            styleCues,

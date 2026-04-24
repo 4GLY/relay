@@ -260,6 +260,7 @@ Optional fields:
 - `artifact_type`
 - `task_summary`
 - `disable_style_cues`
+- `disable_retrieval`
 - `persist_snapshot`
 - `idempotency_key`
 
@@ -272,9 +273,11 @@ Style-memory behavior:
 - `workflow` and `artifact_type` narrow style-cue selection
 - `task_summary` helps rank which supporting artifacts are most relevant for the packet
 - `disable_style_cues` builds a normal packet without style cues
+- `disable_retrieval` builds a ranking-only packet without query-conditioned retrieval
 - `persist_snapshot` returns a `snapshot_id` for deterministic replay
 - each `style_cue` now includes `canonical_text` and `why_included`
 - packet evidence is exposed through `supporting_notes`, `supporting_decisions`, `supporting_questions`, `supporting_artifacts`, and `why_included`
+- packet output now includes `retrieval_mode` so callers can tell whether the packet was `query-conditioned` or `ranking-only`
 
 Output:
 - `packet_id`
@@ -344,6 +347,7 @@ Output:
 Notes:
 - this is the first public retrieval layer for agents
 - `decision` and `open_question` hits can surface because their linked notes or artifacts matched the query
+- `decision` and `open_question` hits can also surface with weaker inferred-support boosts when there is no canonical link yet
 - `why_included` explains the ranking signal for each hit
 
 ## Transport Notes

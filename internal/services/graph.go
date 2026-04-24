@@ -41,7 +41,7 @@ func (s Service) ProjectGraph(ctx context.Context, input ProjectGraphInput) (Pro
 	}
 
 	nodes := make([]ProjectGraphNode, 0, 1+len(notes)+len(artifacts)+len(decisions)+len(questions))
-	edges := make([]ProjectGraphEdge, 0, len(notes)+len(artifacts)+len(decisions)*2+len(questions)*2)
+	edges := make([]ProjectGraphEdge, 0, len(notes)+len(artifacts)+len(decisions)*4+len(questions)*4)
 	knownNodeIDs := map[string]struct{}{
 		project.ID: {},
 	}
@@ -96,6 +96,8 @@ func (s Service) ProjectGraph(ctx context.Context, input ProjectGraphInput) (Pro
 		edges = append(edges, ProjectGraphEdge{Type: projectGraphEdgeIncludes, From: project.ID, To: question.ID})
 		edges = append(edges, projectGraphDerivedEdges(question.ID, question.SourceNoteIDs, question.SourceArtifactIDs, knownNodeIDs)...)
 	}
+
+	edges = append(edges, buildInferredSupportEdges(decisions, questions, notes, artifacts)...)
 
 	return ProjectGraphResult{
 		ProjectID: project.ID,

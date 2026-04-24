@@ -77,9 +77,12 @@ type ProjectGraphNode struct {
 }
 
 type ProjectGraphEdge struct {
-	Type string `json:"type"`
-	From string `json:"from"`
-	To   string `json:"to"`
+	Type        string `json:"type"`
+	From        string `json:"from"`
+	To          string `json:"to"`
+	Status      string `json:"status,omitempty"`
+	Score       int    `json:"score,omitempty"`
+	WhyIncluded string `json:"why_included,omitempty"`
 }
 
 type ProjectRetrieveInput struct {
@@ -116,6 +119,7 @@ type PacketBuildInput struct {
 	ArtifactType     string `json:"artifact_type,omitempty"`
 	TaskSummary      string `json:"task_summary,omitempty"`
 	DisableStyleCues bool   `json:"disable_style_cues,omitempty"`
+	DisableRetrieval bool   `json:"disable_retrieval,omitempty"`
 	PersistSnapshot  bool   `json:"persist_snapshot,omitempty"`
 	IdempotencyKey   string `json:"idempotency_key,omitempty"`
 }
@@ -128,6 +132,7 @@ type PacketBuildResult struct {
 	Type                 string           `json:"type"`
 	Target               string           `json:"target"`
 	TaskSummary          string           `json:"task_summary,omitempty"`
+	RetrievalMode        string           `json:"retrieval_mode,omitempty"`
 	Body                 string           `json:"body"`
 	RenderedBody         string           `json:"rendered_body,omitempty"`
 	StyleCues            []PacketStyleCue `json:"style_cues,omitempty"`

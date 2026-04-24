@@ -69,8 +69,9 @@ func buildProjectRetrieveHits(query string, limit int, notes []domain.Note, arti
 	taskSummaryLower := strings.ToLower(strings.TrimSpace(query))
 	noteCandidates, noteScores := buildNoteRetrievalCandidates(notes, taskTokens, taskSummaryLower)
 	artifactCandidates, artifactScores := buildArtifactRetrievalCandidates(artifacts, taskTokens, taskSummaryLower)
-	decisionCandidates := buildDecisionRetrievalCandidates(decisions, taskTokens, taskSummaryLower, noteScores, artifactScores)
-	questionCandidates := buildQuestionRetrievalCandidates(questions, taskTokens, taskSummaryLower, noteScores, artifactScores)
+	inferredSupportByFrom := indexGraphEdgesByFrom(buildInferredSupportEdges(decisions, questions, notes, artifacts), inferredEdgeStatusCandidate)
+	decisionCandidates := buildDecisionRetrievalCandidates(decisions, taskTokens, taskSummaryLower, noteScores, artifactScores, inferredSupportByFrom)
+	questionCandidates := buildQuestionRetrievalCandidates(questions, taskTokens, taskSummaryLower, noteScores, artifactScores, inferredSupportByFrom)
 
 	candidates := make([]retrievalCandidate, 0, len(noteCandidates)+len(artifactCandidates)+len(decisionCandidates)+len(questionCandidates))
 	candidates = append(candidates, noteCandidates...)
@@ -157,10 +158,10 @@ func buildArtifactRetrievalCandidates(items []domain.Artifact, taskTokens []stri
 	return candidates, scores
 }
 
-func buildDecisionRetrievalCandidates(items []domain.Decision, taskTokens []string, taskSummaryLower string, noteScores map[string]int, artifactScores map[string]int) []retrievalCandidate {
+func buildDecisionRetrievalCandidates(items []domain.Decision, taskTokens []string, taskSummaryLower string, noteScores map[string]int, artifactScores map[string]int, inferredSupportByFrom map[string][]ProjectGraphEdge) []retrievalCandidate {
 	candidates := make([]retrievalCandidate, 0, len(items))
 	for index, item := range items {
-		score, whyIncluded, sourceRefIDs := scoreDecisionForTask(item, taskTokens, taskSummaryLower, noteScores, artifactScores)
+		score, whyIncluded, sourceRefIDs := scoreDecisionForTask(item, taskTokens, taskSummaryLower, noteScores, artifactScores, inferredSupportByFrom[item.ID])
 		if score <= 0 {
 			continue
 		}
@@ -180,10 +181,10 @@ func buildDecisionRetrievalCandidates(items []domain.Decision, taskTokens []stri
 	return candidates
 }
 
-func buildQuestionRetrievalCandidates(items []domain.OpenQuestion, taskTokens []string, taskSummaryLower string, noteScores map[string]int, artifactScores map[string]int) []retrievalCandidate {
+func buildQuestionRetrievalCandidates(items []domain.OpenQuestion, taskTokens []string, taskSummaryLower string, noteScores map[string]int, artifactScores map[string]int, inferredSupportByFrom map[string][]ProjectGraphEdge) []retrievalCandidate {
 	candidates := make([]retrievalCandidate, 0, len(items))
 	for index, item := range items {
-		score, whyIncluded, sourceRefIDs := scoreQuestionForTask(item, taskTokens, taskSummaryLower, noteScores, artifactScores)
+		score, whyIncluded, sourceRefIDs := scoreQuestionForTask(item, taskTokens, taskSummaryLower, noteScores, artifactScores, inferredSupportByFrom[item.ID])
 		if score <= 0 {
 			continue
 		}
@@ -226,7 +227,7 @@ func scoreNoteForTask(item domain.Note, taskTokens []string, taskSummaryLower st
 	return score, strings.Join(reasons, "; ")
 }
 
-func scoreDecisionForTask(item domain.Decision, taskTokens []string, taskSummaryLower string, noteScores map[string]int, artifactScores map[string]int) (int, string, []string) {
+func scoreDecisionForTask(item domain.Decision, taskTokens []string, taskSummaryLower string, noteScores map[string]int, artifactScores map[string]int, inferredEdges []ProjectGraphEdge) (int, string, []string) {
 	score := 0
 	reasons := make([]string, 0, 3)
 	candidate := strings.ToLower(strings.TrimSpace(item.Summary + " " + item.Why))
@@ -244,13 +245,19 @@ func scoreDecisionForTask(item domain.Decision, taskTokens []string, taskSummary
 	if graphBoost > 0 {
 		reasons = append(reasons, "connected canonical evidence also matched the query")
 	}
+	inferredBoost, inferredSourceRefIDs := scoreInferredGraphSupport(inferredEdges, noteScores, artifactScores)
+	score += inferredBoost
+	if inferredBoost > 0 {
+		reasons = append(reasons, "inferred support also matched the query")
+		sourceRefIDs = appendUniqueStrings(sourceRefIDs, inferredSourceRefIDs...)
+	}
 	if len(reasons) == 0 {
 		return score, "", sourceRefIDs
 	}
 	return score, strings.Join(reasons, "; "), sourceRefIDs
 }
 
-func scoreQuestionForTask(item domain.OpenQuestion, taskTokens []string, taskSummaryLower string, noteScores map[string]int, artifactScores map[string]int) (int, string, []string) {
+func scoreQuestionForTask(item domain.OpenQuestion, taskTokens []string, taskSummaryLower string, noteScores map[string]int, artifactScores map[string]int, inferredEdges []ProjectGraphEdge) (int, string, []string) {
 	score := 0
 	reasons := make([]string, 0, 3)
 	candidate := strings.ToLower(strings.TrimSpace(item.Summary))
@@ -267,6 +274,12 @@ func scoreQuestionForTask(item domain.OpenQuestion, taskTokens []string, taskSum
 	score += graphBoost
 	if graphBoost > 0 {
 		reasons = append(reasons, "connected canonical evidence also matched the query")
+	}
+	inferredBoost, inferredSourceRefIDs := scoreInferredGraphSupport(inferredEdges, noteScores, artifactScores)
+	score += inferredBoost
+	if inferredBoost > 0 {
+		reasons = append(reasons, "inferred support also matched the query")
+		sourceRefIDs = appendUniqueStrings(sourceRefIDs, inferredSourceRefIDs...)
 	}
 	if len(reasons) == 0 {
 		return score, "", sourceRefIDs
@@ -315,6 +328,30 @@ func scoreGraphSupport(sourceNoteIDs []string, sourceArtifactIDs []string, noteS
 	return boost, sourceRefIDs
 }
 
+func scoreInferredGraphSupport(edges []ProjectGraphEdge, noteScores map[string]int, artifactScores map[string]int) (int, []string) {
+	boost := 0
+	sourceRefIDs := make([]string, 0, len(edges))
+	for _, edge := range edges {
+		score := noteScores[edge.To]
+		if score <= 0 {
+			score = artifactScores[edge.To]
+		}
+		if score <= 0 {
+			continue
+		}
+		boost += 1 + minInt(3, edge.Score/3) + minInt(2, score/4)
+		sourceRefIDs = appendUniqueString(sourceRefIDs, edge.To)
+	}
+	return boost, sourceRefIDs
+}
+
+func appendUniqueStrings(items []string, values ...string) []string {
+	for _, value := range values {
+		items = appendUniqueString(items, value)
+	}
+	return items
+}
+
 func selectRetrievedNotes(hits []ProjectRetrieveHit, items []domain.Note, limit int) ([]domain.Note, map[string]string) {
 	selected := make([]domain.Note, 0, minInt(limit, len(items)))
 	evidenceByID := make(map[string]string, limit)
@@ -349,6 +386,50 @@ func selectRetrievedNotes(hits []ProjectRetrieveHit, items []domain.Note, limit 
 		selectedIDs[item.ID] = struct{}{}
 	}
 
+	return selected, evidenceByID
+}
+
+func selectRankedNotes(items []domain.Note, taskSummary string, limit int) ([]domain.Note, map[string]string) {
+	if len(items) == 0 || limit <= 0 {
+		return nil, nil
+	}
+
+	taskTokens := tokenizeRankingText(taskSummary)
+	taskSummaryLower := strings.ToLower(strings.TrimSpace(taskSummary))
+	type rankedNote struct {
+		Item  domain.Note
+		Score int
+		Why   string
+		Index int
+	}
+
+	ranked := make([]rankedNote, 0, len(items))
+	for index, item := range items {
+		score, whyIncluded := scoreNoteForTask(item, taskTokens, taskSummaryLower)
+		ranked = append(ranked, rankedNote{
+			Item:  item,
+			Score: score,
+			Why:   whyIncluded,
+			Index: index,
+		})
+	}
+
+	sort.SliceStable(ranked, func(i, j int) bool {
+		if ranked[i].Score != ranked[j].Score {
+			return ranked[i].Score > ranked[j].Score
+		}
+		return ranked[i].Index > ranked[j].Index
+	})
+	if len(ranked) > limit {
+		ranked = ranked[:limit]
+	}
+
+	selected := make([]domain.Note, 0, len(ranked))
+	evidenceByID := make(map[string]string, len(ranked))
+	for _, item := range ranked {
+		selected = append(selected, item.Item)
+		evidenceByID[item.Item.ID] = "ranked directly against the current task summary: " + item.Why
+	}
 	return selected, evidenceByID
 }
 
@@ -387,6 +468,46 @@ func selectRetrievedDecisions(hits []ProjectRetrieveHit, items []domain.Decision
 	return selected
 }
 
+func selectRankedDecisions(items []domain.Decision, taskSummary string, limit int) []domain.Decision {
+	if len(items) == 0 || limit <= 0 {
+		return nil
+	}
+
+	taskTokens := tokenizeRankingText(taskSummary)
+	taskSummaryLower := strings.ToLower(strings.TrimSpace(taskSummary))
+	type rankedDecision struct {
+		Item  domain.Decision
+		Score int
+		Index int
+	}
+
+	ranked := make([]rankedDecision, 0, len(items))
+	for index, item := range items {
+		score, _, _ := scoreDecisionForTask(item, taskTokens, taskSummaryLower, nil, nil, nil)
+		ranked = append(ranked, rankedDecision{
+			Item:  item,
+			Score: score,
+			Index: index,
+		})
+	}
+
+	sort.SliceStable(ranked, func(i, j int) bool {
+		if ranked[i].Score != ranked[j].Score {
+			return ranked[i].Score > ranked[j].Score
+		}
+		return ranked[i].Index > ranked[j].Index
+	})
+	if len(ranked) > limit {
+		ranked = ranked[:limit]
+	}
+
+	selected := make([]domain.Decision, 0, len(ranked))
+	for _, item := range ranked {
+		selected = append(selected, item.Item)
+	}
+	return selected
+}
+
 func selectRetrievedQuestions(hits []ProjectRetrieveHit, items []domain.OpenQuestion, limit int) []domain.OpenQuestion {
 	selected := make([]domain.OpenQuestion, 0, minInt(limit, len(items)))
 	selectedIDs := make(map[string]struct{}, limit)
@@ -419,6 +540,46 @@ func selectRetrievedQuestions(hits []ProjectRetrieveHit, items []domain.OpenQues
 		selectedIDs[item.ID] = struct{}{}
 	}
 
+	return selected
+}
+
+func selectRankedQuestions(items []domain.OpenQuestion, taskSummary string, limit int) []domain.OpenQuestion {
+	if len(items) == 0 || limit <= 0 {
+		return nil
+	}
+
+	taskTokens := tokenizeRankingText(taskSummary)
+	taskSummaryLower := strings.ToLower(strings.TrimSpace(taskSummary))
+	type rankedQuestion struct {
+		Item  domain.OpenQuestion
+		Score int
+		Index int
+	}
+
+	ranked := make([]rankedQuestion, 0, len(items))
+	for index, item := range items {
+		score, _, _ := scoreQuestionForTask(item, taskTokens, taskSummaryLower, nil, nil, nil)
+		ranked = append(ranked, rankedQuestion{
+			Item:  item,
+			Score: score,
+			Index: index,
+		})
+	}
+
+	sort.SliceStable(ranked, func(i, j int) bool {
+		if ranked[i].Score != ranked[j].Score {
+			return ranked[i].Score > ranked[j].Score
+		}
+		return ranked[i].Index > ranked[j].Index
+	})
+	if len(ranked) > limit {
+		ranked = ranked[:limit]
+	}
+
+	selected := make([]domain.OpenQuestion, 0, len(ranked))
+	for _, item := range ranked {
+		selected = append(selected, item.Item)
+	}
 	return selected
 }
 

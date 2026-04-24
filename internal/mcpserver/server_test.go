@@ -220,6 +220,7 @@ func TestBuildPacketToolForwardsStyleSelectors(t *testing.T) {
 			"artifact_type":      "design_doc",
 			"task_summary":       "continue the V1 handoff proof",
 			"disable_style_cues": true,
+			"disable_retrieval":  true,
 			"persist_snapshot":   true,
 			"idempotency_key":    "packet-1",
 		},
@@ -237,6 +238,7 @@ func TestBuildPacketToolForwardsStyleSelectors(t *testing.T) {
 		backend.input.ArtifactType != "design_doc" ||
 		backend.input.TaskSummary != "continue the V1 handoff proof" ||
 		!backend.input.DisableStyleCues ||
+		!backend.input.DisableRetrieval ||
 		!backend.input.PersistSnapshot ||
 		backend.input.IdempotencyKey != "packet-1" {
 		t.Fatalf("unexpected packet input: %#v", backend.input)

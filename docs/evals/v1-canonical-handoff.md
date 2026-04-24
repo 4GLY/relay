@@ -62,6 +62,23 @@ The judge script writes:
 
 The judge is intentionally blind to which packet is style-aware. It maps packet A/B back to `style-aware` or `control` only after the model returns its preference.
 
+## Retrieval Baseline Judge
+
+After an acceptance run, you can also compare the new retrieval-aware packet path against a ranking-only baseline:
+
+```bash
+./scripts/evals/v1_retrieval_baseline_judge.sh \
+  --result-file .gstack/projects/relay/<run_id>/result.json \
+  --model claude-opus-4.7
+```
+
+The retrieval judge:
+
+- rebuilds one packet with normal query-conditioned retrieval
+- rebuilds one packet with `disable_retrieval: true`
+- runs a blind paired judge over `retrieval-aware` vs `ranking-only`
+- writes `retrieval-aware-packet.json`, `ranking-only-packet.json`, and `retrieval-baseline-comparison.json`
+
 ## Repeated Usage Validation
 
 For the next-stage benchmark, run the fixture batch instead of a single canonical seed:

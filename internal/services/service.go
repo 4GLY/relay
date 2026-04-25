@@ -16,6 +16,9 @@ type Dependencies struct {
 	PacketSnapshots    repositories.PacketSnapshotStore
 	Idempotency        repositories.IdempotencyStore
 	CuratorJobs        repositories.CuratorJobStore
+	OGImages           OGImageWriter
+	CacheInvalidator   CacheInvalidator
+	PublicBaseURL      string
 }
 
 type Service struct {

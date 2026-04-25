@@ -182,6 +182,43 @@ func (s *fakePacketSnapshotStore) LatestPacketSnapshotByProject(_ context.Contex
 	return latest, nil
 }
 
+func (s *fakePacketSnapshotStore) MakePacketSnapshotPublic(_ context.Context, snapshotID string, publicToken string, ogImagePath string) (domain.PacketSnapshot, error) {
+	if s.items == nil {
+		return domain.PacketSnapshot{}, lib.NotFound("PACKET_SNAPSHOT_NOT_FOUND", "packet snapshot not found")
+	}
+	item, ok := s.items[snapshotID]
+	if !ok {
+		return domain.PacketSnapshot{}, lib.NotFound("PACKET_SNAPSHOT_NOT_FOUND", "packet snapshot not found")
+	}
+	item.PublicReadable = true
+	item.PublicToken = publicToken
+	item.OGImagePath = ogImagePath
+	s.items[snapshotID] = item
+	return item, nil
+}
+
+func (s *fakePacketSnapshotStore) RevokePacketSnapshotPublic(_ context.Context, snapshotID string) (domain.PacketSnapshot, error) {
+	if s.items == nil {
+		return domain.PacketSnapshot{}, lib.NotFound("PACKET_SNAPSHOT_NOT_FOUND", "packet snapshot not found")
+	}
+	item, ok := s.items[snapshotID]
+	if !ok {
+		return domain.PacketSnapshot{}, lib.NotFound("PACKET_SNAPSHOT_NOT_FOUND", "packet snapshot not found")
+	}
+	item.PublicReadable = false
+	s.items[snapshotID] = item
+	return item, nil
+}
+
+func (s *fakePacketSnapshotStore) GetPacketSnapshotByPublicToken(_ context.Context, token string) (domain.PacketSnapshot, error) {
+	for _, item := range s.items {
+		if item.PublicToken == token && item.PublicReadable {
+			return item, nil
+		}
+	}
+	return domain.PacketSnapshot{}, lib.NotFound("PUBLIC_SNAPSHOT_NOT_FOUND", "public snapshot not found")
+}
+
 type fakeIdempotencyStore struct {
 	items map[string]domain.IdempotencyRecord
 }

@@ -32,6 +32,15 @@ func NewRuntime(ctx context.Context, cfg config.Config) (Runtime, error) {
 	}
 
 	stores := postgres.New(db)
+	ogWriter, err := services.NewFilesystemOGImageWriter(cfg.OGImageDir)
+	if err != nil {
+		db.Close()
+		return Runtime{}, err
+	}
+	publicBaseURL := cfg.PublicBaseURL
+	if publicBaseURL == "" {
+		publicBaseURL = cfg.BaseURL
+	}
 	svc := services.New(services.Dependencies{
 		Projects:           stores,
 		Notes:              noteStore{stores},
@@ -46,6 +55,9 @@ func NewRuntime(ctx context.Context, cfg config.Config) (Runtime, error) {
 		PacketSnapshots:    stores,
 		Idempotency:        stores,
 		CuratorJobs:        stores,
+		OGImages:           ogWriter,
+		CacheInvalidator:   services.NoopCacheInvalidator{},
+		PublicBaseURL:      publicBaseURL,
 	})
 
 	return Runtime{Services: svc, APIKeys: apiKeyStore{stores}}, nil

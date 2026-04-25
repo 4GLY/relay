@@ -61,8 +61,28 @@ func buildMux(handler Handler, cfg config.Config, runtime app.Runtime) *http.Ser
 	mux.HandleFunc("/v1/promote", requireBearerToken(adminToken, runtime.APIKeys, handler.handlePromote))
 	mux.HandleFunc("/v1/packets/build", requireBearerToken(adminToken, runtime.APIKeys, handler.handlePacketBuild))
 	mux.HandleFunc("/v1/projects/", requireBearerToken(adminToken, runtime.APIKeys, handler.handleProjectShow))
+	mux.HandleFunc("/v1/snapshots/", requireAdminBearerToken(adminToken, handler.handleSnapshotAdmin))
+	mux.HandleFunc("/p/", handler.handlePublicSnapshotPage)
 	mux.Handle("/mcp", buildMCPHandler(cfg, runtime))
 	return mux
+}
+
+// handleSnapshotAdmin dispatches /v1/snapshots/{id}/{publish|revoke} so
+// they share a single bearer-auth gate.
+func (h Handler) handleSnapshotAdmin(w http.ResponseWriter, r *http.Request) {
+	_, action, ok := parseSnapshotAdminPath(r.URL.Path)
+	if !ok {
+		writeJSON(w, http.StatusNotFound, contracts.Failure("relay snapshot admin", "NOT_FOUND", "unknown snapshot route", false, "path"))
+		return
+	}
+	switch action {
+	case "publish":
+		h.handleSnapshotPublish(w, r)
+	case "revoke":
+		h.handleSnapshotRevoke(w, r)
+	default:
+		writeJSON(w, http.StatusNotFound, contracts.Failure("relay snapshot admin", "NOT_FOUND", "unknown snapshot route", false, "path"))
+	}
 }
 
 func buildMCPHandler(cfg config.Config, runtime app.Runtime) http.Handler {

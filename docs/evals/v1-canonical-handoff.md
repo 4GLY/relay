@@ -40,8 +40,10 @@ The runner writes:
 5. `POST /v1/heuristic-proposals` creates a pending proposal from the trace.
 6. `POST /v1/heuristic-proposals/review` approves it through the admin path.
 7. `relay_build_packet` over public MCP builds a style-aware packet with `persist_snapshot: true`.
-8. `relay_build_packet` over public MCP builds a control packet with `disable_style_cues: true`.
-9. The runner records timings, snapshot IDs, reused heuristic IDs, and rubric fields.
+8. `relay_latest_packet_snapshot` over public MCP reopens the same immutable snapshot.
+9. `GET /v1/projects/<project_id>/packet-snapshots/latest` reopens the same snapshot over HTTP.
+10. `relay_build_packet` over public MCP builds a control packet with `disable_style_cues: true`.
+11. The runner records timings, snapshot IDs, latest-snapshot contract fields, reused heuristic IDs, and rubric fields.
 
 ## Blind Judge
 
@@ -362,6 +364,13 @@ The runner fails if timing budgets are exceeded:
 - total handoff: `<= 60s`
 
 The runner also requires the normal API and public MCP calls to succeed.
+
+The latest-snapshot smoke is part of the pass condition:
+
+- MCP latest snapshot id must match the style-aware `snapshot_id`.
+- HTTP latest snapshot id must match the style-aware `snapshot_id`.
+- MCP and HTTP latest snapshot bodies must match the style-aware rendered body.
+- `latest_snapshot_file` is the packet source used by consumer-continuation evals when present.
 
 ## Rubric
 

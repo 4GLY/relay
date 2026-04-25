@@ -12,6 +12,7 @@ import (
 	"relay/internal/config"
 	"relay/internal/contracts"
 	"relay/internal/lib"
+	"relay/internal/lib/oauth"
 	"relay/internal/mcpserver"
 	"relay/internal/services"
 	"relay/internal/storage/repositories"
@@ -28,7 +29,12 @@ func ListenAndServe(cfg config.Config) error {
 		return err
 	}
 
-	handler := Handler{services: runtime.Services}
+	handler := Handler{
+		services:          runtime.Services,
+		oauth:             buildOAuthRegistry(cfg),
+		oauthRedirectBase: oauthRedirectBase(cfg),
+		cookieSecure:      cfg.UserSessionCookieSecure,
+	}
 	mux := buildMux(handler, cfg, runtime)
 
 	server := &http.Server{
@@ -37,6 +43,24 @@ func ListenAndServe(cfg config.Config) error {
 	}
 
 	return server.ListenAndServe()
+}
+
+func buildOAuthRegistry(cfg config.Config) oauth.Registry {
+	providers := make([]oauth.Provider, 0, 2)
+	if cfg.GitHubOAuthClientID != "" && cfg.GitHubOAuthClientSecret != "" {
+		providers = append(providers, oauth.NewGitHub(cfg.GitHubOAuthClientID, cfg.GitHubOAuthClientSecret))
+	}
+	if cfg.GoogleOAuthClientID != "" && cfg.GoogleOAuthClientSecret != "" {
+		providers = append(providers, oauth.NewGoogle(cfg.GoogleOAuthClientID, cfg.GoogleOAuthClientSecret))
+	}
+	return oauth.NewRegistry(providers...)
+}
+
+func oauthRedirectBase(cfg config.Config) string {
+	if cfg.OAuthRedirectBaseURL != "" {
+		return cfg.OAuthRedirectBaseURL
+	}
+	return cfg.BaseURL
 }
 
 func requireStartupAdminToken(cfg config.Config) error {
@@ -63,6 +87,7 @@ func buildMux(handler Handler, cfg config.Config, runtime app.Runtime) *http.Ser
 	mux.HandleFunc("/v1/projects/", requireBearerToken(adminToken, runtime.APIKeys, handler.handleProjectShow))
 	mux.HandleFunc("/v1/snapshots/", requireAdminBearerToken(adminToken, handler.handleSnapshotAdmin))
 	mux.HandleFunc("/p/", handler.handlePublicSnapshotPage)
+	mux.HandleFunc("/v1/auth/", handler.handleAuthRouter)
 	mux.Handle("/mcp", buildMCPHandler(cfg, runtime))
 	return mux
 }
@@ -97,7 +122,10 @@ func buildMCPHandler(cfg config.Config, runtime app.Runtime) http.Handler {
 }
 
 type Handler struct {
-	services services.Service
+	services          services.Service
+	oauth             oauth.Registry
+	oauthRedirectBase string
+	cookieSecure      bool
 }
 
 func handleHealth(w http.ResponseWriter, _ *http.Request) {

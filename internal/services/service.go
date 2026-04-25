@@ -19,6 +19,10 @@ type Dependencies struct {
 	OGImages           OGImageWriter
 	CacheInvalidator   CacheInvalidator
 	PublicBaseURL      string
+	Users              repositories.UserStore
+	OAuthIdentities    repositories.OAuthIdentityStore
+	UserSessions       repositories.UserSessionStore
+	OAuthStates        repositories.OAuthStateStore
 }
 
 type Service struct {

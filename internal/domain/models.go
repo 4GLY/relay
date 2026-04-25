@@ -3,10 +3,11 @@ package domain
 import "time"
 
 type Project struct {
-	ID       string
-	Name     string
-	RootPath string
-	Status   string
+	ID          string
+	Name        string
+	RootPath    string
+	Status      string
+	OwnerUserID string
 }
 
 type Note struct {
@@ -59,7 +60,46 @@ type APIKey struct {
 	TokenPrefix string
 	Scope       string
 	ProjectID   string
+	OwnerUserID string
 	Revoked     bool
+}
+
+type User struct {
+	ID          string
+	Email       string
+	DisplayName string
+	AvatarURL   string
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+}
+
+type OAuthIdentity struct {
+	ID             string
+	UserID         string
+	Provider       string
+	ProviderUserID string
+	ProviderLogin  string
+	VerifiedEmail  string
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+}
+
+type UserSession struct {
+	ID        string
+	UserID    string
+	TokenHash string
+	ExpiresAt time.Time
+	CreatedAt time.Time
+	RevokedAt *time.Time
+}
+
+type OAuthState struct {
+	ID         string
+	Provider   string
+	RedirectTo string
+	ExpiresAt  time.Time
+	CreatedAt  time.Time
+	ConsumedAt *time.Time
 }
 
 type JudgmentTrace struct {

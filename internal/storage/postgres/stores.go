@@ -22,13 +22,14 @@ func New(db *pgxpool.Pool) Stores {
 
 func (s Stores) EnsureProject(ctx context.Context, project domain.Project) (domain.Project, error) {
 	_, err := s.db.Exec(ctx, `
-		INSERT INTO projects (id, name, root_path, status)
-		VALUES ($1, $2, NULLIF($3, ''), $4)
+		INSERT INTO projects (id, name, root_path, status, owner_user_id)
+		VALUES ($1, $2, NULLIF($3, ''), $4, NULLIF($5, ''))
 		ON CONFLICT (id) DO UPDATE
 		SET name = EXCLUDED.name,
 		    root_path = COALESCE(EXCLUDED.root_path, projects.root_path),
-		    status = EXCLUDED.status
-	`, project.ID, project.Name, project.RootPath, project.Status)
+		    status = EXCLUDED.status,
+		    owner_user_id = COALESCE(EXCLUDED.owner_user_id, projects.owner_user_id)
+	`, project.ID, project.Name, project.RootPath, project.Status, project.OwnerUserID)
 	if err != nil {
 		return domain.Project{}, err
 	}
@@ -38,10 +39,10 @@ func (s Stores) EnsureProject(ctx context.Context, project domain.Project) (doma
 func (s Stores) GetByName(ctx context.Context, name string) (domain.Project, error) {
 	var project domain.Project
 	err := s.db.QueryRow(ctx, `
-		SELECT id, name, COALESCE(root_path, ''), status
+		SELECT id, name, COALESCE(root_path, ''), status, COALESCE(owner_user_id, '')
 		FROM projects
 		WHERE name = $1
-	`, name).Scan(&project.ID, &project.Name, &project.RootPath, &project.Status)
+	`, name).Scan(&project.ID, &project.Name, &project.RootPath, &project.Status, &project.OwnerUserID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return domain.Project{}, lib.NotFound("PROJECT_NOT_FOUND", "project not found")
 	}
@@ -51,10 +52,10 @@ func (s Stores) GetByName(ctx context.Context, name string) (domain.Project, err
 func (s Stores) GetByID(ctx context.Context, id string) (domain.Project, error) {
 	var project domain.Project
 	err := s.db.QueryRow(ctx, `
-		SELECT id, name, COALESCE(root_path, ''), status
+		SELECT id, name, COALESCE(root_path, ''), status, COALESCE(owner_user_id, '')
 		FROM projects
 		WHERE id = $1
-	`, id).Scan(&project.ID, &project.Name, &project.RootPath, &project.Status)
+	`, id).Scan(&project.ID, &project.Name, &project.RootPath, &project.Status, &project.OwnerUserID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return domain.Project{}, lib.NotFound("PROJECT_NOT_FOUND", "project not found")
 	}
@@ -261,10 +262,10 @@ func (s Stores) LatestByProject(ctx context.Context, projectID string) (domain.P
 
 func (s Stores) CreateAPIKey(ctx context.Context, key domain.APIKey) (domain.APIKey, error) {
 	_, err := s.db.Exec(ctx, `
-		INSERT INTO api_keys (id, name, token_hash, token_prefix, scope, project_id)
-		VALUES ($1, $2, $3, $4, $5, NULLIF($6, ''))
+		INSERT INTO api_keys (id, name, token_hash, token_prefix, scope, project_id, owner_user_id)
+		VALUES ($1, $2, $3, $4, $5, NULLIF($6, ''), NULLIF($7, ''))
 		ON CONFLICT (id) DO NOTHING
-	`, key.ID, key.Name, key.TokenHash, key.TokenPrefix, key.Scope, key.ProjectID)
+	`, key.ID, key.Name, key.TokenHash, key.TokenPrefix, key.Scope, key.ProjectID, key.OwnerUserID)
 	if err != nil {
 		return domain.APIKey{}, err
 	}
@@ -274,11 +275,11 @@ func (s Stores) CreateAPIKey(ctx context.Context, key domain.APIKey) (domain.API
 func (s Stores) GetByTokenHash(ctx context.Context, tokenHash string) (domain.APIKey, error) {
 	var key domain.APIKey
 	err := s.db.QueryRow(ctx, `
-		SELECT id, name, token_hash, token_prefix, scope, COALESCE(project_id, ''), revoked_at IS NOT NULL
+		SELECT id, name, token_hash, token_prefix, scope, COALESCE(project_id, ''), COALESCE(owner_user_id, ''), revoked_at IS NOT NULL
 		FROM api_keys
 		WHERE token_hash = $1
 		  AND revoked_at IS NULL
-	`, tokenHash).Scan(&key.ID, &key.Name, &key.TokenHash, &key.TokenPrefix, &key.Scope, &key.ProjectID, &key.Revoked)
+	`, tokenHash).Scan(&key.ID, &key.Name, &key.TokenHash, &key.TokenPrefix, &key.Scope, &key.ProjectID, &key.OwnerUserID, &key.Revoked)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return domain.APIKey{}, lib.NotFound("API_KEY_NOT_FOUND", "api key not found")
 	}
@@ -287,7 +288,7 @@ func (s Stores) GetByTokenHash(ctx context.Context, tokenHash string) (domain.AP
 
 func (s Stores) ListAPIKeys(ctx context.Context) ([]domain.APIKey, error) {
 	rows, err := s.db.Query(ctx, `
-		SELECT id, name, token_hash, token_prefix, scope, COALESCE(project_id, ''), revoked_at IS NOT NULL
+		SELECT id, name, token_hash, token_prefix, scope, COALESCE(project_id, ''), COALESCE(owner_user_id, ''), revoked_at IS NOT NULL
 		FROM api_keys
 		ORDER BY created_at DESC
 	`)
@@ -299,7 +300,7 @@ func (s Stores) ListAPIKeys(ctx context.Context) ([]domain.APIKey, error) {
 	var items []domain.APIKey
 	for rows.Next() {
 		var item domain.APIKey
-		if err := rows.Scan(&item.ID, &item.Name, &item.TokenHash, &item.TokenPrefix, &item.Scope, &item.ProjectID, &item.Revoked); err != nil {
+		if err := rows.Scan(&item.ID, &item.Name, &item.TokenHash, &item.TokenPrefix, &item.Scope, &item.ProjectID, &item.OwnerUserID, &item.Revoked); err != nil {
 			return nil, err
 		}
 		items = append(items, item)
@@ -313,8 +314,8 @@ func (s Stores) RevokeAPIKey(ctx context.Context, keyID string) (domain.APIKey, 
 		UPDATE api_keys
 		SET revoked_at = COALESCE(revoked_at, NOW())
 		WHERE id = $1
-		RETURNING id, name, token_hash, token_prefix, scope, COALESCE(project_id, ''), revoked_at IS NOT NULL
-	`, keyID).Scan(&key.ID, &key.Name, &key.TokenHash, &key.TokenPrefix, &key.Scope, &key.ProjectID, &key.Revoked)
+		RETURNING id, name, token_hash, token_prefix, scope, COALESCE(project_id, ''), COALESCE(owner_user_id, ''), revoked_at IS NOT NULL
+	`, keyID).Scan(&key.ID, &key.Name, &key.TokenHash, &key.TokenPrefix, &key.Scope, &key.ProjectID, &key.OwnerUserID, &key.Revoked)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return domain.APIKey{}, lib.NotFound("API_KEY_NOT_FOUND_BY_ID", "api key not found")
 	}

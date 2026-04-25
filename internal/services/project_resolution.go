@@ -118,3 +118,30 @@ func requireAdminAuth(ctx context.Context) error {
 	}
 	return lib.Forbidden("FORBIDDEN", "admin authorization is required")
 }
+
+// requireAdminOrProjectOwner allows the legacy admin path to keep working while
+// also accepting an authenticated user that owns the target project. Used by
+// style-memory writes that V1 only let admins perform.
+func (s Service) requireAdminOrProjectOwner(ctx context.Context, projectID string) error {
+	auth, ok := AuthInfoFromContext(ctx)
+	if !ok {
+		return lib.Forbidden("FORBIDDEN", "authorization is required")
+	}
+	if auth.IsAdmin {
+		return nil
+	}
+	if auth.UserID == "" {
+		return lib.Forbidden("FORBIDDEN", "admin or project owner authorization is required")
+	}
+	if s.deps.Projects == nil {
+		return lib.Misconfigured("project store is required")
+	}
+	project, err := s.deps.Projects.GetByID(ctx, projectID)
+	if err != nil {
+		return err
+	}
+	if project.OwnerUserID != "" && project.OwnerUserID == auth.UserID {
+		return nil
+	}
+	return lib.Forbidden("FORBIDDEN", "admin or project owner authorization is required")
+}

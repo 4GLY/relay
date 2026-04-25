@@ -58,6 +58,10 @@ func NewRuntime(ctx context.Context, cfg config.Config) (Runtime, error) {
 		OGImages:           ogWriter,
 		CacheInvalidator:   services.NoopCacheInvalidator{},
 		PublicBaseURL:      publicBaseURL,
+		Users:              stores,
+		OAuthIdentities:    stores,
+		UserSessions:       stores,
+		OAuthStates:        stores,
 	})
 
 	return Runtime{Services: svc, APIKeys: apiKeyStore{stores}}, nil

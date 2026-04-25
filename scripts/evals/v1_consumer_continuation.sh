@@ -199,19 +199,23 @@ main() {
     require_command codex
   fi
 
-  local result_dir output_root style_packet_file prompt_file consumer_schema_file judge_schema_file
+  local result_dir output_root packet_file prompt_file consumer_schema_file judge_schema_file packet_source
   result_dir="$(cd "$(dirname "$RESULT_FILE")" && pwd)"
   output_root="$(cd "${result_dir}/.." && pwd)"
   RESULT_FILE="$(cd "$(dirname "$RESULT_FILE")" && pwd)/$(basename "$RESULT_FILE")"
-  style_packet_file="$(jq -r '.style_packet_file // empty' "$RESULT_FILE")"
-  if [[ -z "$style_packet_file" ]]; then
-    echo "result file does not include style_packet_file" >&2
+  packet_file="$(jq -r '.latest_snapshot_file // .style_packet_file // empty' "$RESULT_FILE")"
+  if [[ -z "$packet_file" ]]; then
+    echo "result file does not include latest_snapshot_file or style_packet_file" >&2
     exit 1
   fi
-  [[ "$style_packet_file" = /* ]] || style_packet_file="${result_dir}/$(basename "$style_packet_file")"
-  if [[ ! -f "$style_packet_file" ]]; then
-    echo "style packet not found: $style_packet_file" >&2
+  [[ "$packet_file" = /* ]] || packet_file="${result_dir}/$(basename "$packet_file")"
+  if [[ ! -f "$packet_file" ]]; then
+    echo "packet source not found: $packet_file" >&2
     exit 1
+  fi
+  packet_source="style_packet"
+  if [[ "$(jq -r '.latest_snapshot_file // empty' "$RESULT_FILE")" != "" ]]; then
+    packet_source="latest_packet_snapshot"
   fi
 
   prompt_file="${result_dir}/consumer-continuation-prompt.md"
@@ -219,13 +223,13 @@ main() {
   judge_schema_file="${result_dir}/consumer-continuation-judge.schema.json"
 
   local packet_body project fixture_id run_id task_summary
-  packet_body="$(jq -r '.rendered_body // .body // ""' "$style_packet_file")"
+  packet_body="$(jq -r '.rendered_body // .body // ""' "$packet_file")"
   project="$(jq -r '.project // empty' "$RESULT_FILE")"
   fixture_id="$(jq -r '.fixture_id // "consumer-continuation"' "$RESULT_FILE")"
   run_id="$(jq -r '.run_id // "consumer-continuation"' "$RESULT_FILE")"
-  task_summary="$(jq -r '.task_summary // empty' "$style_packet_file")"
+  task_summary="$(jq -r '.task_summary // empty' "$packet_file")"
   if [[ -z "$packet_body" ]]; then
-    echo "style packet does not include rendered_body/body" >&2
+    echo "packet source does not include rendered_body/body" >&2
     exit 1
   fi
 
@@ -252,6 +256,7 @@ Return JSON matching the provided schema.
 
 Project: ${project}
 Task summary: ${task_summary}
+Packet source: ${packet_source}
 
 ## Handoff Packet
 
@@ -328,6 +333,8 @@ EOF
       --arg project "$project" \
       --arg result_file "$RESULT_FILE" \
       --arg prompt_file "$prompt_file" \
+      --arg packet_file "$packet_file" \
+      --arg packet_source "$packet_source" \
       --arg comparison_file "$comparison_file" \
       --arg claude_model "$CLAUDE_MODEL" \
       --arg codex_model "${CODEX_MODEL:-codex-config-default}" \
@@ -340,6 +347,8 @@ EOF
         project: $project,
         result_file: $result_file,
         prompt_file: $prompt_file,
+        packet_file: $packet_file,
+        packet_source: $packet_source,
         comparison_file: $comparison_file,
         claude_model: $claude_model,
         codex_model: $codex_model,
@@ -354,12 +363,16 @@ EOF
   jq -n \
     --arg result_file "$RESULT_FILE" \
     --arg prompt_file "$prompt_file" \
+    --arg packet_file "$packet_file" \
+    --arg packet_source "$packet_source" \
     --arg claude_output_file "$claude_output_file" \
     --arg codex_output_file "$codex_raw_file" \
     --arg comparison_file "$comparison_file" \
     '{
       result_file: $result_file,
       prompt_file: $prompt_file,
+      packet_file: $packet_file,
+      packet_source: $packet_source,
       claude_output_file: $claude_output_file,
       codex_output_file: $codex_output_file,
       comparison_file: $comparison_file

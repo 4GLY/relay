@@ -229,13 +229,20 @@ Artifacts:
 - proposal_id: \`${PROPOSAL_ID}\`
 - approved_heuristic_id: \`${APPROVED_HEURISTIC_ID}\`
 - style_snapshot_id: \`${STYLE_SNAPSHOT_ID}\`
+- latest_snapshot_id: \`${LATEST_SNAPSHOT_ID}\`
 - control_snapshot_id: \`${CONTROL_SNAPSHOT_ID}\`
 
 Notable packet contents:
 - schema_version: \`${SCHEMA_VERSION}\`
 - approved_heuristic_ids: \`${APPROVED_HEURISTIC_IDS}\`
 - style excerpt: ${STYLE_EXCERPT}
+- latest snapshot excerpt: ${LATEST_EXCERPT}
 - control excerpt: ${CONTROL_EXCERPT}
+
+Snapshot continuation smoke:
+- latest snapshot MCP duration: ${LATEST_SNAPSHOT_MCP_DURATION_MS} ms
+- latest snapshot API duration: ${LATEST_SNAPSHOT_API_DURATION_MS} ms
+- latest snapshot contract pass: ${LATEST_SNAPSHOT_CONTRACT_PASS}
 
 Rubric:
 - style_match: ${STYLE_MATCH}
@@ -285,6 +292,8 @@ main() {
   local summary_file="${output_dir}/summary.md"
   local ledger_file="${OUTPUT_ROOT%/}/usage-validation.jsonl"
   local style_packet_file="${output_dir}/style-packet.json"
+  local latest_snapshot_file="${output_dir}/latest-snapshot.json"
+  local latest_snapshot_api_file="${output_dir}/latest-snapshot-api.json"
   local control_packet_file="${output_dir}/control-packet.json"
   mkdir -p "$output_dir" "${OUTPUT_ROOT%/}"
 
@@ -444,6 +453,28 @@ main() {
   style_mcp_response="$(mcp_call relay_build_packet "$style_args")"
   style_end_ms="$(epoch_ms)"
   style_packet="$(structured_content "$style_mcp_response")"
+  STYLE_SNAPSHOT_ID="$(jq -r '.snapshot_id // ""' <<<"$style_packet")"
+
+  local latest_args latest_snapshot_mcp_response latest_snapshot latest_snapshot_api_response latest_snapshot_api
+  local latest_mcp_start_ms latest_mcp_end_ms latest_api_start_ms latest_api_end_ms
+  latest_args="$(jq -nc \
+    --arg project "$PROJECT" \
+    --arg packet_type "$packet_type" \
+    --arg packet_target "$packet_target" \
+    '{
+    project: $project,
+    type: $packet_type,
+    target: $packet_target
+  }')"
+  latest_mcp_start_ms="$(epoch_ms)"
+  latest_snapshot_mcp_response="$(mcp_call relay_latest_packet_snapshot "$latest_args")"
+  latest_mcp_end_ms="$(epoch_ms)"
+  latest_snapshot="$(structured_content "$latest_snapshot_mcp_response")"
+
+  latest_api_start_ms="$(epoch_ms)"
+  latest_snapshot_api_response="$(api_json "$CLIENT_TOKEN" GET "/v1/projects/${PROJECT_ID}/packet-snapshots/latest?type=${packet_type}&target=${packet_target}")"
+  latest_api_end_ms="$(epoch_ms)"
+  latest_snapshot_api="$(jq -c '.data' <<<"$latest_snapshot_api_response")"
 
   local control_args control_mcp_response control_packet
   control_args="$(jq -nc \
@@ -471,23 +502,40 @@ main() {
   control_packet="$(structured_content "$control_mcp_response")"
 
   STYLE_PACKET_DURATION_MS=$((style_end_ms - style_start_ms))
+  LATEST_SNAPSHOT_MCP_DURATION_MS=$((latest_mcp_end_ms - latest_mcp_start_ms))
+  LATEST_SNAPSHOT_API_DURATION_MS=$((latest_api_end_ms - latest_api_start_ms))
   CONTROL_PACKET_DURATION_MS=$((control_end_ms - control_start_ms))
   TOTAL_HANDOFF_DURATION_MS=$((control_end_ms - handoff_start_ms))
   SCHEMA_VERSION="$(jq -r '.schema_version // ""' <<<"$style_packet")"
-  STYLE_SNAPSHOT_ID="$(jq -r '.snapshot_id // ""' <<<"$style_packet")"
+  LATEST_SNAPSHOT_ID="$(jq -r '.snapshot_id // ""' <<<"$latest_snapshot")"
+  LATEST_SNAPSHOT_API_ID="$(jq -r '.snapshot_id // ""' <<<"$latest_snapshot_api")"
   CONTROL_SNAPSHOT_ID="$(jq -r '.snapshot_id // ""' <<<"$control_packet")"
   APPROVED_HEURISTIC_IDS="$(jq -c '.approved_heuristic_ids // []' <<<"$style_packet")"
   STYLE_EXCERPT="$(excerpt_from_packet <<<"$style_packet")"
+  LATEST_EXCERPT="$(excerpt_from_packet <<<"$latest_snapshot")"
   CONTROL_EXCERPT="$(excerpt_from_packet <<<"$control_packet")"
   jq . <<<"$style_packet" >"$style_packet_file"
+  jq . <<<"$latest_snapshot" >"$latest_snapshot_file"
+  jq . <<<"$latest_snapshot_api" >"$latest_snapshot_api_file"
   jq . <<<"$control_packet" >"$control_packet_file"
 
-  local first_response_duration_ms budget_pass heuristic_relevance_json result_json ledger_json
+  local first_response_duration_ms budget_pass latest_snapshot_contract_pass heuristic_relevance_json result_json ledger_json
+  if [[ "$STYLE_SNAPSHOT_ID" != "" &&
+        "$LATEST_SNAPSHOT_ID" == "$STYLE_SNAPSHOT_ID" &&
+        "$LATEST_SNAPSHOT_API_ID" == "$STYLE_SNAPSHOT_ID" ]] &&
+     jq -e --arg body "$(jq -r '.rendered_body // ""' <<<"$style_packet")" '.rendered_body == $body' <<<"$latest_snapshot" >/dev/null &&
+     jq -e --arg body "$(jq -r '.rendered_body // ""' <<<"$style_packet")" '.rendered_body == $body' <<<"$latest_snapshot_api" >/dev/null; then
+    latest_snapshot_contract_pass=true
+  else
+    latest_snapshot_contract_pass=false
+  fi
+  LATEST_SNAPSHOT_CONTRACT_PASS="$latest_snapshot_contract_pass"
   first_response_duration_ms="$STYLE_PACKET_DURATION_MS"
   if (( STYLE_PACKET_DURATION_MS <= PACKET_BUILD_BUDGET_MS &&
         STYLE_PACKET_DURATION_MS <= MCP_RESUME_BUDGET_MS &&
         first_response_duration_ms <= FIRST_RESPONSE_BUDGET_MS &&
-        TOTAL_HANDOFF_DURATION_MS <= TOTAL_BUDGET_MS )); then
+        TOTAL_HANDOFF_DURATION_MS <= TOTAL_BUDGET_MS )) &&
+     [[ "$latest_snapshot_contract_pass" == true ]]; then
     budget_pass=true
   else
     budget_pass=false
@@ -507,6 +555,8 @@ main() {
     --arg approved_heuristic_id "$APPROVED_HEURISTIC_ID" \
     --arg schema_version "$SCHEMA_VERSION" \
     --arg style_snapshot_id "$STYLE_SNAPSHOT_ID" \
+    --arg latest_snapshot_id "$LATEST_SNAPSHOT_ID" \
+    --arg latest_snapshot_api_id "$LATEST_SNAPSHOT_API_ID" \
     --arg control_snapshot_id "$CONTROL_SNAPSHOT_ID" \
     --argjson approved_heuristic_ids "$APPROVED_HEURISTIC_IDS" \
     --arg handoff_start_time "$(ms_to_iso "$handoff_start_ms")" \
@@ -514,12 +564,17 @@ main() {
     --arg mcp_resume_start_time "$(ms_to_iso "$style_start_ms")" \
     --arg first_usable_response_time "$(ms_to_iso "$style_end_ms")" \
     --arg style_packet_file "$style_packet_file" \
+    --arg latest_snapshot_file "$latest_snapshot_file" \
+    --arg latest_snapshot_api_file "$latest_snapshot_api_file" \
     --arg control_packet_file "$control_packet_file" \
     --argjson style_packet_duration_ms "$STYLE_PACKET_DURATION_MS" \
+    --argjson latest_snapshot_mcp_duration_ms "$LATEST_SNAPSHOT_MCP_DURATION_MS" \
+    --argjson latest_snapshot_api_duration_ms "$LATEST_SNAPSHOT_API_DURATION_MS" \
     --argjson control_packet_duration_ms "$CONTROL_PACKET_DURATION_MS" \
     --argjson first_response_duration_ms "$first_response_duration_ms" \
     --argjson total_handoff_duration_ms "$TOTAL_HANDOFF_DURATION_MS" \
     --arg first_continuation_excerpt "$STYLE_EXCERPT" \
+    --arg latest_snapshot_excerpt "$LATEST_EXCERPT" \
     --arg control_continuation_excerpt "$CONTROL_EXCERPT" \
     --argjson style_match "$STYLE_MATCH" \
     --argjson heuristic_relevance "$heuristic_relevance_json" \
@@ -527,6 +582,7 @@ main() {
     --arg continuation_without_summary "$CONTINUATION_WITHOUT_SUMMARY" \
     --arg preferred_continuation "$PREFERRED_CONTINUATION" \
     --argjson budget_pass "$budget_pass" \
+    --argjson latest_snapshot_contract_pass "$latest_snapshot_contract_pass" \
     --argjson packet_build_budget_ms "$PACKET_BUILD_BUDGET_MS" \
     --argjson mcp_resume_budget_ms "$MCP_RESUME_BUDGET_MS" \
     --argjson first_response_budget_ms "$FIRST_RESPONSE_BUDGET_MS" \
@@ -544,6 +600,8 @@ main() {
       packet_schema_version: $schema_version,
       style_snapshot_id: $style_snapshot_id,
       packet_snapshot_id: $style_snapshot_id,
+      latest_snapshot_id: $latest_snapshot_id,
+      latest_snapshot_api_id: $latest_snapshot_api_id,
       control_snapshot_id: $control_snapshot_id,
       approved_heuristic_ids: $approved_heuristic_ids,
       handoff_start_time: $handoff_start_time,
@@ -551,13 +609,23 @@ main() {
       mcp_resume_start_time: $mcp_resume_start_time,
       first_usable_response_time: $first_usable_response_time,
       style_packet_file: $style_packet_file,
+      latest_snapshot_file: $latest_snapshot_file,
+      latest_snapshot_api_file: $latest_snapshot_api_file,
       control_packet_file: $control_packet_file,
       style_packet_duration_ms: $style_packet_duration_ms,
+      latest_snapshot_mcp_duration_ms: $latest_snapshot_mcp_duration_ms,
+      latest_snapshot_api_duration_ms: $latest_snapshot_api_duration_ms,
       control_packet_duration_ms: $control_packet_duration_ms,
       first_response_duration_ms: $first_response_duration_ms,
       total_handoff_duration_ms: $total_handoff_duration_ms,
       first_continuation_excerpt: $first_continuation_excerpt,
+      latest_snapshot_excerpt: $latest_snapshot_excerpt,
       control_continuation_excerpt: $control_continuation_excerpt,
+      latest_snapshot_contract: {
+        pass: $latest_snapshot_contract_pass,
+        mcp_snapshot_id: $latest_snapshot_id,
+        api_snapshot_id: $latest_snapshot_api_id
+      },
       rubric_scores: {
         style_match: $style_match,
         heuristic_relevance: $heuristic_relevance,

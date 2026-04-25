@@ -100,15 +100,19 @@ func (h Handler) handleAuthCallback(w http.ResponseWriter, r *http.Request, prov
 		return
 	}
 
-	redirectTo, err := h.services.ConsumeOAuthState(r.Context(), stateID, provider)
-	if err != nil {
-		writeServiceError(w, "relay auth callback", err)
-		return
-	}
-
+	// Exchange before ConsumeOAuthState so a transient OAuth provider error
+	// does not burn the state. The provider's `code` is itself single-use, so
+	// concurrent callback hits with the same `code` cannot both succeed at
+	// the provider boundary.
 	profile, err := prov.Exchange(r.Context(), code, h.oauthRedirectURI(provider))
 	if err != nil {
 		writeJSON(w, http.StatusBadGateway, contracts.Failure("relay auth callback", "OAUTH_EXCHANGE_FAILED", err.Error(), true))
+		return
+	}
+
+	redirectTo, err := h.services.ConsumeOAuthState(r.Context(), stateID, provider)
+	if err != nil {
+		writeServiceError(w, "relay auth callback", err)
 		return
 	}
 
@@ -133,16 +137,19 @@ func (h Handler) handleAuthMe(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusUnauthorized, contracts.Failure("relay auth me", "UNAUTHORIZED", "missing session cookie", false))
 		return
 	}
-	user, err := h.services.GetUserBySessionToken(r.Context(), cookie.Value)
+	res, err := h.services.ResolveSession(r.Context(), cookie.Value)
 	if err != nil {
 		writeJSON(w, http.StatusUnauthorized, contracts.Failure("relay auth me", "UNAUTHORIZED", "invalid or expired session", false))
 		return
 	}
+	if res.Refreshed {
+		setSessionCookie(w, h.cookieSecure, res.SessionToken, res.SessionExpiresAt)
+	}
 	writeJSON(w, http.StatusOK, contracts.Success("relay auth me", authMeResponse{
-		UserID:      user.ID,
-		Email:       user.Email,
-		DisplayName: user.DisplayName,
-		AvatarURL:   user.AvatarURL,
+		UserID:      res.User.ID,
+		Email:       res.User.Email,
+		DisplayName: res.User.DisplayName,
+		AvatarURL:   res.User.AvatarURL,
 	}))
 }
 

@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"testing"
+	"time"
 
 	"relay/internal/lib/oauth"
 )
@@ -180,6 +181,98 @@ func TestGetUserBySessionTokenAndSignOut(t *testing.T) {
 		t.Fatalf("SignOut error: %v", err)
 	}
 	if _, err := svc.GetUserBySessionToken(context.Background(), result.SessionToken); err == nil {
+		t.Fatal("expected revoked session to be rejected")
+	}
+}
+
+func TestResolveSessionLeavesFreshSessionAlone(t *testing.T) {
+	svc, _, _, _, _ := newAuthService()
+
+	result, err := svc.SignInWithOAuthProfile(context.Background(), oauth.Profile{
+		Provider:       "github",
+		ProviderUserID: "1001",
+		Login:          "octo",
+		Email:          "octo@example.com",
+		DisplayName:    "Octo",
+	})
+	if err != nil {
+		t.Fatalf("sign-in error: %v", err)
+	}
+
+	res, err := svc.ResolveSession(context.Background(), result.SessionToken)
+	if err != nil {
+		t.Fatalf("ResolveSession error: %v", err)
+	}
+	if res.Refreshed {
+		t.Fatal("expected fresh session to skip rotation")
+	}
+	if res.User.ID != result.User.ID {
+		t.Fatalf("expected user %q, got %q", result.User.ID, res.User.ID)
+	}
+}
+
+func TestResolveSessionRotatesNearExpiry(t *testing.T) {
+	svc, _, _, sessions, _ := newAuthService()
+
+	result, err := svc.SignInWithOAuthProfile(context.Background(), oauth.Profile{
+		Provider:       "github",
+		ProviderUserID: "1001",
+		Login:          "octo",
+		Email:          "octo@example.com",
+		DisplayName:    "Octo",
+	})
+	if err != nil {
+		t.Fatalf("sign-in error: %v", err)
+	}
+	// Backdate the session into the rotation window (3 days from expiry).
+	for id, sess := range sessions.items {
+		sess.ExpiresAt = time.Now().Add(3 * 24 * time.Hour)
+		sessions.items[id] = sess
+	}
+
+	res, err := svc.ResolveSession(context.Background(), result.SessionToken)
+	if err != nil {
+		t.Fatalf("ResolveSession error: %v", err)
+	}
+	if !res.Refreshed {
+		t.Fatal("expected near-expiry session to rotate")
+	}
+	if res.SessionToken == "" || res.SessionToken == result.SessionToken {
+		t.Fatalf("expected fresh token, got %q (old: %q)", res.SessionToken, result.SessionToken)
+	}
+	if !res.SessionExpiresAt.After(time.Now().Add(29 * 24 * time.Hour)) {
+		t.Fatalf("expected new expiry ~30d out, got %v", res.SessionExpiresAt)
+	}
+
+	if _, err := svc.GetUserBySessionToken(context.Background(), result.SessionToken); err == nil {
+		t.Fatal("expected old token to be invalid after rotation")
+	}
+	if _, err := svc.GetUserBySessionToken(context.Background(), res.SessionToken); err != nil {
+		t.Fatalf("expected new token to be valid, got %v", err)
+	}
+}
+
+func TestResolveSessionRejectsRevoked(t *testing.T) {
+	svc, _, _, _, _ := newAuthService()
+
+	result, err := svc.SignInWithOAuthProfile(context.Background(), oauth.Profile{
+		Provider:       "github",
+		ProviderUserID: "1001",
+		Login:          "octo",
+		Email:          "octo@example.com",
+		DisplayName:    "Octo",
+	})
+	if err != nil {
+		t.Fatalf("sign-in error: %v", err)
+	}
+	session, err := svc.GetSessionByToken(context.Background(), result.SessionToken)
+	if err != nil {
+		t.Fatalf("GetSessionByToken error: %v", err)
+	}
+	if err := svc.SignOut(context.Background(), session.ID); err != nil {
+		t.Fatalf("SignOut error: %v", err)
+	}
+	if _, err := svc.ResolveSession(context.Background(), result.SessionToken); err == nil {
 		t.Fatal("expected revoked session to be rejected")
 	}
 }

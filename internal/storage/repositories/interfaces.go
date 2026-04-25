@@ -104,6 +104,7 @@ type OAuthIdentityStore interface {
 type UserSessionStore interface {
 	CreateUserSession(ctx context.Context, session domain.UserSession) (domain.UserSession, error)
 	GetUserSessionByTokenHash(ctx context.Context, tokenHash string) (domain.UserSession, error)
+	RotateUserSession(ctx context.Context, sessionID string, currentTokenHash string, newTokenHash string, newExpiresAt time.Time) (bool, error)
 	RevokeUserSession(ctx context.Context, sessionID string) error
 }
 

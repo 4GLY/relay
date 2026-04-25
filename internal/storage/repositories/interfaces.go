@@ -87,3 +87,27 @@ type CuratorJobStore interface {
 	FailCuratorJob(ctx context.Context, id string, retryAt time.Time, lastError string) (domain.CuratorJob, error)
 	MarkCuratorJobFailed(ctx context.Context, id string, lastError string) (domain.CuratorJob, error)
 }
+
+type UserStore interface {
+	CreateUser(ctx context.Context, user domain.User) (domain.User, error)
+	GetUserByID(ctx context.Context, id string) (domain.User, error)
+	GetUserByEmail(ctx context.Context, email string) (domain.User, error)
+	UpdateUser(ctx context.Context, user domain.User) (domain.User, error)
+}
+
+type OAuthIdentityStore interface {
+	UpsertOAuthIdentity(ctx context.Context, identity domain.OAuthIdentity) (domain.OAuthIdentity, error)
+	GetOAuthIdentityByProvider(ctx context.Context, provider string, providerUserID string) (domain.OAuthIdentity, error)
+	ListOAuthIdentitiesByUser(ctx context.Context, userID string) ([]domain.OAuthIdentity, error)
+}
+
+type UserSessionStore interface {
+	CreateUserSession(ctx context.Context, session domain.UserSession) (domain.UserSession, error)
+	GetUserSessionByTokenHash(ctx context.Context, tokenHash string) (domain.UserSession, error)
+	RevokeUserSession(ctx context.Context, sessionID string) error
+}
+
+type OAuthStateStore interface {
+	CreateOAuthState(ctx context.Context, state domain.OAuthState) (domain.OAuthState, error)
+	ConsumeOAuthState(ctx context.Context, stateID string) (domain.OAuthState, error)
+}

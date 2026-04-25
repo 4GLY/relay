@@ -1,25 +1,33 @@
 package config
 
 import (
+	"net/url"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
 type Config struct {
-	Addr                 string
-	BaseURL              string
-	DatabaseURL          string
-	AdminToken           string
-	APIToken             string
-	CuratorWorkerID      string
-	CuratorProvider      string
-	CuratorModel         string
-	CuratorBatchSize     int
-	CuratorPollInterval  time.Duration
-	CuratorLeaseDuration time.Duration
-	CuratorRetryBackoff  time.Duration
-	CuratorMaxAttempts   int
+	Addr                    string
+	BaseURL                 string
+	DatabaseURL             string
+	AdminToken              string
+	APIToken                string
+	CuratorWorkerID         string
+	CuratorProvider         string
+	CuratorModel            string
+	CuratorBatchSize        int
+	CuratorPollInterval     time.Duration
+	CuratorLeaseDuration    time.Duration
+	CuratorRetryBackoff     time.Duration
+	CuratorMaxAttempts      int
+	GitHubOAuthClientID     string
+	GitHubOAuthClientSecret string
+	GoogleOAuthClientID     string
+	GoogleOAuthClientSecret string
+	OAuthRedirectBaseURL    string
+	UserSessionCookieSecure bool
 }
 
 func Load() Config {
@@ -41,21 +49,53 @@ func Load() Config {
 		provider = "rule-based"
 	}
 
-	return Config{
-		Addr:                 addr,
-		BaseURL:              baseURL,
-		DatabaseURL:          databaseURL,
-		AdminToken:           adminToken,
-		APIToken:             apiToken,
-		CuratorWorkerID:      workerID,
-		CuratorProvider:      provider,
-		CuratorModel:         os.Getenv("RELAY_CURATOR_MODEL"),
-		CuratorBatchSize:     envInt("RELAY_CURATOR_BATCH_SIZE", 5),
-		CuratorPollInterval:  envDuration("RELAY_CURATOR_POLL_INTERVAL", 5*time.Second),
-		CuratorLeaseDuration: envDuration("RELAY_CURATOR_LEASE_DURATION", 30*time.Second),
-		CuratorRetryBackoff:  envDuration("RELAY_CURATOR_RETRY_BACKOFF", 30*time.Second),
-		CuratorMaxAttempts:   envInt("RELAY_CURATOR_MAX_ATTEMPTS", 5),
+	oauthRedirectBase := os.Getenv("RELAY_OAUTH_REDIRECT_BASE_URL")
+	if oauthRedirectBase == "" {
+		oauthRedirectBase = baseURL
 	}
+
+	return Config{
+		Addr:                    addr,
+		BaseURL:                 baseURL,
+		DatabaseURL:             databaseURL,
+		AdminToken:              adminToken,
+		APIToken:                apiToken,
+		CuratorWorkerID:         workerID,
+		CuratorProvider:         provider,
+		CuratorModel:            os.Getenv("RELAY_CURATOR_MODEL"),
+		CuratorBatchSize:        envInt("RELAY_CURATOR_BATCH_SIZE", 5),
+		CuratorPollInterval:     envDuration("RELAY_CURATOR_POLL_INTERVAL", 5*time.Second),
+		CuratorLeaseDuration:    envDuration("RELAY_CURATOR_LEASE_DURATION", 30*time.Second),
+		CuratorRetryBackoff:     envDuration("RELAY_CURATOR_RETRY_BACKOFF", 30*time.Second),
+		CuratorMaxAttempts:      envInt("RELAY_CURATOR_MAX_ATTEMPTS", 5),
+		GitHubOAuthClientID:     os.Getenv("RELAY_GITHUB_OAUTH_CLIENT_ID"),
+		GitHubOAuthClientSecret: os.Getenv("RELAY_GITHUB_OAUTH_CLIENT_SECRET"),
+		GoogleOAuthClientID:     os.Getenv("RELAY_GOOGLE_OAUTH_CLIENT_ID"),
+		GoogleOAuthClientSecret: os.Getenv("RELAY_GOOGLE_OAUTH_CLIENT_SECRET"),
+		OAuthRedirectBaseURL:    oauthRedirectBase,
+		UserSessionCookieSecure: cookieSecureForBaseURL(baseURL),
+	}
+}
+
+// cookieSecureForBaseURL returns false only when the base URL is local-development
+// over plain HTTP. Empty / unparseable / production base URLs default to secure.
+func cookieSecureForBaseURL(baseURL string) bool {
+	trimmed := strings.TrimSpace(baseURL)
+	if trimmed == "" {
+		return true
+	}
+	parsed, err := url.Parse(trimmed)
+	if err != nil {
+		return true
+	}
+	if parsed.Scheme != "http" {
+		return true
+	}
+	host := strings.ToLower(parsed.Hostname())
+	if host == "localhost" || host == "127.0.0.1" || host == "::1" {
+		return false
+	}
+	return true
 }
 
 func firstNonEmpty(values ...string) string {

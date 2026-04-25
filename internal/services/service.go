@@ -16,6 +16,10 @@ type Dependencies struct {
 	PacketSnapshots    repositories.PacketSnapshotStore
 	Idempotency        repositories.IdempotencyStore
 	CuratorJobs        repositories.CuratorJobStore
+	Users              repositories.UserStore
+	OAuthIdentities    repositories.OAuthIdentityStore
+	UserSessions       repositories.UserSessionStore
+	OAuthStates        repositories.OAuthStateStore
 }
 
 type Service struct {

@@ -46,6 +46,10 @@ func NewRuntime(ctx context.Context, cfg config.Config) (Runtime, error) {
 		PacketSnapshots:    stores,
 		Idempotency:        stores,
 		CuratorJobs:        stores,
+		Users:              stores,
+		OAuthIdentities:    stores,
+		UserSessions:       stores,
+		OAuthStates:        stores,
 	})
 
 	return Runtime{Services: svc, APIKeys: apiKeyStore{stores}}, nil

@@ -146,9 +146,6 @@ func (s Service) CreateHeuristicProposal(ctx context.Context, input HeuristicPro
 }
 
 func (s Service) ReviewHeuristicProposal(ctx context.Context, input HeuristicProposalReviewInput) (HeuristicProposalReviewResult, error) {
-	if err := requireAdminAuth(ctx); err != nil {
-		return HeuristicProposalReviewResult{}, err
-	}
 	if err := validateHeuristicProposalReviewInput(input); err != nil {
 		return HeuristicProposalReviewResult{}, err
 	}
@@ -161,6 +158,9 @@ func (s Service) ReviewHeuristicProposal(ctx context.Context, input HeuristicPro
 
 	proposal, err := s.deps.HeuristicProposals.GetHeuristicProposal(ctx, input.ProposalID)
 	if err != nil {
+		return HeuristicProposalReviewResult{}, err
+	}
+	if err := s.requireAdminOrProjectOwner(ctx, proposal.ProjectID); err != nil {
 		return HeuristicProposalReviewResult{}, err
 	}
 	if err := s.ensureProjectMatchesInput(ctx, proposal.ProjectID, input.Project, input.ProjectID); err != nil {
@@ -210,9 +210,6 @@ func (s Service) ReviewHeuristicProposal(ctx context.Context, input HeuristicPro
 }
 
 func (s Service) UpdateApprovedHeuristic(ctx context.Context, input ApprovedHeuristicUpdateInput) (ApprovedHeuristicUpdateResult, error) {
-	if err := requireAdminAuth(ctx); err != nil {
-		return ApprovedHeuristicUpdateResult{}, err
-	}
 	if err := validateApprovedHeuristicUpdateInput(input); err != nil {
 		return ApprovedHeuristicUpdateResult{}, err
 	}
@@ -225,6 +222,9 @@ func (s Service) UpdateApprovedHeuristic(ctx context.Context, input ApprovedHeur
 
 	heuristic, err := s.deps.ApprovedHeuristics.GetApprovedHeuristic(ctx, input.HeuristicID)
 	if err != nil {
+		return ApprovedHeuristicUpdateResult{}, err
+	}
+	if err := s.requireAdminOrProjectOwner(ctx, heuristic.ProjectID); err != nil {
 		return ApprovedHeuristicUpdateResult{}, err
 	}
 	if err := s.ensureProjectMatchesInput(ctx, heuristic.ProjectID, input.Project, input.ProjectID); err != nil {

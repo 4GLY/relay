@@ -11,9 +11,11 @@ import (
 type Config struct {
 	Addr                    string
 	BaseURL                 string
+	PublicBaseURL           string
 	DatabaseURL             string
 	AdminToken              string
 	APIToken                string
+	OGImageDir              string
 	CuratorWorkerID         string
 	CuratorProvider         string
 	CuratorModel            string
@@ -49,6 +51,12 @@ func Load() Config {
 		provider = "rule-based"
 	}
 
+	publicBaseURL := firstNonEmpty(os.Getenv("RELAY_PUBLIC_BASE_URL"), baseURL)
+	ogImageDir := os.Getenv("RELAY_OG_IMAGE_DIR")
+	if ogImageDir == "" {
+		ogImageDir = "./og-images"
+	}
+
 	oauthRedirectBase := os.Getenv("RELAY_OAUTH_REDIRECT_BASE_URL")
 	if oauthRedirectBase == "" {
 		oauthRedirectBase = baseURL
@@ -57,9 +65,11 @@ func Load() Config {
 	return Config{
 		Addr:                    addr,
 		BaseURL:                 baseURL,
+		PublicBaseURL:           publicBaseURL,
 		DatabaseURL:             databaseURL,
 		AdminToken:              adminToken,
 		APIToken:                apiToken,
+		OGImageDir:              ogImageDir,
 		CuratorWorkerID:         workerID,
 		CuratorProvider:         provider,
 		CuratorModel:            os.Getenv("RELAY_CURATOR_MODEL"),

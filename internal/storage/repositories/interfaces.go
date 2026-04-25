@@ -73,6 +73,9 @@ type PacketSnapshotStore interface {
 	CreatePacketSnapshot(ctx context.Context, snapshot domain.PacketSnapshot) (domain.PacketSnapshot, error)
 	GetPacketSnapshot(ctx context.Context, id string) (domain.PacketSnapshot, error)
 	LatestPacketSnapshotByProject(ctx context.Context, projectID string, packetKind string, target string) (domain.PacketSnapshot, error)
+	MakePacketSnapshotPublic(ctx context.Context, snapshotID string, publicToken string, ogImagePath string) (domain.PacketSnapshot, error)
+	RevokePacketSnapshotPublic(ctx context.Context, snapshotID string) (domain.PacketSnapshot, error)
+	GetPacketSnapshotByPublicToken(ctx context.Context, token string) (domain.PacketSnapshot, error)
 }
 
 type IdempotencyStore interface {

@@ -12,6 +12,8 @@ tags:
   - name: health
   - name: memory
   - name: style-memory
+  - name: snapshots
+  - name: public-snapshot
   - name: auth
 components:
   securitySchemes:
@@ -800,6 +802,40 @@ components:
           properties:
             data:
               $ref: '#/components/schemas/RevokeAPIKeyResult'
+    SnapshotPublishData:
+      type: object
+      required: [snapshot_id, public_token, public_url, og_image_url]
+      properties:
+        snapshot_id:
+          type: string
+        public_token:
+          type: string
+        public_url:
+          type: string
+          format: uri
+        og_image_url:
+          type: string
+          format: uri
+    SnapshotPublishResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/SnapshotPublishData'
+    SnapshotRevokeData:
+      type: object
+      required: [snapshot_id]
+      properties:
+        snapshot_id:
+          type: string
+    SnapshotRevokeResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/SnapshotRevokeData'
 paths:
   /healthz:
     get:
@@ -1341,6 +1377,150 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
+  /v1/snapshots/{snapshot_id}/publish:
+    post:
+      tags: [snapshots]
+      summary: Publish a packet snapshot publicly
+      description: >
+        Admin-only. Generates a cryptographic public token, renders the OG
+        card PNG, and flips `public_readable` to TRUE. Returns the share URL
+        and OG image URL. Privacy default is FALSE — this is the only route
+        that enables public access.
+      operationId: publishSnapshot
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: snapshot_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Snapshot published
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SnapshotPublishResponse'
+        '401':
+          description: Missing or invalid admin bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: Snapshot not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /v1/snapshots/{snapshot_id}/revoke:
+    post:
+      tags: [snapshots]
+      summary: Revoke public access to a packet snapshot
+      description: >
+        Admin-only. Flips `public_readable` to FALSE and requests cache
+        invalidation for the public and OG image URLs. The token and og_image_path
+        are preserved in the row so a subsequent publish can re-use the
+        invalidator paths.
+      operationId: revokeSnapshot
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: snapshot_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Snapshot revoked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SnapshotRevokeResponse'
+        '401':
+          description: Missing or invalid admin bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: Snapshot not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /p/{token}:
+    get:
+      tags: [public-snapshot]
+      summary: View a publicly shared packet snapshot
+      description: >
+        Unauthenticated. Serves an SSR HTML page with full OG meta tags for
+        the given public token. Returns 410 Gone when the token is unknown or
+        the snapshot has been revoked.
+      operationId: viewPublicSnapshot
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Public snapshot HTML page
+          content:
+            text/html:
+              schema:
+                type: string
+        '410':
+          description: Snapshot not found or no longer public
+          content:
+            text/html:
+              schema:
+                type: string
+  /p/{token}/og.png:
+    get:
+      tags: [public-snapshot]
+      summary: Fetch the OG card PNG for a public snapshot
+      description: >
+        Unauthenticated. Returns the pre-generated 1200×630 OG image PNG.
+        Regenerates the image on-the-fly if the stored file is missing
+        (e.g. after a container restart). Returns 410 Gone when the token is
+        unknown or the snapshot has been revoked.
+      operationId: publicSnapshotOGImage
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OG card PNG (1200×630)
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+        '410':
+          description: Snapshot not found or no longer public
+          content:
+            text/html:
+              schema:
+                type: string
   /v1/auth/{provider}/start:
     get:
       tags: [auth]

@@ -170,6 +170,9 @@ type PacketSnapshot struct {
 	OpenQuestionIDs      []string
 	SourceArtifactIDs    []string
 	MissingContext       []string
+	PublicReadable       bool
+	PublicToken          string
+	OGImagePath          string
 	CreatedAt            time.Time
 }
 

@@ -178,6 +178,31 @@ func (s *fakePacketSnapshotStore) LatestPacketSnapshotByProject(_ context.Contex
 	return domain.PacketSnapshot{}, lib.NotFound("PACKET_SNAPSHOT_NOT_FOUND", "packet snapshot not found")
 }
 
+func (s *fakePacketSnapshotStore) MakePacketSnapshotPublic(_ context.Context, snapshotID string, publicToken string, ogImagePath string) (domain.PacketSnapshot, error) {
+	if s.latest.ID != snapshotID {
+		return domain.PacketSnapshot{}, lib.NotFound("PACKET_SNAPSHOT_NOT_FOUND", "packet snapshot not found")
+	}
+	s.latest.PublicReadable = true
+	s.latest.PublicToken = publicToken
+	s.latest.OGImagePath = ogImagePath
+	return s.latest, nil
+}
+
+func (s *fakePacketSnapshotStore) RevokePacketSnapshotPublic(_ context.Context, snapshotID string) (domain.PacketSnapshot, error) {
+	if s.latest.ID != snapshotID {
+		return domain.PacketSnapshot{}, lib.NotFound("PACKET_SNAPSHOT_NOT_FOUND", "packet snapshot not found")
+	}
+	s.latest.PublicReadable = false
+	return s.latest, nil
+}
+
+func (s *fakePacketSnapshotStore) GetPacketSnapshotByPublicToken(_ context.Context, token string) (domain.PacketSnapshot, error) {
+	if s.latest.PublicToken == token && s.latest.PublicReadable {
+		return s.latest, nil
+	}
+	return domain.PacketSnapshot{}, lib.NotFound("PUBLIC_SNAPSHOT_NOT_FOUND", "public snapshot not found")
+}
+
 type fakeAPIKeyStore struct {
 	itemsByHash map[string]domain.APIKey
 	created     []domain.APIKey

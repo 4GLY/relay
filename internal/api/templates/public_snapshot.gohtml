@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{.ProjectName}} — Relay snapshot</title>
+<meta property="og:title" content="{{.ProjectName}} — Relay snapshot">
+<meta property="og:description" content="{{.OGDescription}}">
+<meta property="og:image" content="{{.OGImageURL}}">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:type" content="article">
+<meta property="og:url" content="{{.PublicURL}}">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{{.ProjectName}} — Relay snapshot">
+<meta name="twitter:description" content="{{.OGDescription}}">
+<meta name="twitter:image" content="{{.OGImageURL}}">
+<style>
+  :root {
+    --canvas: #FAF8F3;
+    --canvas-raised: #FFFFFF;
+    --ink: #0E1A35;
+    --ink-muted: #4A5669;
+    --magic-primary: #A7C4FF;
+    --magic-primary-strong: #6F96DB;
+    --magic-accent: #C7B8FF;
+    --muted: #687386;
+    --border: #E7ECF3;
+    --halo: rgba(167, 196, 255, 0.35);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--canvas);
+    color: var(--ink);
+    font-family: "Nunito", -apple-system, BlinkMacSystemFont, sans-serif;
+    font-weight: 400;
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    min-height: 100vh;
+    font-size: 16px;
+    line-height: 1.55;
+  }
+  .frame {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 64px 32px 96px;
+    position: relative;
+  }
+  .meta {
+    font-family: "JetBrains Mono", "Commit Mono", ui-monospace, monospace;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+  h1 {
+    font-family: "Fraunces", Georgia, serif;
+    font-weight: 600;
+    font-size: clamp(40px, 6vw, 64px);
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+    margin-bottom: 12px;
+  }
+  .subhead {
+    color: var(--ink-muted);
+    font-size: 17px;
+    margin-bottom: 40px;
+  }
+  .body-pre {
+    background: var(--canvas-raised);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px 28px;
+    font-family: "JetBrains Mono", "Commit Mono", ui-monospace, monospace;
+    font-size: 13px;
+    line-height: 1.65;
+    color: var(--ink);
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    box-shadow: 0 0 0 1px var(--halo);
+  }
+  .stamp {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    width: 64px;
+    height: 64px;
+    border-radius: 999px;
+    background: var(--magic-primary-strong);
+    color: var(--canvas);
+    display: grid;
+    place-items: center;
+    font-family: "Fraunces", Georgia, serif;
+    font-style: italic;
+    font-weight: 600;
+    font-size: 22px;
+    box-shadow: 0 8px 24px var(--halo);
+  }
+  .stamp::after {
+    content: "";
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    background: var(--canvas);
+    border-radius: 999px;
+    left: 18px;
+    top: 22px;
+  }
+  footer {
+    margin-top: 48px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+    font-size: 14px;
+    color: var(--muted);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  footer a {
+    color: var(--magic-primary-strong);
+    text-decoration: none;
+    font-weight: 600;
+  }
+  footer a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<div class="frame">
+  <div class="meta">Snapshot · {{.SchemaVersion}} · {{.CreatedAt}}</div>
+  <h1>{{.ProjectName}}</h1>
+  <p class="subhead">{{.TaskSummary}}</p>
+  <pre class="body-pre">{{.RenderedBody}}</pre>
+  <footer>
+    <span>A Relay snapshot — captured judgment, kept honest.</span>
+    <a href="https://relay.4gly.dev" rel="noopener">Make your own at relay.4gly.dev →</a>
+  </footer>
+</div>
+<div class="stamp" aria-hidden="true">R</div>
+</body>
+</html>

@@ -8,6 +8,24 @@ This eval locks the first V1 proof:
 - public MCP packet resume
 - paired style-aware vs control packet comparison
 
+## Status
+
+V1 canonical handoff is complete as of 2026-04-25.
+
+Locked evidence:
+
+- release evidence: `usage-validation-pr-24918666920-1`
+- consumer evidence: `consumer-stability-24922937771-1`
+- release status: `canonical_release_evidence=true`
+- consumer status: `canonical_consumer_evidence=true`
+- latest snapshot smoke: complete across MCP and HTTP latest-snapshot reads
+- consumer threshold scope: single-fixture threshold candidate
+
+The V1 proof covers same-project model/session continuation from an explicit
+judgment/style seed through packet and latest-snapshot consumption. Broad
+implicit-learning quality, full five-fixture consumer thresholds, multi-project
+style transfer, and automated memory evolution are V1 follow-up work.
+
 ## Runner
 
 Use:
@@ -397,3 +415,13 @@ Fields:
 For V1, a pass means Relay can preserve and reuse one explicit user judgment as a style cue across a session/model boundary.
 
 It does not yet prove broad implicit learning quality. That requires repeated usage-validation rows and later curator/provider evaluation.
+
+## V1 Follow-Up Scope
+
+The following work is intentionally outside the completed V1 proof:
+
+- run `consumer-stability` with `fixture_limit=0` when the model budget is worth a full five-fixture consumer sample
+- promote broad consumer-stability thresholds only from full-scope canonical evidence
+- design user-global vs project-local memory boundaries for multi-project style reuse
+- add curator/provider automation for memory evolution while preserving human approval for durable heuristics
+- evaluate semantic retrieval or pgvector-backed retrieval as a complement to the current context graph

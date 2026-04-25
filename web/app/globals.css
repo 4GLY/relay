@@ -1,0 +1,127 @@
+@import "tailwindcss";
+
+/*
+ * Relay design tokens. Mirrors DESIGN.md §6 (Color) and the canonical values
+ * used in the approved finalized HTML mockups for sharable-url, onboarding,
+ * and style-memory. Do not invent new tokens; extend §6 first.
+ */
+
+@theme {
+  --font-display: var(--font-fraunces), serif;
+  --font-sans: var(--font-nunito), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
+
+  /* Light theme defaults — actual values applied in :root below so dark mode
+     can swap them via the [data-theme="dark"] attribute. */
+  --color-canvas: #faf8f3;
+  --color-canvas-raised: #ffffff;
+  --color-ink: #0e1a35;
+  --color-ink-muted: #4a5669;
+  --color-problem: #1e2230;
+  --color-problem-soft: #2b3140;
+  --color-magic-primary: #a7c4ff;
+  --color-magic-primary-strong: #6f96db;
+  --color-magic-accent: #c7b8ff;
+  --color-magic-accent-strong: #8b76e4;
+  --color-muted: #687386;
+  --color-border: #e7ecf3;
+  --color-border-strong: #d4dce8;
+  --color-success: #2f9b73;
+  --color-danger: #c84646;
+
+  --radius-card: 12px;
+  --radius-pill: 999px;
+}
+
+@layer base {
+  :root,
+  :root[data-theme="light"] {
+    --canvas: #faf8f3;
+    --canvas-raised: #ffffff;
+    --ink: #0e1a35;
+    --ink-muted: #4a5669;
+    --problem: #1e2230;
+    --problem-soft: #2b3140;
+    --magic-primary: #a7c4ff;
+    --magic-primary-strong: #6f96db;
+    --magic-accent: #c7b8ff;
+    --magic-accent-strong: #8b76e4;
+    --muted: #687386;
+    --border: #e7ecf3;
+    --border-strong: #d4dce8;
+    --success: #2f9b73;
+    --danger: #c84646;
+    --halo: rgba(167, 196, 255, 0.35);
+    --halo-strong: rgba(167, 196, 255, 0.55);
+    --grain-opacity: 0.03;
+  }
+
+  :root[data-theme="dark"],
+  .dark {
+    --canvas: #0b1020;
+    --canvas-raised: #121930;
+    --ink: #eef4ff;
+    --ink-muted: #a5b1c8;
+    --problem: #06091a;
+    --problem-soft: #1a1f30;
+    --magic-primary: #7fb6ff;
+    --magic-primary-strong: #a7c4ff;
+    --magic-accent: #a78bfa;
+    --magic-accent-strong: #c7b8ff;
+    --muted: #9aa6b8;
+    --border: #273244;
+    --border-strong: #3a4660;
+    --success: #64d6a4;
+    --danger: #ff7777;
+    --halo: rgba(127, 182, 255, 0.28);
+    --halo-strong: rgba(127, 182, 255, 0.45);
+    --grain-opacity: 0.045;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --canvas: #0b1020;
+      --canvas-raised: #121930;
+      --ink: #eef4ff;
+      --ink-muted: #a5b1c8;
+      --problem: #06091a;
+      --problem-soft: #1a1f30;
+      --magic-primary: #7fb6ff;
+      --magic-primary-strong: #a7c4ff;
+      --magic-accent: #a78bfa;
+      --magic-accent-strong: #c7b8ff;
+      --muted: #9aa6b8;
+      --border: #273244;
+      --border-strong: #3a4660;
+      --success: #64d6a4;
+      --danger: #ff7777;
+      --halo: rgba(127, 182, 255, 0.28);
+      --halo-strong: rgba(127, 182, 255, 0.45);
+      --grain-opacity: 0.045;
+    }
+  }
+
+  html,
+  body {
+    background: var(--canvas);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    min-height: 100vh;
+    line-height: 1.55;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+    }
+  }
+}

@@ -319,11 +319,12 @@ func (s Stores) CreatePacketSnapshot(ctx context.Context, snapshot domain.Packet
 			rendered_body, style_cues, supporting_notes, supporting_decisions,
 			supporting_questions, supporting_artifacts, why_included,
 			approved_heuristic_ids, decision_ids, open_question_ids,
-			source_artifact_ids, missing_context
+			source_artifact_ids, missing_context, public_readable, public_token,
+			og_image_path
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9::jsonb, $10::jsonb, $11::jsonb, $12::jsonb, $13::jsonb, $14::jsonb, $15::jsonb, $16::jsonb, $17::jsonb, $18::jsonb)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9::jsonb, $10::jsonb, $11::jsonb, $12::jsonb, $13::jsonb, $14::jsonb, $15::jsonb, $16::jsonb, $17::jsonb, $18::jsonb, $19, NULLIF($20, ''), $21)
 		ON CONFLICT (id) DO NOTHING
-	`, snapshot.ID, snapshot.ProjectID, snapshot.PacketKind, snapshot.Target, snapshot.SchemaVersion, snapshot.TaskSummary, snapshot.RenderedBody, string(styleCues), string(supportingNotes), string(supportingDecisions), string(supportingQuestions), string(supportingArtifacts), string(whyIncluded), string(heuristicIDs), string(decisionIDs), string(openQuestionIDs), string(artifactIDs), string(missingContext))
+	`, snapshot.ID, snapshot.ProjectID, snapshot.PacketKind, snapshot.Target, snapshot.SchemaVersion, snapshot.TaskSummary, snapshot.RenderedBody, string(styleCues), string(supportingNotes), string(supportingDecisions), string(supportingQuestions), string(supportingArtifacts), string(whyIncluded), string(heuristicIDs), string(decisionIDs), string(openQuestionIDs), string(artifactIDs), string(missingContext), snapshot.PublicReadable, snapshot.PublicToken, snapshot.OGImagePath)
 	if err != nil {
 		return domain.PacketSnapshot{}, err
 	}
@@ -336,7 +337,8 @@ func (s Stores) GetPacketSnapshot(ctx context.Context, id string) (domain.Packet
 		       rendered_body, style_cues, supporting_notes, supporting_decisions,
 		       supporting_questions, supporting_artifacts, why_included,
 		       approved_heuristic_ids, decision_ids, open_question_ids,
-		       source_artifact_ids, missing_context, created_at
+		       source_artifact_ids, missing_context, public_readable,
+		       COALESCE(public_token, ''), og_image_path, created_at
 		FROM packet_snapshots
 		WHERE id = $1
 	`, id))
@@ -348,7 +350,8 @@ func (s Stores) LatestPacketSnapshotByProject(ctx context.Context, projectID str
 		       rendered_body, style_cues, supporting_notes, supporting_decisions,
 		       supporting_questions, supporting_artifacts, why_included,
 		       approved_heuristic_ids, decision_ids, open_question_ids,
-		       source_artifact_ids, missing_context, created_at
+		       source_artifact_ids, missing_context, public_readable,
+		       COALESCE(public_token, ''), og_image_path, created_at
 		FROM packet_snapshots
 		WHERE project_id = $1
 		  AND packet_kind = $2
@@ -361,7 +364,7 @@ func (s Stores) LatestPacketSnapshotByProject(ctx context.Context, projectID str
 func scanPacketSnapshot(row pgx.Row) (domain.PacketSnapshot, error) {
 	var snapshot domain.PacketSnapshot
 	var heuristicIDs, decisionIDs, openQuestionIDs, artifactIDs, missingContext, whyIncluded []byte
-	err := row.Scan(&snapshot.ID, &snapshot.ProjectID, &snapshot.PacketKind, &snapshot.Target, &snapshot.SchemaVersion, &snapshot.TaskSummary, &snapshot.RenderedBody, &snapshot.StyleCues, &snapshot.SupportingNotes, &snapshot.SupportingDecisions, &snapshot.SupportingQuestions, &snapshot.SupportingArtifacts, &whyIncluded, &heuristicIDs, &decisionIDs, &openQuestionIDs, &artifactIDs, &missingContext, &snapshot.CreatedAt)
+	err := row.Scan(&snapshot.ID, &snapshot.ProjectID, &snapshot.PacketKind, &snapshot.Target, &snapshot.SchemaVersion, &snapshot.TaskSummary, &snapshot.RenderedBody, &snapshot.StyleCues, &snapshot.SupportingNotes, &snapshot.SupportingDecisions, &snapshot.SupportingQuestions, &snapshot.SupportingArtifacts, &whyIncluded, &heuristicIDs, &decisionIDs, &openQuestionIDs, &artifactIDs, &missingContext, &snapshot.PublicReadable, &snapshot.PublicToken, &snapshot.OGImagePath, &snapshot.CreatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return domain.PacketSnapshot{}, lib.NotFound("PACKET_SNAPSHOT_NOT_FOUND", "packet snapshot not found")
 	}

@@ -12,6 +12,9 @@ tags:
   - name: health
   - name: memory
   - name: style-memory
+  - name: snapshots
+  - name: public-snapshot
+  - name: auth
 components:
   securitySchemes:
     BearerAuth:
@@ -668,6 +671,39 @@ components:
           type: string
         revoked:
           type: boolean
+    AuthMeData:
+      type: object
+      required: [user_id]
+      properties:
+        user_id:
+          type: string
+        email:
+          type: string
+        display_name:
+          type: string
+        avatar_url:
+          type: string
+    AuthLogoutData:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          const: ok
+    AuthMeResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/AuthMeData'
+    AuthLogoutResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/AuthLogoutData'
     HealthResponse:
       allOf:
         - $ref: '#/components/schemas/SuccessEnvelope'
@@ -766,6 +802,40 @@ components:
           properties:
             data:
               $ref: '#/components/schemas/RevokeAPIKeyResult'
+    SnapshotPublishData:
+      type: object
+      required: [snapshot_id, public_token, public_url, og_image_url]
+      properties:
+        snapshot_id:
+          type: string
+        public_token:
+          type: string
+        public_url:
+          type: string
+          format: uri
+        og_image_url:
+          type: string
+          format: uri
+    SnapshotPublishResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/SnapshotPublishData'
+    SnapshotRevokeData:
+      type: object
+      required: [snapshot_id]
+      properties:
+        snapshot_id:
+          type: string
+    SnapshotRevokeResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/SnapshotRevokeData'
 paths:
   /healthz:
     get:
@@ -1307,3 +1377,253 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
+  /v1/snapshots/{snapshot_id}/publish:
+    post:
+      tags: [snapshots]
+      summary: Publish a packet snapshot publicly
+      description: >
+        Admin-only. Generates a cryptographic public token, renders the OG
+        card PNG, and flips `public_readable` to TRUE. Returns the share URL
+        and OG image URL. Privacy default is FALSE — this is the only route
+        that enables public access.
+      operationId: publishSnapshot
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: snapshot_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Snapshot published
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SnapshotPublishResponse'
+        '401':
+          description: Missing or invalid admin bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: Snapshot not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /v1/snapshots/{snapshot_id}/revoke:
+    post:
+      tags: [snapshots]
+      summary: Revoke public access to a packet snapshot
+      description: >
+        Admin-only. Flips `public_readable` to FALSE and requests cache
+        invalidation for the public and OG image URLs. The token and og_image_path
+        are preserved in the row so a subsequent publish can re-use the
+        invalidator paths.
+      operationId: revokeSnapshot
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: snapshot_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Snapshot revoked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SnapshotRevokeResponse'
+        '401':
+          description: Missing or invalid admin bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: Snapshot not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /p/{token}:
+    get:
+      tags: [public-snapshot]
+      summary: View a publicly shared packet snapshot
+      description: >
+        Unauthenticated. Serves an SSR HTML page with full OG meta tags for
+        the given public token. Returns 410 Gone when the token is unknown or
+        the snapshot has been revoked.
+      operationId: viewPublicSnapshot
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Public snapshot HTML page
+          content:
+            text/html:
+              schema:
+                type: string
+        '410':
+          description: Snapshot not found or no longer public
+          content:
+            text/html:
+              schema:
+                type: string
+  /p/{token}/og.png:
+    get:
+      tags: [public-snapshot]
+      summary: Fetch the OG card PNG for a public snapshot
+      description: >
+        Unauthenticated. Returns the pre-generated 1200×630 OG image PNG.
+        Regenerates the image on-the-fly if the stored file is missing
+        (e.g. after a container restart). Returns 410 Gone when the token is
+        unknown or the snapshot has been revoked.
+      operationId: publicSnapshotOGImage
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OG card PNG (1200×630)
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+        '410':
+          description: Snapshot not found or no longer public
+          content:
+            text/html:
+              schema:
+                type: string
+  /v1/auth/{provider}/start:
+    get:
+      tags: [auth]
+      summary: Begin an OAuth sign-in by redirecting to the provider
+      operationId: startOAuth
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [github, google]
+        - name: redirect_to
+          in: query
+          required: false
+          description: Optional in-app path to land on after callback completes.
+          schema:
+            type: string
+      responses:
+        '302':
+          description: Redirect to provider authorization URL
+        '404':
+          description: Provider is not configured on this Relay deployment
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /v1/auth/{provider}/callback:
+    get:
+      tags: [auth]
+      summary: OAuth callback that issues a session cookie and redirects back
+      operationId: oauthCallback
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [github, google]
+        - name: code
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: state
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '302':
+          description: Redirect to the original redirect_to (or `/` when empty)
+        '400':
+          description: Missing required code or state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '403':
+          description: OAuth state invalid, expired, or already consumed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: Provider is not configured on this Relay deployment
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '502':
+          description: Upstream OAuth provider exchange failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /v1/auth/me:
+    get:
+      tags: [auth]
+      summary: Return the user identified by the relay_session cookie
+      operationId: authMe
+      responses:
+        '200':
+          description: Current authenticated user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthMeResponse'
+        '401':
+          description: Missing or invalid session cookie
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /v1/auth/logout:
+    post:
+      tags: [auth]
+      summary: Revoke the current session and clear the cookie
+      operationId: authLogout
+      responses:
+        '200':
+          description: Session revoked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthLogoutResponse'

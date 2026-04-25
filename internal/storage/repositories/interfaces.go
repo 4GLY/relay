@@ -73,6 +73,9 @@ type PacketSnapshotStore interface {
 	CreatePacketSnapshot(ctx context.Context, snapshot domain.PacketSnapshot) (domain.PacketSnapshot, error)
 	GetPacketSnapshot(ctx context.Context, id string) (domain.PacketSnapshot, error)
 	LatestPacketSnapshotByProject(ctx context.Context, projectID string, packetKind string, target string) (domain.PacketSnapshot, error)
+	MakePacketSnapshotPublic(ctx context.Context, snapshotID string, publicToken string, ogImagePath string) (domain.PacketSnapshot, error)
+	RevokePacketSnapshotPublic(ctx context.Context, snapshotID string) (domain.PacketSnapshot, error)
+	GetPacketSnapshotByPublicToken(ctx context.Context, token string) (domain.PacketSnapshot, error)
 }
 
 type IdempotencyStore interface {
@@ -86,4 +89,29 @@ type CuratorJobStore interface {
 	CompleteCuratorJob(ctx context.Context, id string) (domain.CuratorJob, error)
 	FailCuratorJob(ctx context.Context, id string, retryAt time.Time, lastError string) (domain.CuratorJob, error)
 	MarkCuratorJobFailed(ctx context.Context, id string, lastError string) (domain.CuratorJob, error)
+}
+
+type UserStore interface {
+	CreateUser(ctx context.Context, user domain.User) (domain.User, error)
+	GetUserByID(ctx context.Context, id string) (domain.User, error)
+	GetUserByEmail(ctx context.Context, email string) (domain.User, error)
+	UpdateUser(ctx context.Context, user domain.User) (domain.User, error)
+}
+
+type OAuthIdentityStore interface {
+	UpsertOAuthIdentity(ctx context.Context, identity domain.OAuthIdentity) (domain.OAuthIdentity, error)
+	GetOAuthIdentityByProvider(ctx context.Context, provider string, providerUserID string) (domain.OAuthIdentity, error)
+	ListOAuthIdentitiesByUser(ctx context.Context, userID string) ([]domain.OAuthIdentity, error)
+}
+
+type UserSessionStore interface {
+	CreateUserSession(ctx context.Context, session domain.UserSession) (domain.UserSession, error)
+	GetUserSessionByTokenHash(ctx context.Context, tokenHash string) (domain.UserSession, error)
+	RotateUserSession(ctx context.Context, sessionID string, currentTokenHash string, newTokenHash string, newExpiresAt time.Time) (bool, error)
+	RevokeUserSession(ctx context.Context, sessionID string) error
+}
+
+type OAuthStateStore interface {
+	CreateOAuthState(ctx context.Context, state domain.OAuthState) (domain.OAuthState, error)
+	ConsumeOAuthState(ctx context.Context, stateID string) (domain.OAuthState, error)
 }

@@ -18,7 +18,11 @@ import (
 	"golang.org/x/image/font"
 )
 
-//go:embed fonts/*.ttf
+// Fonts and their canonical SIL OFL 1.1 license texts are both embedded so
+// redistribution of any relay-api binary carries the license alongside the
+// font glyphs (OFL 1.1 §2). See fonts/README.md for attribution.
+//
+//go:embed fonts/*.ttf fonts/*-OFL.txt fonts/README.md
 var fontFS embed.FS
 
 const (

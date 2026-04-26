@@ -1,5 +1,5 @@
 -- migrations/0009_onboarding.sql
--- V2 S4: per-user encrypted Anthropic key, onboarding state.
+-- V2 S4: per-user onboarding state plus optional encrypted Anthropic key material.
 
 -- E1: unique index for EnsureProjectByOwnerName idempotency (D4).
 -- Full index (no WHERE): partial indexes require the matching predicate in ON
@@ -10,16 +10,16 @@ CREATE UNIQUE INDEX IF NOT EXISTS projects_owner_name_uniq
 
 CREATE TABLE IF NOT EXISTS user_onboarding (
   user_id                   TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-  -- Key material: NULL after D5 DELETE. Regenerated on upsert (E8).
+  -- Optional provider key material: NULL for keyless onboarding and after key deletion.
   anthropic_key_ciphertext  BYTEA,
   anthropic_key_nonce       BYTEA,
   anthropic_key_kek_version SMALLINT NOT NULL DEFAULT 1,
   anthropic_key_prefix      TEXT NOT NULL DEFAULT '',
   anthropic_key_last4       TEXT NOT NULL DEFAULT '',
-  -- D6: per-row random AAD salt; generated in Go (E2: no pgcrypto). NULL after D5 DELETE.
+  -- D6: per-row random AAD salt; generated in Go (E2: no pgcrypto). NULL after key deletion.
   aad_salt                  BYTEA,
   default_project_id        TEXT REFERENCES projects(id) ON DELETE SET NULL,
-  onboarding_completed_at   TIMESTAMPTZ,            -- NULL = no active key (also after D5 DELETE)
+  onboarding_completed_at   TIMESTAMPTZ,            -- NULL = first-run onboarding not completed
   last_validated_at         TIMESTAMPTZ,
   created_at                TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at                TIMESTAMPTZ NOT NULL DEFAULT NOW()

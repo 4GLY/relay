@@ -7,7 +7,7 @@ This package only ships the scaffold (S5). The real screens land in:
 
 - **S6** — Style Memory authenticated UI with the 900 ms duckling→swan signature transform.
 - **S7** — Sharable Packet Snapshot URL (`/p/{snapshotId}`); the Go backend serves `/p/{token}` from S3.
-- **S8** — 1-click Onboarding (Anthropic key → Relay URL → connect, 60 seconds to first packet).
+- **S8** — 1-click Onboarding (create workspace first; provider keys move to a later settings flow).
 
 ## Stack
 

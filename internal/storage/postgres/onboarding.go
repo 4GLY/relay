@@ -10,10 +10,11 @@ import (
 	"relay/internal/lib"
 )
 
-// UpsertOnboarding writes the row's caller-supplied fields including AadSalt;
-// callers MUST pass a fresh aad_salt every time (E8). The default_project_id
-// column is set via NULLIF so an empty string maps to SQL NULL — the FK has
-// ON DELETE SET NULL semantics so a deleted project leaves the row intact.
+// UpsertOnboarding writes the row's caller-supplied fields. Onboarding itself
+// does not require Anthropic key material, so the key columns may be NULL. The
+// default_project_id column is set via NULLIF so an empty string maps to SQL
+// NULL — the FK has ON DELETE SET NULL semantics so a deleted project leaves
+// the row intact.
 func (s Stores) UpsertOnboarding(ctx context.Context, row domain.UserOnboarding) (domain.UserOnboarding, error) {
 	var saved domain.UserOnboarding
 	var defaultProjectID *string
@@ -135,7 +136,8 @@ func (s Stores) GetOnboardingByUserID(ctx context.Context, userID string) (domai
 }
 
 // DeleteOnboardingKey NULLs the key material columns so the row remains for
-// audit/project-FK purposes but no longer represents an active key (D5).
+// onboarding/project-FK purposes but no longer represents an active provider
+// key. This does not clear onboarding_completed_at.
 // pgx.ErrNoRows on RETURNING means the user never onboarded — surface it as
 // a not-found error so the handler can return 404.
 func (s Stores) DeleteOnboardingKey(ctx context.Context, userID string) error {
@@ -147,7 +149,6 @@ func (s Stores) DeleteOnboardingKey(ctx context.Context, userID string) error {
 		    anthropic_key_prefix     = '',
 		    anthropic_key_last4      = '',
 		    aad_salt                 = NULL,
-		    onboarding_completed_at  = NULL,
 		    last_validated_at        = NULL,
 		    updated_at               = NOW()
 		WHERE user_id = $1
@@ -162,7 +163,7 @@ func (s Stores) DeleteOnboardingKey(ctx context.Context, userID string) error {
 // EnsureProjectByOwnerName resolves the user's project by (owner_user_id, name)
 // — distinct from the V1 EnsureProject which keys on id. The unique index
 // projects_owner_name_uniq (migration 0009) makes the upsert idempotent under
-// concurrent re-onboarding (T3, T9).
+// concurrent onboarding calls.
 func (s Stores) EnsureProjectByOwnerName(ctx context.Context, ownerUserID, name, newID string) (domain.Project, error) {
 	var project domain.Project
 	// projects has no updated_at column (migration 0001 + 0007 added owner_user_id only),

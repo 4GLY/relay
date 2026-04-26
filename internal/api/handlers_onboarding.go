@@ -7,9 +7,10 @@ import (
 	"relay/internal/services"
 )
 
-// handleOnboardingComplete is the POST /v1/onboarding entry point. The
-// request body is the locked, post-D3 shape — the strict decoder rejects any
-// stray relay_url or session_cookie fields with UNKNOWN_JSON_FIELD (T6).
+// handleOnboardingComplete is the POST /v1/onboarding entry point. The request
+// body is intentionally empty: first-run onboarding creates the user's
+// workspace without requiring a provider key. The strict decoder rejects any
+// stray fields, including anthropic_key, relay_url, or session_cookie.
 func (h Handler) handleOnboardingComplete(w http.ResponseWriter, r *http.Request) {
 	var input services.CompleteOnboardingInput
 	if !decodeStrictJSONBody(w, r, "relay onboarding complete", &input) {
@@ -23,9 +24,10 @@ func (h Handler) handleOnboardingComplete(w http.ResponseWriter, r *http.Request
 	writeJSON(w, http.StatusOK, contracts.Success("relay onboarding complete", result))
 }
 
-// handleOnboardingDeleteKey is the DELETE /v1/onboarding entry point — the
-// "forget my key" trust escape hatch (D5). The project row is preserved so
-// the user can re-onboard without losing prior packets.
+// handleOnboardingDeleteKey is the DELETE /v1/onboarding entry point for
+// disconnecting provider credentials. The onboarding row and default project
+// are preserved so the user does not lose prior packets or return to first-run
+// setup.
 //
 // RequireUserAuth refuses admin-only callers (UserID is empty under admin
 // bearer auth) so this endpoint is user-session-only by construction.

@@ -24,6 +24,7 @@ consumer continuation stability checks, and writes the soft-gate summary.
 Required environment:
   RELAY_DATABASE_URL
   RELAY_ADMIN_TOKEN
+  RELAY_DATA_ENCRYPTION_KEY
 
 Optional environment:
   RELAY_BASE_URL

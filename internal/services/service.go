@@ -1,6 +1,9 @@
 package services
 
-import "relay/internal/storage/repositories"
+import (
+	"relay/internal/lib/crypto"
+	"relay/internal/storage/repositories"
+)
 
 type Dependencies struct {
 	Projects           repositories.ProjectStore
@@ -23,12 +26,22 @@ type Dependencies struct {
 	OAuthIdentities    repositories.OAuthIdentityStore
 	UserSessions       repositories.UserSessionStore
 	OAuthStates        repositories.OAuthStateStore
+	Onboarding         repositories.OnboardingStore
 }
 
 type Service struct {
-	deps Dependencies
+	deps             Dependencies
+	keks             map[crypto.KEKVersion][]byte
+	activeKEKVersion crypto.KEKVersion
 }
 
 func New(deps Dependencies) Service {
 	return Service{deps: deps}
+}
+
+// NewWithKEKs builds a Service that can encrypt/decrypt envelope-sealed
+// secrets (Anthropic key, future PII). Used by app.NewRuntime at boot. Tests
+// that don't exercise the onboarding path can keep using New(deps).
+func NewWithKEKs(deps Dependencies, keks map[crypto.KEKVersion][]byte, active crypto.KEKVersion) Service {
+	return Service{deps: deps, keks: keks, activeKEKVersion: active}
 }

@@ -89,6 +89,7 @@ func buildMux(handler Handler, cfg config.Config, runtime app.Runtime) *http.Ser
 	mux.HandleFunc("/v1/snapshots/", requireAdminBearerToken(adminToken, handler.handleSnapshotAdmin))
 	mux.HandleFunc("/p/", handler.handlePublicSnapshotPage)
 	mux.HandleFunc("/v1/auth/", handler.handleAuthRouter)
+	mux.HandleFunc("/v1/onboarding", requireSessionOrAdmin(adminToken, handler.services, routeOnboarding(handler)))
 	mux.Handle("/mcp", buildMCPHandler(cfg, runtime))
 	return mux
 }

@@ -115,3 +115,15 @@ type OAuthStateStore interface {
 	CreateOAuthState(ctx context.Context, state domain.OAuthState) (domain.OAuthState, error)
 	ConsumeOAuthState(ctx context.Context, stateID string) (domain.OAuthState, error)
 }
+
+// OnboardingStore persists per-user onboarding state. UpsertOnboarding always
+// writes the caller-supplied AadSalt fresh (E8) to bind the new ciphertext to
+// a new salt. DeleteOnboardingKey NULLs key material but keeps the row.
+type OnboardingStore interface {
+	UpsertOnboarding(ctx context.Context, row domain.UserOnboarding) (domain.UserOnboarding, error)
+	GetOnboardingByUserID(ctx context.Context, userID string) (domain.UserOnboarding, error)
+	DeleteOnboardingKey(ctx context.Context, userID string) error
+	// EnsureProjectByOwnerName resolves the user's project by (owner_user_id, name),
+	// creating it with newID if it doesn't exist (D4 + E1 idempotency).
+	EnsureProjectByOwnerName(ctx context.Context, ownerUserID, name, newID string) (domain.Project, error)
+}

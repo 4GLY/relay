@@ -13,10 +13,13 @@ import (
 const sessionCookieName = "relay_session"
 
 type authMeResponse struct {
-	UserID      string `json:"user_id"`
-	Email       string `json:"email,omitempty"`
-	DisplayName string `json:"display_name,omitempty"`
-	AvatarURL   string `json:"avatar_url,omitempty"`
+	UserID             string     `json:"user_id"`
+	Email              string     `json:"email,omitempty"`
+	DisplayName        string     `json:"display_name,omitempty"`
+	AvatarURL          string     `json:"avatar_url,omitempty"`
+	OnboardingComplete bool       `json:"onboarding_complete"`
+	DefaultProjectID   string     `json:"default_project_id,omitempty"`
+	LastValidatedAt    *time.Time `json:"last_validated_at,omitempty"`
 }
 
 func (h Handler) handleAuthRouter(w http.ResponseWriter, r *http.Request) {
@@ -145,12 +148,23 @@ func (h Handler) handleAuthMe(w http.ResponseWriter, r *http.Request) {
 	if res.Refreshed {
 		setSessionCookie(w, h.cookieSecure, res.SessionToken, res.SessionExpiresAt)
 	}
-	writeJSON(w, http.StatusOK, contracts.Success("relay auth me", authMeResponse{
+
+	// Onboarding status is supplemental: a probe failure must not 500 the /me
+	// call (the cookie is still valid). Default to "incomplete" on error so the
+	// web client routes back to Frame 2.
+	resp := authMeResponse{
 		UserID:      res.User.ID,
 		Email:       res.User.Email,
 		DisplayName: res.User.DisplayName,
 		AvatarURL:   res.User.AvatarURL,
-	}))
+	}
+	status, err := h.services.GetOnboardingStatus(r.Context(), res.User.ID)
+	if err == nil {
+		resp.OnboardingComplete = status.Complete
+		resp.DefaultProjectID = status.DefaultProjectID
+		resp.LastValidatedAt = status.LastValidatedAt
+	}
+	writeJSON(w, http.StatusOK, contracts.Success("relay auth me", resp))
 }
 
 func (h Handler) handleAuthLogout(w http.ResponseWriter, r *http.Request) {

@@ -93,33 +93,47 @@ func unknownJSONField(err error) (string, bool) {
 
 func writeServiceError(w http.ResponseWriter, command string, err error) {
 	if appErr, ok := err.(lib.AppError); ok {
-		status := http.StatusBadRequest
-		if appErr.Code == "PROJECT_NOT_FOUND" ||
-			appErr.Code == "JUDGMENT_TRACE_NOT_FOUND" ||
-			appErr.Code == "HEURISTIC_PROPOSAL_NOT_FOUND" ||
-			appErr.Code == "APPROVED_HEURISTIC_NOT_FOUND" ||
-			appErr.Code == "PACKET_SNAPSHOT_NOT_FOUND" {
-			status = http.StatusNotFound
-		}
-		if appErr.Code == "API_KEY_NOT_FOUND" {
-			status = http.StatusUnauthorized
-		}
-		if appErr.Code == "API_KEY_NOT_FOUND_BY_ID" {
-			status = http.StatusNotFound
-		}
-		if appErr.Code == "FORBIDDEN" {
-			status = http.StatusForbidden
-		}
-		if appErr.Code == "MISCONFIGURED" {
-			status = http.StatusInternalServerError
-		}
-		if appErr.Code == "PROPOSAL_ALREADY_RESOLVED" {
-			status = http.StatusConflict
-		}
+		status := serviceErrorStatus(appErr.Code)
 		writeJSON(w, status, contracts.Failure(command, appErr.Code, appErr.Message, appErr.Retryable, appErr.MissingFields...))
 		return
 	}
 	writeJSON(w, http.StatusInternalServerError, contracts.Failure(command, "INTERNAL_ERROR", err.Error(), true))
+}
+
+// serviceErrorStatus is the single source of truth for AppError → HTTP status
+// (E6). Refactored from the original if-chain so onboarding error codes can
+// be added without growing a tower of conditionals. Codes not listed default
+// to 400; that matches the V1 behavior for unrecognized validation errors.
+//
+// Locked: INVALID_ANTHROPIC_KEY and ANTHROPIC_QUOTA are 400 (not 401) because
+// 401 is reserved for session auth failures (E6). ANTHROPIC_UNREACHABLE is
+// 502 because the upstream is the failure source.
+func serviceErrorStatus(code string) int {
+	switch code {
+	case "PROJECT_NOT_FOUND",
+		"JUDGMENT_TRACE_NOT_FOUND",
+		"HEURISTIC_PROPOSAL_NOT_FOUND",
+		"APPROVED_HEURISTIC_NOT_FOUND",
+		"PACKET_SNAPSHOT_NOT_FOUND",
+		"API_KEY_NOT_FOUND_BY_ID",
+		"ONBOARDING_NOT_FOUND":
+		return http.StatusNotFound
+	case "API_KEY_NOT_FOUND",
+		"UNAUTHORIZED":
+		return http.StatusUnauthorized
+	case "FORBIDDEN":
+		return http.StatusForbidden
+	case "MISCONFIGURED":
+		return http.StatusInternalServerError
+	case "PROPOSAL_ALREADY_RESOLVED":
+		return http.StatusConflict
+	case "INVALID_ANTHROPIC_KEY", "ANTHROPIC_QUOTA":
+		return http.StatusBadRequest
+	case "ANTHROPIC_UNREACHABLE":
+		return http.StatusBadGateway
+	default:
+		return http.StatusBadRequest
+	}
 }
 
 func limitRequestBody(next http.Handler, max int64) http.Handler {

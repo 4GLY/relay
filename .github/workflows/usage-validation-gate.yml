@@ -39,6 +39,7 @@ jobs:
       RELAY_DATABASE_URL: postgresql://relay:relay@127.0.0.1:5432/relay?sslmode=disable
       RELAY_ADMIN_TOKEN: relay-admin-token-ci
       RELAY_API_TOKEN: relay-admin-token-ci
+      RELAY_DATA_ENCRYPTION_KEY: "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
       RELAY_ACCEPTANCE_OUTPUT_ROOT: .gstack/projects/relay-ci
       RELAY_EVAL_BATCH_ID: usage-validation-pr-${{ github.run_id }}-${{ github.run_attempt }}
       RELAY_EVAL_JUDGE_MODEL: opus

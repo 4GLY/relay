@@ -30,6 +30,7 @@ type Config struct {
 	GoogleOAuthClientSecret string
 	OAuthRedirectBaseURL    string
 	UserSessionCookieSecure bool
+	DataEncryptionKey       string
 }
 
 func Load() Config {
@@ -84,6 +85,7 @@ func Load() Config {
 		GoogleOAuthClientSecret: os.Getenv("RELAY_GOOGLE_OAUTH_CLIENT_SECRET"),
 		OAuthRedirectBaseURL:    oauthRedirectBase,
 		UserSessionCookieSecure: cookieSecureForBaseURL(baseURL),
+		DataEncryptionKey:       os.Getenv("RELAY_DATA_ENCRYPTION_KEY"),
 	}
 }
 

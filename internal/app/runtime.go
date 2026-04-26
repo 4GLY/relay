@@ -6,6 +6,7 @@ import (
 	"relay/internal/config"
 	"relay/internal/domain"
 	"relay/internal/lib"
+	"relay/internal/lib/crypto"
 	"relay/internal/services"
 	"relay/internal/storage"
 	"relay/internal/storage/postgres"
@@ -37,11 +38,16 @@ func NewRuntime(ctx context.Context, cfg config.Config) (Runtime, error) {
 		db.Close()
 		return Runtime{}, err
 	}
+	keks, activeKEK, err := crypto.LoadKEKsFromEnv()
+	if err != nil {
+		db.Close()
+		return Runtime{}, err
+	}
 	publicBaseURL := cfg.PublicBaseURL
 	if publicBaseURL == "" {
 		publicBaseURL = cfg.BaseURL
 	}
-	svc := services.New(services.Dependencies{
+	svc := services.NewWithKEKs(services.Dependencies{
 		Projects:           stores,
 		Notes:              noteStore{stores},
 		Artifacts:          artifactStore{stores},
@@ -62,7 +68,8 @@ func NewRuntime(ctx context.Context, cfg config.Config) (Runtime, error) {
 		OAuthIdentities:    stores,
 		UserSessions:       stores,
 		OAuthStates:        stores,
-	})
+		Onboarding:         stores,
+	}, keks, activeKEK)
 
 	return Runtime{Services: svc, APIKeys: apiKeyStore{stores}}, nil
 }

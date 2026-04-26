@@ -127,3 +127,10 @@ type OnboardingStore interface {
 	// creating it with newID if it doesn't exist (D4 + E1 idempotency).
 	EnsureProjectByOwnerName(ctx context.Context, ownerUserID, name, newID string) (domain.Project, error)
 }
+
+type UserProviderCredentialStore interface {
+	UpsertUserProviderCredential(ctx context.Context, credential domain.UserProviderCredential) (domain.UserProviderCredential, error)
+	GetUserProviderCredential(ctx context.Context, userID string, provider string) (domain.UserProviderCredential, error)
+	ListUserProviderCredentials(ctx context.Context, userID string) ([]domain.UserProviderCredential, error)
+	DeleteUserProviderCredential(ctx context.Context, userID string, provider string) error
+}

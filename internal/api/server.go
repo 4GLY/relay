@@ -79,9 +79,10 @@ func buildMux(handler Handler, cfg config.Config, runtime app.Runtime) *http.Ser
 	mux.HandleFunc("/v1/api-keys/revoke", requireAdminBearerToken(adminToken, handler.handleRevokeAPIKey))
 	mux.HandleFunc("/v1/capture", requireBearerToken(adminToken, runtime.APIKeys, handler.handleCapture))
 	mux.HandleFunc("/v1/judgment-traces", requireBearerToken(adminToken, runtime.APIKeys, handler.handleJudgmentTraceWrite))
-	mux.HandleFunc("/v1/heuristic-proposals", requireBearerToken(adminToken, runtime.APIKeys, handler.handleHeuristicProposalCreate))
-	mux.HandleFunc("/v1/heuristic-proposals/review", requireAdminBearerToken(adminToken, handler.handleHeuristicProposalReview))
-	mux.HandleFunc("/v1/approved-heuristics/update", requireAdminBearerToken(adminToken, handler.handleApprovedHeuristicUpdate))
+	mux.HandleFunc("/v1/heuristic-proposals", routeHeuristicProposals(adminToken, runtime.APIKeys, handler))
+	mux.HandleFunc("/v1/heuristic-proposals/review", requireSessionOrAdmin(adminToken, handler.services, handler.handleHeuristicProposalReview))
+	mux.HandleFunc("/v1/approved-heuristics", requireSessionOrAdmin(adminToken, handler.services, handler.handleApprovedHeuristicsList))
+	mux.HandleFunc("/v1/approved-heuristics/update", requireSessionOrAdmin(adminToken, handler.services, handler.handleApprovedHeuristicUpdate))
 	mux.HandleFunc("/v1/promote", requireBearerToken(adminToken, runtime.APIKeys, handler.handlePromote))
 	mux.HandleFunc("/v1/packets/build", requireBearerToken(adminToken, runtime.APIKeys, handler.handlePacketBuild))
 	mux.HandleFunc("/v1/projects/", requireBearerToken(adminToken, runtime.APIKeys, handler.handleProjectShow))
@@ -90,6 +91,24 @@ func buildMux(handler Handler, cfg config.Config, runtime app.Runtime) *http.Ser
 	mux.HandleFunc("/v1/auth/", handler.handleAuthRouter)
 	mux.Handle("/mcp", buildMCPHandler(cfg, runtime))
 	return mux
+}
+
+// routeHeuristicProposals dispatches /v1/heuristic-proposals on method:
+//   - POST keeps the existing bearer-token contract for curator clients.
+//   - GET requires a session cookie or admin bearer (web S6 list view).
+func routeHeuristicProposals(adminToken string, apiKeys repositories.APIKeyStore, handler Handler) http.HandlerFunc {
+	post := requireBearerToken(adminToken, apiKeys, handler.handleHeuristicProposalCreate)
+	get := requireSessionOrAdmin(adminToken, handler.services, handler.handleHeuristicProposalsList)
+	return func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			get(w, r)
+		case http.MethodPost:
+			post(w, r)
+		default:
+			writeJSON(w, http.StatusMethodNotAllowed, contracts.Failure("relay heuristic-proposals", "METHOD_NOT_ALLOWED", "method not allowed", false))
+		}
+	}
 }
 
 // handleSnapshotAdmin dispatches /v1/snapshots/{id}/{publish|revoke} so

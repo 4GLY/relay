@@ -2,10 +2,20 @@ package services
 
 import (
 	"context"
+	"strings"
+	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"relay/internal/contracts"
 	"relay/internal/domain"
 	"relay/internal/lib"
+)
+
+const (
+	maxStyleMemoryListLimit     = 100
+	defaultStyleMemoryListLimit = 50
+	maxReviewNotesUserLength    = 200
 )
 
 func (s Service) WriteJudgmentTrace(ctx context.Context, input JudgmentTraceWriteInput) (JudgmentTraceWriteResult, error) {
@@ -167,9 +177,11 @@ func (s Service) ReviewHeuristicProposal(ctx context.Context, input HeuristicPro
 		return HeuristicProposalReviewResult{}, err
 	}
 
+	notes := sanitizeReviewNotes(input.ReviewNotes)
+
 	switch input.Action {
 	case "approve":
-		updated, err := s.deps.HeuristicProposals.UpdateHeuristicProposalState(ctx, proposal.ID, string(contracts.HeuristicStateApproved), input.ReviewNotes)
+		updated, err := s.deps.HeuristicProposals.UpdateHeuristicProposalState(ctx, proposal.ID, string(contracts.HeuristicStateApproved), notes)
 		if err != nil {
 			return HeuristicProposalReviewResult{}, err
 		}
@@ -193,13 +205,13 @@ func (s Service) ReviewHeuristicProposal(ctx context.Context, input HeuristicPro
 		}
 		return HeuristicProposalReviewResult{ProposalID: updated.ID, ApprovedHeuristicID: approved.ID, ProjectID: updated.ProjectID, State: updated.State}, nil
 	case "reject":
-		updated, err := s.deps.HeuristicProposals.UpdateHeuristicProposalState(ctx, proposal.ID, string(contracts.HeuristicStateRejected), input.ReviewNotes)
+		updated, err := s.deps.HeuristicProposals.UpdateHeuristicProposalState(ctx, proposal.ID, string(contracts.HeuristicStateRejected), notes)
 		if err != nil {
 			return HeuristicProposalReviewResult{}, err
 		}
 		return HeuristicProposalReviewResult{ProposalID: updated.ID, ProjectID: updated.ProjectID, State: updated.State}, nil
 	case "archive":
-		updated, err := s.deps.HeuristicProposals.UpdateHeuristicProposalState(ctx, proposal.ID, string(contracts.HeuristicStateArchived), input.ReviewNotes)
+		updated, err := s.deps.HeuristicProposals.UpdateHeuristicProposalState(ctx, proposal.ID, string(contracts.HeuristicStateArchived), notes)
 		if err != nil {
 			return HeuristicProposalReviewResult{}, err
 		}
@@ -268,4 +280,161 @@ func containsString(values []string, needle string) bool {
 		}
 	}
 	return false
+}
+
+// ListHeuristicProposals returns proposals scoped to the resolved project. The
+// caller (cookie-session web client or admin) must already be authorized for
+// the project; this method enforces project access via existing helpers.
+func (s Service) ListHeuristicProposals(ctx context.Context, input ListHeuristicProposalsInput) (ListHeuristicProposalsResult, error) {
+	if err := validateListHeuristicProposalsInput(input); err != nil {
+		return ListHeuristicProposalsResult{}, err
+	}
+	if s.deps.HeuristicProposals == nil {
+		return ListHeuristicProposalsResult{}, lib.Misconfigured("heuristic proposal store is required")
+	}
+	project, err := s.resolveProject(ctx, input.Project, input.ProjectID)
+	if err != nil {
+		return ListHeuristicProposalsResult{}, err
+	}
+	if err := s.requireAdminOrProjectOwner(ctx, project.ID); err != nil {
+		return ListHeuristicProposalsResult{}, err
+	}
+	if err := s.enforceProjectAccess(ctx, project.ID); err != nil {
+		return ListHeuristicProposalsResult{}, err
+	}
+
+	limit := normalizeListLimit(input.Limit)
+	items, err := s.deps.HeuristicProposals.ListHeuristicProposalsByProject(ctx, project.ID, input.State, input.Cursor, limit)
+	if err != nil {
+		return ListHeuristicProposalsResult{}, err
+	}
+
+	summaries := make([]PendingProposalSummary, 0, len(items))
+	for _, item := range items {
+		summaries = append(summaries, PendingProposalSummary{
+			ProposalID:     item.ID,
+			ProjectID:      item.ProjectID,
+			OriginTraceID:  item.OriginTraceID,
+			Workflow:       item.Workflow,
+			ArtifactType:   item.ArtifactType,
+			HeuristicKey:   item.HeuristicKey,
+			CanonicalText:  item.CanonicalText,
+			NormalizedText: item.NormalizedText,
+			State:          item.State,
+			SourceTraceIDs: item.SourceTraceIDs,
+			SourceRefs:     item.SourceRefs,
+			ProposedBy:     item.ProposedBy,
+			ReviewNotes:    item.ReviewNotes,
+			CreatedAt:      item.CreatedAt,
+			UpdatedAt:      item.UpdatedAt,
+		})
+	}
+
+	var nextCursor string
+	if len(items) == limit && limit > 0 {
+		nextCursor = formatListCursor(items[len(items)-1].CreatedAt)
+	}
+
+	return ListHeuristicProposalsResult{Items: summaries, NextCursor: nextCursor}, nil
+}
+
+// ListApprovedHeuristics returns approved heuristics scoped to the resolved
+// project. Same auth contract as ListHeuristicProposals.
+func (s Service) ListApprovedHeuristics(ctx context.Context, input ListApprovedHeuristicsInput) (ListApprovedHeuristicsResult, error) {
+	if err := validateListApprovedHeuristicsInput(input); err != nil {
+		return ListApprovedHeuristicsResult{}, err
+	}
+	if s.deps.ApprovedHeuristics == nil {
+		return ListApprovedHeuristicsResult{}, lib.Misconfigured("approved heuristic store is required")
+	}
+	project, err := s.resolveProject(ctx, input.Project, input.ProjectID)
+	if err != nil {
+		return ListApprovedHeuristicsResult{}, err
+	}
+	if err := s.requireAdminOrProjectOwner(ctx, project.ID); err != nil {
+		return ListApprovedHeuristicsResult{}, err
+	}
+	if err := s.enforceProjectAccess(ctx, project.ID); err != nil {
+		return ListApprovedHeuristicsResult{}, err
+	}
+
+	limit := normalizeListLimit(input.Limit)
+	items, err := s.deps.ApprovedHeuristics.ListApprovedHeuristicsByProject(ctx, project.ID, input.Workflow, input.ArtifactType, input.Cursor, limit)
+	if err != nil {
+		return ListApprovedHeuristicsResult{}, err
+	}
+
+	summaries := make([]ApprovedHeuristicSummary, 0, len(items))
+	for _, item := range items {
+		summaries = append(summaries, ApprovedHeuristicSummary{
+			HeuristicID:      item.ID,
+			ProjectID:        item.ProjectID,
+			OriginProposalID: item.OriginProposalID,
+			Workflow:         item.Workflow,
+			ArtifactType:     item.ArtifactType,
+			HeuristicKey:     item.HeuristicKey,
+			CanonicalText:    item.CanonicalText,
+			State:            item.State,
+			SourceTraceIDs:   item.SourceTraceIDs,
+			SourceRefs:       item.SourceRefs,
+			CreatedAt:        item.CreatedAt,
+			UpdatedAt:        item.UpdatedAt,
+		})
+	}
+
+	var nextCursor string
+	if len(items) == limit && limit > 0 {
+		nextCursor = formatListCursor(items[len(items)-1].CreatedAt)
+	}
+
+	return ListApprovedHeuristicsResult{Items: summaries, NextCursor: nextCursor}, nil
+}
+
+func normalizeListLimit(limit int) int {
+	if limit <= 0 {
+		return defaultStyleMemoryListLimit
+	}
+	if limit > maxStyleMemoryListLimit {
+		return maxStyleMemoryListLimit
+	}
+	return limit
+}
+
+func formatListCursor(t time.Time) string {
+	if t.IsZero() {
+		return ""
+	}
+	return t.UTC().Format(time.RFC3339Nano)
+}
+
+// sanitizeReviewNotes strips control characters from caller-supplied review
+// notes and truncates the result to maxReviewNotesUserLength runes. It is
+// defense in depth against XSS-adjacent payloads and oversized free-text
+// reject reasons. React JSX auto-escapes on render, but we do not want
+// malformed control characters in storage.
+func sanitizeReviewNotes(s string) string {
+	if s == "" {
+		return ""
+	}
+	var b strings.Builder
+	b.Grow(len(s))
+	for _, r := range s {
+		if r == utf8.RuneError {
+			continue
+		}
+		if r == '\n' || r == '\t' {
+			b.WriteRune(r)
+			continue
+		}
+		if unicode.IsControl(r) {
+			continue
+		}
+		b.WriteRune(r)
+	}
+	cleaned := strings.TrimSpace(b.String())
+	if utf8.RuneCountInString(cleaned) <= maxReviewNotesUserLength {
+		return cleaned
+	}
+	runes := []rune(cleaned)
+	return string(runes[:maxReviewNotesUserLength])
 }

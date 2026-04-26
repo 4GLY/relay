@@ -292,6 +292,104 @@ components:
         action:
           type: string
           enum: [disable, archive, approve, enable]
+    PendingProposalSummary:
+      type: object
+      required: [proposal_id, project_id, heuristic_key, canonical_text, state, created_at, updated_at]
+      properties:
+        proposal_id:
+          type: string
+        project_id:
+          type: string
+        origin_trace_id:
+          type: string
+        workflow:
+          type: string
+        artifact_type:
+          type: string
+        heuristic_key:
+          type: string
+        canonical_text:
+          type: string
+        normalized_text:
+          type: string
+        state:
+          type: string
+          enum: [pending, approved, rejected, archived]
+        source_trace_ids:
+          type: array
+          items:
+            type: string
+        source_refs:
+          type: array
+          items:
+            type: string
+        proposed_by:
+          type: string
+        review_notes:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    ListHeuristicProposalsResult:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PendingProposalSummary'
+        next_cursor:
+          type: string
+          description: ISO-8601 timestamp keyset cursor; pass back as ?cursor= to fetch the next page.
+    ApprovedHeuristicSummary:
+      type: object
+      required: [heuristic_id, project_id, heuristic_key, canonical_text, state, created_at, updated_at]
+      properties:
+        heuristic_id:
+          type: string
+        project_id:
+          type: string
+        origin_proposal_id:
+          type: string
+        workflow:
+          type: string
+        artifact_type:
+          type: string
+        heuristic_key:
+          type: string
+        canonical_text:
+          type: string
+        state:
+          type: string
+          enum: [approved, archived, disabled]
+        source_trace_ids:
+          type: array
+          items:
+            type: string
+        source_refs:
+          type: array
+          items:
+            type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    ListApprovedHeuristicsResult:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApprovedHeuristicSummary'
+        next_cursor:
+          type: string
+          description: ISO-8601 timestamp keyset cursor; pass back as ?cursor= to fetch the next page.
     ApprovedHeuristicUpdateResult:
       type: object
       required: [heuristic_id, project_id, state]
@@ -746,6 +844,20 @@ components:
           properties:
             data:
               $ref: '#/components/schemas/HeuristicProposalReviewResult'
+    ListHeuristicProposalsResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/ListHeuristicProposalsResult'
+    ListApprovedHeuristicsResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/ListApprovedHeuristicsResult'
     ApprovedHeuristicUpdateResponse:
       allOf:
         - $ref: '#/components/schemas/SuccessEnvelope'
@@ -1109,10 +1221,157 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
+    get:
+      tags: [style-memory]
+      summary: List heuristic proposals for a project
+      description: |
+        Returns a paginated list of heuristic proposals for the given project.
+        Accepts either an admin bearer token or a relay_session cookie that
+        owns the requested project. Cursor is an ISO-8601 created_at keyset.
+      operationId: listHeuristicProposals
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: project_id
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: project
+          schema:
+            type: string
+          description: Optional project name; ignored when project_id is provided.
+        - in: query
+          name: state
+          schema:
+            type: string
+            enum: [pending, approved, rejected, archived]
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 100
+            default: 50
+        - in: query
+          name: cursor
+          schema:
+            type: string
+          description: ISO-8601 timestamp returned in next_cursor of the previous page.
+      responses:
+        '200':
+          description: Heuristic proposals listed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListHeuristicProposalsResponse'
+        '400':
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '401':
+          description: Missing or invalid session cookie / admin bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '403':
+          description: Caller is not an admin or owner of the requested project
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /v1/approved-heuristics:
+    get:
+      tags: [style-memory]
+      summary: List approved heuristics for a project
+      description: |
+        Returns a paginated list of approved heuristics for the given project.
+        Accepts either an admin bearer token or a relay_session cookie that
+        owns the requested project. Cursor is an ISO-8601 created_at keyset.
+      operationId: listApprovedHeuristics
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: project_id
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: project
+          schema:
+            type: string
+          description: Optional project name; ignored when project_id is provided.
+        - in: query
+          name: workflow
+          schema:
+            type: string
+        - in: query
+          name: artifact_type
+          schema:
+            type: string
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 100
+            default: 50
+        - in: query
+          name: cursor
+          schema:
+            type: string
+          description: ISO-8601 timestamp returned in next_cursor of the previous page.
+      responses:
+        '200':
+          description: Approved heuristics listed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListApprovedHeuristicsResponse'
+        '400':
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '401':
+          description: Missing or invalid session cookie / admin bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '403':
+          description: Caller is not an admin or owner of the requested project
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
   /v1/heuristic-proposals/review:
     post:
       tags: [style-memory]
       summary: Approve, reject, or archive a heuristic proposal
+      description: |
+        Accepts either an admin bearer token or a relay_session cookie owned by
+        the project owner. The state transition is conditional on the proposal
+        still being in `pending`; concurrent reviewers receive HTTP 409
+        `PROPOSAL_ALREADY_RESOLVED`.
       operationId: reviewHeuristicProposal
       security:
         - BearerAuth: []
@@ -1136,19 +1395,25 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
         '401':
-          description: Missing or invalid bootstrap admin bearer token
+          description: Missing or invalid session cookie / admin bearer token
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
         '403':
-          description: Requested project does not match proposal project
+          description: Caller is not an admin or owner of the proposal's project
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
         '404':
           description: Heuristic proposal not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '409':
+          description: Proposal already resolved by another reviewer
           content:
             application/json:
               schema:
@@ -1163,6 +1428,9 @@ paths:
     post:
       tags: [style-memory]
       summary: Update approved heuristic state
+      description: |
+        Accepts either an admin bearer token or a relay_session cookie owned by
+        the project owner.
       operationId: updateApprovedHeuristic
       security:
         - BearerAuth: []
@@ -1186,13 +1454,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
         '401':
-          description: Missing or invalid bootstrap admin bearer token
+          description: Missing or invalid session cookie / admin bearer token
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
         '403':
-          description: Requested project does not match heuristic project
+          description: Caller is not an admin or owner of the heuristic's project
           content:
             application/json:
               schema:

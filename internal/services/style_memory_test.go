@@ -67,7 +67,7 @@ func (s *fakeHeuristicProposalStore) GetHeuristicProposal(_ context.Context, id 
 	return item, nil
 }
 
-func (s *fakeHeuristicProposalStore) ListHeuristicProposalsByProject(_ context.Context, projectID string, state string, _ int) ([]domain.HeuristicProposal, error) {
+func (s *fakeHeuristicProposalStore) ListHeuristicProposalsByProject(_ context.Context, projectID string, state string, _ string, _ int) ([]domain.HeuristicProposal, error) {
 	var items []domain.HeuristicProposal
 	for _, item := range s.items {
 		if item.ProjectID == projectID && (state == "" || item.State == state) {
@@ -111,16 +111,16 @@ func (s *fakeApprovedHeuristicStore) GetApprovedHeuristic(_ context.Context, id 
 	return item, nil
 }
 
-func (s *fakeApprovedHeuristicStore) ListApprovedHeuristicsByProject(_ context.Context, projectID string, workflow string, artifactType string, limit int) ([]domain.ApprovedHeuristic, error) {
+func (s *fakeApprovedHeuristicStore) ListApprovedHeuristicsByProject(_ context.Context, projectID string, workflow string, artifactType string, _ string, limit int) ([]domain.ApprovedHeuristic, error) {
 	var items []domain.ApprovedHeuristic
 	for _, item := range s.items {
 		if item.ProjectID != projectID || item.State != string(contracts.HeuristicStateApproved) {
 			continue
 		}
-		if item.Workflow != "" && item.Workflow != workflow {
+		if workflow != "" && item.Workflow != workflow {
 			continue
 		}
-		if item.ArtifactType != "" && item.ArtifactType != artifactType {
+		if artifactType != "" && item.ArtifactType != artifactType {
 			continue
 		}
 		items = append(items, item)

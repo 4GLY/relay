@@ -10,6 +10,7 @@ import (
 
 	"relay/internal/app"
 	"relay/internal/config"
+	"relay/internal/contracts"
 	"relay/internal/domain"
 	"relay/internal/lib"
 	"relay/internal/services"
@@ -71,7 +72,7 @@ func (s *apiFakeHeuristicProposalStore) GetHeuristicProposal(_ context.Context, 
 	return item, nil
 }
 
-func (s *apiFakeHeuristicProposalStore) ListHeuristicProposalsByProject(_ context.Context, projectID string, state string, _ int) ([]domain.HeuristicProposal, error) {
+func (s *apiFakeHeuristicProposalStore) ListHeuristicProposalsByProject(_ context.Context, projectID string, state string, _ string, _ int) ([]domain.HeuristicProposal, error) {
 	var items []domain.HeuristicProposal
 	for _, item := range s.items {
 		if item.ProjectID == projectID && (state == "" || item.State == state) {
@@ -85,6 +86,13 @@ func (s *apiFakeHeuristicProposalStore) UpdateHeuristicProposalState(_ context.C
 	item, ok := s.items[id]
 	if !ok {
 		return domain.HeuristicProposal{}, lib.NotFound("HEURISTIC_PROPOSAL_NOT_FOUND", "heuristic proposal not found")
+	}
+	if item.State != string(contracts.HeuristicStatePending) {
+		return domain.HeuristicProposal{}, lib.AppError{
+			Code:      "PROPOSAL_ALREADY_RESOLVED",
+			Message:   "heuristic proposal has already been resolved",
+			Retryable: false,
+		}
 	}
 	item.State = state
 	item.ReviewNotes = reviewNotes
@@ -115,16 +123,16 @@ func (s *apiFakeApprovedHeuristicStore) GetApprovedHeuristic(_ context.Context, 
 	return item, nil
 }
 
-func (s *apiFakeApprovedHeuristicStore) ListApprovedHeuristicsByProject(_ context.Context, projectID string, workflow string, artifactType string, limit int) ([]domain.ApprovedHeuristic, error) {
+func (s *apiFakeApprovedHeuristicStore) ListApprovedHeuristicsByProject(_ context.Context, projectID string, workflow string, artifactType string, _ string, limit int) ([]domain.ApprovedHeuristic, error) {
 	var items []domain.ApprovedHeuristic
 	for _, item := range s.items {
 		if item.ProjectID != projectID || item.State != "approved" {
 			continue
 		}
-		if item.Workflow != "" && item.Workflow != workflow {
+		if workflow != "" && item.Workflow != workflow {
 			continue
 		}
-		if item.ArtifactType != "" && item.ArtifactType != artifactType {
+		if artifactType != "" && item.ArtifactType != artifactType {
 			continue
 		}
 		items = append(items, item)

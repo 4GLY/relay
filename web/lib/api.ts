@@ -12,12 +12,17 @@ export const RELAY_API_URL =
 /**
  * Issue a `fetch` against the Relay Go API. Caller owns headers, body, and
  * error handling. Returns the raw `Response`.
+ *
+ * Defaults `credentials: "include"` so the `relay_session` cookie rides
+ * cross-origin requests from the Next.js app to the Go API. Callers can
+ * override per-request (e.g. server components forwarding `Cookie:` headers
+ * explicitly do not need credentials).
  */
 export function relayFetch(path: string, init?: RequestInit): Promise<Response> {
   const url = path.startsWith("http")
     ? path
     : `${RELAY_API_URL}${path.startsWith("/") ? path : `/${path}`}`;
-  return fetch(url, init);
+  return fetch(url, { credentials: "include", ...init });
 }
 
 /** Mirrors `contracts.SuccessEnvelope` from `internal/contracts/envelope.go`. */

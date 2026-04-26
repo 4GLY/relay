@@ -1,0 +1,268 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+
+import { Proposals } from "./proposals";
+import type { ApprovedHeuristic, PendingProposal } from "@/lib/heuristics";
+
+const fixturePending: PendingProposal[] = [
+  {
+    proposalId: "p-1",
+    projectId: "proj",
+    heuristicKey: "k1",
+    canonicalText: "always prefer named return values in go funcs >2 args",
+    normalizedText: "use named returns",
+    state: "pending",
+    sourceTraceIds: ["t1", "t2", "t3", "t4"],
+    sourceRefs: [],
+    workflow: "refactor",
+    artifactType: "go",
+    createdAt: "2026-04-26T00:00:00Z",
+    updatedAt: "2026-04-26T00:00:00Z",
+  },
+  {
+    proposalId: "p-2",
+    projectId: "proj",
+    heuristicKey: "k2",
+    canonicalText: "flag any only outside test paths",
+    normalizedText: "flag any everywhere",
+    state: "pending",
+    sourceTraceIds: ["t1"],
+    sourceRefs: [],
+    workflow: "review",
+    artifactType: "ts",
+    createdAt: "2026-04-26T01:00:00Z",
+    updatedAt: "2026-04-26T01:00:00Z",
+  },
+  {
+    proposalId: "p-3",
+    projectId: "proj",
+    heuristicKey: "k3",
+    canonicalText: "third proposal",
+    state: "pending",
+    sourceTraceIds: [],
+    sourceRefs: [],
+    workflow: "ship",
+    artifactType: "yaml",
+    createdAt: "2026-04-26T02:00:00Z",
+    updatedAt: "2026-04-26T02:00:00Z",
+  },
+];
+
+const fixtureApproved: ApprovedHeuristic[] = [
+  {
+    heuristicId: "h-1",
+    projectId: "proj",
+    heuristicKey: "ka1",
+    canonicalText: "approved one",
+    state: "active",
+    sourceTraceIds: [],
+    sourceRefs: [],
+    createdAt: "2026-04-25T00:00:00Z",
+    updatedAt: "2026-04-25T00:00:00Z",
+  },
+];
+
+beforeEach(() => {
+  globalThis.fetch = vi.fn();
+  window.localStorage.clear();
+});
+
+afterEach(() => {
+  vi.clearAllMocks();
+  vi.useRealTimers();
+});
+
+function renderProposals(overrides: Partial<Parameters<typeof Proposals>[0]> = {}) {
+  return render(
+    <Proposals
+      projectId="proj"
+      initialPending={fixturePending}
+      initialApproved={fixtureApproved}
+      approvedFetchFailed={false}
+      userId="user-1"
+      userDisplayName="hoon"
+      {...overrides}
+    />,
+  );
+}
+
+function mockFetchOk(body: unknown) {
+  (globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+    new Response(JSON.stringify(body), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    }),
+  );
+}
+
+function mockFetch409() {
+  (globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+    new Response(
+      JSON.stringify({
+        ok: false,
+        command: "relay heuristic-proposal review",
+        error: { code: "PROPOSAL_ALREADY_RESOLVED", message: "already", retryable: false },
+      }),
+      { status: 409, headers: { "content-type": "application/json" } },
+    ),
+  );
+}
+
+describe("<Proposals> hero + queue render", () => {
+  it("renders the highest-confidence card as hero and the rest as queued", () => {
+    renderProposals();
+    expect(screen.getByRole("heading", { name: "Style Memory" })).toBeInTheDocument();
+    expect(screen.getByText(/queued · resolve hero first/i)).toBeInTheDocument();
+    expect(screen.getByTestId("approve-p-1")).toBeInTheDocument();
+    expect(screen.queryByTestId("approve-p-2")).toBeNull();
+  });
+});
+
+describe("approve action", () => {
+  it("triggers POST /v1/heuristic-proposals/review with action=approve", async () => {
+    const user = userEvent.setup();
+    mockFetchOk({
+      ok: true,
+      command: "relay heuristic-proposal review",
+      data: { proposal_id: "p-1", project_id: "proj", state: "approved" },
+      warnings: [],
+    });
+    renderProposals();
+    await user.click(screen.getByTestId("approve-p-1"));
+    await waitFor(() => expect(globalThis.fetch).toHaveBeenCalled());
+    const fetchMock = globalThis.fetch as unknown as ReturnType<typeof vi.fn>;
+    const [, init] = fetchMock.mock.calls[0];
+    expect((init as RequestInit).method).toBe("POST");
+    expect(JSON.parse((init as RequestInit).body as string)).toEqual({
+      proposal_id: "p-1",
+      action: "approve",
+    });
+  });
+
+  it("shows 'Already resolved' toast on 409", async () => {
+    const user = userEvent.setup();
+    mockFetch409();
+    renderProposals();
+    await user.click(screen.getByTestId("approve-p-1"));
+    await waitFor(() =>
+      expect(screen.getByText(/already resolved/i)).toBeInTheDocument(),
+    );
+  });
+});
+
+describe("reject overlay", () => {
+  it("disables submit until exactly one chip is selected", async () => {
+    const user = userEvent.setup();
+    renderProposals();
+    await user.click(screen.getAllByText("Reject")[0]);
+    const submit = screen.getByTestId("reject-submit") as HTMLButtonElement;
+    expect(submit.disabled).toBe(true);
+    await user.click(screen.getByTestId("reject-chip-duplicate"));
+    expect((screen.getByTestId("reject-submit") as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it("requires 10-char min for 'other' free text", async () => {
+    const user = userEvent.setup();
+    renderProposals();
+    await user.click(screen.getAllByText("Reject")[0]);
+    await user.click(screen.getByTestId("reject-chip-other"));
+
+    const submit = screen.getByTestId("reject-submit") as HTMLButtonElement;
+    expect(submit.disabled).toBe(true);
+
+    const ta = screen.getByTestId("reject-other-textarea") as HTMLTextAreaElement;
+    await user.type(ta, "too short");
+    expect((screen.getByTestId("reject-submit") as HTMLButtonElement).disabled).toBe(true);
+
+    await user.type(ta, " adding more chars now");
+    expect((screen.getByTestId("reject-submit") as HTMLButtonElement).disabled).toBe(false);
+  });
+});
+
+describe("view toggle persistence", () => {
+  it("persists view choice to localStorage", async () => {
+    const user = userEvent.setup();
+    renderProposals();
+    const toggle = screen.getByTestId("view-toggle");
+    expect(window.localStorage.getItem("relay-style-memory-view")).toBe("single");
+    await user.click(toggle);
+    await waitFor(() =>
+      expect(window.localStorage.getItem("relay-style-memory-view")).toBe("batch"),
+    );
+  });
+
+  it("restores 'batch' from localStorage on mount", async () => {
+    window.localStorage.setItem("relay-style-memory-view", "batch");
+    renderProposals();
+    // Batch mode: hint bar with j/k legend appears.
+    await waitFor(() => expect(screen.getByText(/navigate/i)).toBeInTheDocument());
+  });
+});
+
+describe("keyboard shortcuts (Contract C)", () => {
+  it("'j' moves focus to next card in batch mode", async () => {
+    window.localStorage.setItem("relay-style-memory-view", "batch");
+    renderProposals();
+    await waitFor(() => expect(screen.getByText(/navigate/i)).toBeInTheDocument());
+
+    fireEvent.keyDown(window, { key: "j" });
+    await waitFor(() => {
+      const focused = document.querySelector('[data-focused="true"]');
+      expect(focused?.getAttribute("data-card")).toBe("p-2");
+    });
+  });
+
+  it("'a' approves the focused card", async () => {
+    window.localStorage.setItem("relay-style-memory-view", "batch");
+    mockFetchOk({
+      ok: true,
+      command: "relay heuristic-proposal review",
+      data: { proposal_id: "p-1", project_id: "proj", state: "approved" },
+      warnings: [],
+    });
+    renderProposals();
+    await waitFor(() => expect(screen.getByText(/navigate/i)).toBeInTheDocument());
+
+    fireEvent.keyDown(window, { key: "a" });
+    await waitFor(() => expect(globalThis.fetch).toHaveBeenCalled());
+  });
+
+  it("ignores shortcut when textarea is focused (INPUT focus exception)", async () => {
+    const user = userEvent.setup();
+    window.localStorage.setItem("relay-style-memory-view", "batch");
+    renderProposals();
+    await waitFor(() => expect(screen.getByText(/navigate/i)).toBeInTheDocument());
+
+    // Open reject overlay on first card to mount textarea.
+    await user.click(screen.getAllByText("Reject")[0]);
+    await user.click(screen.getByTestId("reject-chip-other"));
+    const ta = screen.getByTestId("reject-other-textarea") as HTMLTextAreaElement;
+    ta.focus();
+
+    // Pressing 'a' inside the textarea must not call fetch (no approve).
+    fireEvent.keyDown(ta, { key: "a", target: ta });
+    await new Promise((r) => setTimeout(r, 30));
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+});
+
+describe("reduced motion", () => {
+  it("renders without throwing when prefers-reduced-motion is set", () => {
+    const original = window.matchMedia;
+    window.matchMedia = vi.fn().mockReturnValue({
+      matches: true,
+      media: "(prefers-reduced-motion: reduce)",
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }) as unknown as typeof window.matchMedia;
+
+    expect(() => renderProposals()).not.toThrow();
+    expect(screen.getByTestId("approve-p-1")).toBeInTheDocument();
+    window.matchMedia = original;
+  });
+});

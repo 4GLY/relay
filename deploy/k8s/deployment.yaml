@@ -91,6 +91,11 @@ spec:
             secretKeyRef:
               name: relay-secrets
               key: database_url
+        - name: RELAY_DATA_ENCRYPTION_KEY
+          valueFrom:
+            secretKeyRef:
+              name: relay-secrets
+              key: data_encryption_key
         - name: RELAY_CURATOR_WORKER_ID
           value: relay-curator-worker
         - name: RELAY_CURATOR_PROVIDER

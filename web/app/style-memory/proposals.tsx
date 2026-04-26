@@ -116,7 +116,7 @@ export function Proposals({
   const reduceMotion = useReducedMotion();
 
   const [pending, setPending] = useState<PendingProposal[]>(() => rankSorted(initialPending));
-  const [approved] = useState<ApprovedHeuristic[]>(initialApproved);
+  const [approved, setApproved] = useState<ApprovedHeuristic[]>(initialApproved);
   const [approvedFailed, setApprovedFailed] = useState(initialApprovedFailed);
   const [tab, setTab] = useState<TabKey>("proposals");
   const [view, setView] = useState<ViewMode>("single");
@@ -129,6 +129,14 @@ export function Proposals({
   const [animatingApproveId, setAnimatingApproveId] = useState<string | null>(null);
 
   const cardRefs = useRef<Record<string, HTMLElement | null>>({});
+
+  // statusesRef mirrors statuses so async callbacks can read the live value
+  // without re-creating themselves on every status change. Prevents key
+  // handler rebinding storms in batch mode.
+  const statusesRef = useRef(statuses);
+  useEffect(() => {
+    statusesRef.current = statuses;
+  }, [statuses]);
 
   // Load persisted view choice after mount (avoid SSR/CSR mismatch).
   useEffect(() => {
@@ -183,7 +191,7 @@ export function Proposals({
 
   const approveProposal = useCallback(
     async (proposalId: string) => {
-      const existing = statuses[proposalId];
+      const existing = statusesRef.current[proposalId];
       if (existing && (existing.kind === "approving" || existing.kind === "rejecting")) return;
       const controller = new AbortController();
       setStatuses((s) => ({
@@ -224,7 +232,7 @@ export function Proposals({
         setStatuses((s) => ({ ...s, [proposalId]: { kind: "error", message } }));
       }
     },
-    [pushToast, reduceMotion, statuses],
+    [pushToast, reduceMotion],
   );
 
   const submitReject = useCallback(
@@ -267,22 +275,19 @@ export function Proposals({
     [pushToast],
   );
 
-  const cancelInflight = useCallback(
-    (proposalId: string) => {
-      const status = statuses[proposalId];
-      if (!status) return;
-      if (status.kind === "approving" || status.kind === "rejecting") {
-        status.controller.abort();
-        setStatuses((s) => {
-          const next = { ...s };
-          delete next[proposalId];
-          return next;
-        });
-        setAnimatingApproveId((cur) => (cur === proposalId ? null : cur));
-      }
-    },
-    [statuses],
-  );
+  const cancelInflight = useCallback((proposalId: string) => {
+    const status = statusesRef.current[proposalId];
+    if (!status) return;
+    if (status.kind === "approving" || status.kind === "rejecting") {
+      status.controller.abort();
+      setStatuses((s) => {
+        const next = { ...s };
+        delete next[proposalId];
+        return next;
+      });
+      setAnimatingApproveId((cur) => (cur === proposalId ? null : cur));
+    }
+  }, []);
 
   // Keyboard navigation in batch mode (Contract C).
   useEffect(() => {
@@ -409,8 +414,7 @@ export function Proposals({
               try {
                 const { listApprovedHeuristics } = await import("@/lib/heuristics");
                 const fresh = await listApprovedHeuristics(projectId, { limit: 100 });
-                approved.length = 0;
-                approved.push(...fresh.items);
+                setApproved(fresh.items);
                 setApprovedFailed(false);
               } catch {
                 /* keep failed state */

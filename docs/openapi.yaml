@@ -784,63 +784,27 @@ components:
           type: string
         onboarding_complete:
           type: boolean
-          description: True when the user has completed the V2 onboarding flow with a valid Anthropic key. False after DELETE /v1/onboarding (D5 trust escape).
+          description: True when the user has completed the V2 first-run onboarding flow. This does not require an Anthropic key.
         default_project_id:
           type: string
-          description: The user's "Personal" project, auto-created at onboarding (D4). Stable across re-onboarding and DELETE — preserved so prior packets remain attached.
+          description: The user's "Personal" project, auto-created at onboarding (D4). Stable across repeated onboarding calls and DELETE — preserved so prior packets remain attached.
         last_validated_at:
           type: string
           format: date-time
-          description: Timestamp of the last successful Anthropic key validation. Updated only on a 200 from api.anthropic.com /v1/models.
-    StepStatus:
-      type: string
-      enum: [ok, failed, skipped]
-      description: |
-        Locked validation chip status (D2 + E4):
-        - ok: this step succeeded
-        - failed: this step is the cause of the error
-        - skipped: an earlier step's failure makes this step undefined (we did not probe further)
-    ValidationStep:
-      type: object
-      required: [id, status]
-      properties:
-        id:
-          type: string
-          description: |
-            Stable chip identifier. The server emits exactly two chips per probe:
-            anthropic_key (the API rejected/accepted the key) and
-            anthropic_quota (the account has remaining quota).
-          enum: [anthropic_key, anthropic_quota]
-        status:
-          $ref: '#/components/schemas/StepStatus'
+          description: Timestamp of the last successful Anthropic key validation, when a later provider-key flow is connected. Null for keyless onboarding.
     OnboardingCompleteInput:
       type: object
-      required: [anthropic_key]
-      properties:
-        anthropic_key:
-          type: string
-          description: |
-            The user's Anthropic API key (must start with sk-ant-). Encrypted at rest. Transmitted only to Anthropic for validation, never stored or logged in plaintext. The strict decoder rejects unknown fields (including the legacy relay_url field that D3 removed) with code UNKNOWN_JSON_FIELD.
+      additionalProperties: false
+      description: No provider key is required to complete first-run onboarding.
     OnboardingCompleteResult:
       type: object
-      required: [onboarding_complete, default_project_id, anthropic_key_prefix, anthropic_key_last4, steps]
+      required: [onboarding_complete, default_project_id]
       properties:
         onboarding_complete:
           type: boolean
         default_project_id:
           type: string
           description: ID of the user's "Personal" project, created idempotently on first onboarding (D4).
-        anthropic_key_prefix:
-          type: string
-          description: First 18 characters of the key followed by an ellipsis. Safe to display in settings UI.
-        anthropic_key_last4:
-          type: string
-          description: Last 4 characters of the key. Safe to display in settings UI.
-        steps:
-          type: array
-          description: Always two entries (anthropic_key, anthropic_quota) regardless of success or failure (D2). Frame 3 chips render directly from this array.
-          items:
-            $ref: '#/components/schemas/ValidationStep'
     OnboardingCompleteResponse:
       allOf:
         - $ref: '#/components/schemas/SuccessEnvelope'
@@ -1979,19 +1943,16 @@ paths:
   /v1/onboarding:
     post:
       tags: [onboarding]
-      summary: Validate and store the user's Anthropic API key
+      summary: Complete first-run onboarding without a provider key
       description: |
-        Validates the supplied Anthropic API key against api.anthropic.com /v1/models
-        and, on success, envelope-encrypts it under the active KEK and persists it for
-        the cookie-session user. Idempotent: re-onboarding rotates the ciphertext and
-        the row's aad_salt while preserving default_project_id.
-
-        Trust promise: encrypted at rest. Transmitted only to Anthropic for validation,
-        never stored or logged in plaintext.
+        Creates or resolves the cookie-session user's default "Personal" project and
+        marks first-run onboarding complete. Anthropic key connection is deliberately
+        not part of this endpoint; users can enter Relay before deciding whether to
+        connect a Claude provider key.
 
         Auth: cookie session. Admin bearer is rejected (no user identity to bind the
-        row to). Strict decoder: any unknown field (including the legacy relay_url
-        field removed in D3) returns 400 UNKNOWN_JSON_FIELD.
+        row to). Strict decoder: any unknown field, including anthropic_key or the
+        legacy relay_url field, returns 400 UNKNOWN_JSON_FIELD.
       operationId: onboardingComplete
       requestBody:
         required: true
@@ -2009,9 +1970,7 @@ paths:
         '400':
           description: |
             Validation failed. error.code is one of:
-            MISSING_REQUIRED_FIELDS, UNKNOWN_JSON_FIELD,
-            INVALID_ANTHROPIC_KEY, ANTHROPIC_QUOTA.
-            steps[] is always populated so Frame 3 can render chips.
+            UNKNOWN_JSON_FIELD.
           content:
             application/json:
               schema:
@@ -2023,25 +1982,19 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
         '500':
-          description: Server misconfiguration (e.g. RELAY_DATA_ENCRYPTION_KEY missing)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
-        '502':
-          description: Could not reach api.anthropic.com (ANTHROPIC_UNREACHABLE)
+          description: Server misconfiguration
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
     delete:
       tags: [onboarding]
-      summary: Forget the user's Anthropic API key (D5 trust escape hatch)
+      summary: Forget the user's Anthropic API key
       description: |
-        NULLs the encrypted key + nonce + aad_salt + onboarding_completed_at.
-        The row remains so that prior packets bound to default_project_id still
-        resolve, and so re-onboarding can rotate to a fresh ciphertext +
-        aad_salt without losing project history.
+        NULLs the encrypted key + nonce + aad_salt + last_validated_at.
+        The row, default_project_id, and onboarding_completed_at remain so the user
+        does not get sent back through first-run onboarding after disconnecting a
+        provider key.
       operationId: onboardingDeleteKey
       responses:
         '200':

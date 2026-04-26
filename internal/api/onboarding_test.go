@@ -17,12 +17,12 @@ import (
 	"relay/internal/contracts"
 	"relay/internal/domain"
 	"relay/internal/lib"
-	"relay/internal/lib/crypto"
 	"relay/internal/services"
 )
 
 // fakeOnboardingStore mirrors the in-memory store from services_test but
-// counts EnsureProjectByOwnerName calls so T9 can assert exactly-one project.
+// counts EnsureProjectByOwnerName calls so concurrent tests can assert one
+// durable Personal project.
 type fakeOnboardingStore struct {
 	mu              sync.Mutex
 	rows            map[string]domain.UserOnboarding
@@ -40,6 +40,17 @@ func newFakeOnboardingStore() *fakeOnboardingStore {
 func (s *fakeOnboardingStore) UpsertOnboarding(_ context.Context, row domain.UserOnboarding) (domain.UserOnboarding, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if existing, ok := s.rows[row.UserID]; ok {
+		if row.AnthropicKeyCiphertext == nil {
+			row.AnthropicKeyCiphertext = existing.AnthropicKeyCiphertext
+			row.AnthropicKeyNonce = existing.AnthropicKeyNonce
+			row.AnthropicKeyKEKVersion = existing.AnthropicKeyKEKVersion
+			row.AnthropicKeyPrefix = existing.AnthropicKeyPrefix
+			row.AnthropicKeyLast4 = existing.AnthropicKeyLast4
+			row.AadSalt = existing.AadSalt
+			row.LastValidatedAt = existing.LastValidatedAt
+		}
+	}
 	s.rows[row.UserID] = row
 	return row, nil
 }
@@ -66,7 +77,7 @@ func (s *fakeOnboardingStore) DeleteOnboardingKey(_ context.Context, userID stri
 	row.AnthropicKeyPrefix = ""
 	row.AnthropicKeyLast4 = ""
 	row.AadSalt = nil
-	row.OnboardingCompletedAt = nil
+	row.LastValidatedAt = nil
 	s.rows[userID] = row
 	return nil
 }
@@ -90,17 +101,10 @@ type onboardingFixture struct {
 	cookie     *http.Cookie
 	adminToken string
 	userID     string
-	cleanup    func()
 }
 
-// newOnboardingFixture wires session-cookie auth + onboarding routes against
-// in-memory fakes and a stub Anthropic server. cleanup() closes the stub.
-func newOnboardingFixture(t *testing.T, anthropicStatus int) *onboardingFixture {
+func newOnboardingFixture(t *testing.T) *onboardingFixture {
 	t.Helper()
-	stubAnth := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(anthropicStatus)
-	}))
-	restoreURL := services.SetValidateURL(stubAnth.URL)
 
 	users := newAuthFakeUserStore()
 	const userID = "usr_onboarding_owner"
@@ -121,25 +125,14 @@ func newOnboardingFixture(t *testing.T, anthropicStatus int) *onboardingFixture 
 	}
 
 	onboarding := newFakeOnboardingStore()
-
-	keys := make([]byte, 32)
-	for i := range keys {
-		keys[i] = byte(i + 1)
-	}
-	keks := map[crypto.KEKVersion][]byte{1: keys}
-	svc := services.NewWithKEKs(services.Dependencies{
+	svc := services.New(services.Dependencies{
 		Users:        users,
 		UserSessions: sessions,
 		Onboarding:   onboarding,
-	}, keks, 1)
+	})
 
 	const adminToken = "admin-token"
 	mux := buildMux(Handler{services: svc}, config.Config{APIToken: adminToken}, app.Runtime{Services: svc})
-
-	cleanup := func() {
-		restoreURL()
-		stubAnth.Close()
-	}
 
 	return &onboardingFixture{
 		mux:        mux,
@@ -147,21 +140,14 @@ func newOnboardingFixture(t *testing.T, anthropicStatus int) *onboardingFixture 
 		cookie:     &http.Cookie{Name: sessionCookieName, Value: tok},
 		adminToken: adminToken,
 		userID:     userID,
-		cleanup:    cleanup,
 	}
 }
 
-// T3 + T9: two concurrent POSTs land on the same user. After both finish, the
-// store has exactly one row for the user and exactly one "Personal" project
-// row keyed by (owner, name). EnsureProjectByOwnerName MAY be called twice
-// (it's idempotent), but the result map must collapse to a single project.
 func TestOnboardingConcurrentDoubleSubmit(t *testing.T) {
-	f := newOnboardingFixture(t, http.StatusOK)
-	defer f.cleanup()
+	f := newOnboardingFixture(t)
 
 	postOnce := func() *httptest.ResponseRecorder {
-		body, _ := json.Marshal(map[string]any{"anthropic_key": "sk-ant-concurrent-1234"})
-		req := httptest.NewRequest(http.MethodPost, "/v1/onboarding", bytes.NewReader(body))
+		req := httptest.NewRequest(http.MethodPost, "/v1/onboarding", bytes.NewReader([]byte(`{}`)))
 		req.AddCookie(f.cookie)
 		rec := httptest.NewRecorder()
 		f.mux.ServeHTTP(rec, req)
@@ -193,16 +179,10 @@ func TestOnboardingConcurrentDoubleSubmit(t *testing.T) {
 	}
 }
 
-// T6: strict decoder rejects unknown fields. The legacy relay_url field that
-// D3 removed is the canonical case.
-func TestOnboardingStrictDecoderRejectsUnknownFields(t *testing.T) {
-	f := newOnboardingFixture(t, http.StatusOK)
-	defer f.cleanup()
+func TestOnboardingRejectsAnthropicKeyField(t *testing.T) {
+	f := newOnboardingFixture(t)
 
-	body, _ := json.Marshal(map[string]any{
-		"anthropic_key": "sk-ant-test1234",
-		"relay_url":     "https://relay.4gly.dev",
-	})
+	body, _ := json.Marshal(map[string]any{"anthropic_key": "sk-ant-test1234"})
 	req := httptest.NewRequest(http.MethodPost, "/v1/onboarding", bytes.NewReader(body))
 	req.AddCookie(f.cookie)
 	rec := httptest.NewRecorder()
@@ -216,13 +196,27 @@ func TestOnboardingStrictDecoderRejectsUnknownFields(t *testing.T) {
 	}
 }
 
-// Anonymous POST (no cookie, no admin bearer) → 401 from middleware.
-func TestOnboardingRejectsAnonymous(t *testing.T) {
-	f := newOnboardingFixture(t, http.StatusOK)
-	defer f.cleanup()
+func TestOnboardingStrictDecoderRejectsRelayURL(t *testing.T) {
+	f := newOnboardingFixture(t)
 
-	body, _ := json.Marshal(map[string]any{"anthropic_key": "sk-ant-x"})
+	body, _ := json.Marshal(map[string]any{"relay_url": "https://relay.4gly.dev"})
 	req := httptest.NewRequest(http.MethodPost, "/v1/onboarding", bytes.NewReader(body))
+	req.AddCookie(f.cookie)
+	rec := httptest.NewRecorder()
+	f.mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d body=%s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "UNKNOWN_JSON_FIELD") {
+		t.Fatalf("expected UNKNOWN_JSON_FIELD, got %s", rec.Body.String())
+	}
+}
+
+func TestOnboardingRejectsAnonymous(t *testing.T) {
+	f := newOnboardingFixture(t)
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/onboarding", bytes.NewReader([]byte(`{}`)))
 	rec := httptest.NewRecorder()
 	f.mux.ServeHTTP(rec, req)
 
@@ -231,15 +225,10 @@ func TestOnboardingRejectsAnonymous(t *testing.T) {
 	}
 }
 
-// R1: admin bearer reaches the route but onboarding refuses because the row
-// is keyed by user_id and admin context has no user identity. Must be 401
-// (not 403) because the error code is UNAUTHORIZED (E10).
 func TestOnboardingAdminBearerReturnsUnauthorized(t *testing.T) {
-	f := newOnboardingFixture(t, http.StatusOK)
-	defer f.cleanup()
+	f := newOnboardingFixture(t)
 
-	body, _ := json.Marshal(map[string]any{"anthropic_key": "sk-ant-admin"})
-	req := httptest.NewRequest(http.MethodPost, "/v1/onboarding", bytes.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, "/v1/onboarding", bytes.NewReader([]byte(`{}`)))
 	req.Header.Set("Authorization", "Bearer "+f.adminToken)
 	rec := httptest.NewRecorder()
 	f.mux.ServeHTTP(rec, req)
@@ -252,10 +241,8 @@ func TestOnboardingAdminBearerReturnsUnauthorized(t *testing.T) {
 	}
 }
 
-// DELETE → 404 when no row exists. Smoke for the route + status mapping.
 func TestOnboardingDeleteNotFound(t *testing.T) {
-	f := newOnboardingFixture(t, http.StatusOK)
-	defer f.cleanup()
+	f := newOnboardingFixture(t)
 
 	req := httptest.NewRequest(http.MethodDelete, "/v1/onboarding", nil)
 	req.AddCookie(f.cookie)
@@ -266,19 +253,22 @@ func TestOnboardingDeleteNotFound(t *testing.T) {
 	}
 }
 
-// DELETE happy path: POST then DELETE returns 200.
-func TestOnboardingDeleteRoundtrip(t *testing.T) {
-	f := newOnboardingFixture(t, http.StatusOK)
-	defer f.cleanup()
+func TestOnboardingDeleteKeepsOnboardingComplete(t *testing.T) {
+	f := newOnboardingFixture(t)
 
-	body, _ := json.Marshal(map[string]any{"anthropic_key": "sk-ant-roundtrip1234"})
-	postReq := httptest.NewRequest(http.MethodPost, "/v1/onboarding", bytes.NewReader(body))
+	postReq := httptest.NewRequest(http.MethodPost, "/v1/onboarding", bytes.NewReader([]byte(`{}`)))
 	postReq.AddCookie(f.cookie)
 	postRec := httptest.NewRecorder()
 	f.mux.ServeHTTP(postRec, postReq)
 	if postRec.Code != http.StatusOK {
 		t.Fatalf("expected POST 200, got %d body=%s", postRec.Code, postRec.Body.String())
 	}
+
+	row := f.onboarding.rows[f.userID]
+	row.AnthropicKeyCiphertext = []byte("ciphertext")
+	row.AnthropicKeyNonce = []byte("nonce")
+	row.AadSalt = []byte("salt")
+	f.onboarding.rows[f.userID] = row
 
 	delReq := httptest.NewRequest(http.MethodDelete, "/v1/onboarding", nil)
 	delReq.AddCookie(f.cookie)
@@ -287,12 +277,25 @@ func TestOnboardingDeleteRoundtrip(t *testing.T) {
 	if delRec.Code != http.StatusOK {
 		t.Fatalf("expected DELETE 200, got %d body=%s", delRec.Code, delRec.Body.String())
 	}
+
+	meReq := httptest.NewRequest(http.MethodGet, "/v1/auth/me", nil)
+	meReq.AddCookie(f.cookie)
+	meRec := httptest.NewRecorder()
+	f.mux.ServeHTTP(meRec, meReq)
+
+	var envelope struct {
+		Data map[string]any `json:"data"`
+	}
+	if err := json.Unmarshal(meRec.Body.Bytes(), &envelope); err != nil {
+		t.Fatalf("decode envelope: %v", err)
+	}
+	if got, _ := envelope.Data["onboarding_complete"].(bool); !got {
+		t.Fatalf("expected onboarding_complete=true after key deletion, body=%s", meRec.Body.String())
+	}
 }
 
-// Method other than POST/DELETE on /v1/onboarding → 405.
 func TestOnboardingRejectsUnsupportedMethod(t *testing.T) {
-	f := newOnboardingFixture(t, http.StatusOK)
-	defer f.cleanup()
+	f := newOnboardingFixture(t)
 
 	req := httptest.NewRequest(http.MethodGet, "/v1/onboarding", nil)
 	req.AddCookie(f.cookie)
@@ -303,14 +306,10 @@ func TestOnboardingRejectsUnsupportedMethod(t *testing.T) {
 	}
 }
 
-// /v1/auth/me reflects onboarding state — completes when key set, false after
-// DELETE (E7).
-func TestAuthMeReflectsOnboardingStatus(t *testing.T) {
-	f := newOnboardingFixture(t, http.StatusOK)
-	defer f.cleanup()
+func TestAuthMeReflectsKeylessOnboardingStatus(t *testing.T) {
+	f := newOnboardingFixture(t)
 
-	body, _ := json.Marshal(map[string]any{"anthropic_key": "sk-ant-statuscheck1234"})
-	postReq := httptest.NewRequest(http.MethodPost, "/v1/onboarding", bytes.NewReader(body))
+	postReq := httptest.NewRequest(http.MethodPost, "/v1/onboarding", bytes.NewReader([]byte(`{}`)))
 	postReq.AddCookie(f.cookie)
 	f.mux.ServeHTTP(httptest.NewRecorder(), postReq)
 
@@ -333,28 +332,10 @@ func TestAuthMeReflectsOnboardingStatus(t *testing.T) {
 	if pid, _ := envelope.Data["default_project_id"].(string); pid == "" {
 		t.Fatalf("expected default_project_id, got body=%s", meRec.Body.String())
 	}
-
-	delReq := httptest.NewRequest(http.MethodDelete, "/v1/onboarding", nil)
-	delReq.AddCookie(f.cookie)
-	f.mux.ServeHTTP(httptest.NewRecorder(), delReq)
-
-	meReq2 := httptest.NewRequest(http.MethodGet, "/v1/auth/me", nil)
-	meReq2.AddCookie(f.cookie)
-	meRec2 := httptest.NewRecorder()
-	f.mux.ServeHTTP(meRec2, meReq2)
-	var post map[string]any
-	_ = json.Unmarshal(meRec2.Body.Bytes(), &post)
-	data, _ := post["data"].(map[string]any)
-	if got, _ := data["onboarding_complete"].(bool); got {
-		t.Fatalf("expected onboarding_complete=false after DELETE, body=%s", meRec2.Body.String())
-	}
 }
 
-// /v1/auth/me reports onboarding_complete=false for a freshly authenticated
-// user that has not yet onboarded (no row in store).
 func TestAuthMeOnboardingFalseForNewUser(t *testing.T) {
-	f := newOnboardingFixture(t, http.StatusOK)
-	defer f.cleanup()
+	f := newOnboardingFixture(t)
 
 	meReq := httptest.NewRequest(http.MethodGet, "/v1/auth/me", nil)
 	meReq.AddCookie(f.cookie)
@@ -372,16 +353,11 @@ func TestAuthMeOnboardingFalseForNewUser(t *testing.T) {
 	}
 }
 
-// T7: writeServiceError code → status mapping is table-driven so a regression
-// in serviceErrorStatus shows up at compile-time-equivalent assertion speed.
 func TestWriteServiceErrorStatusTable(t *testing.T) {
 	cases := []struct {
 		code     string
 		expected int
 	}{
-		{"INVALID_ANTHROPIC_KEY", http.StatusBadRequest},
-		{"ANTHROPIC_QUOTA", http.StatusBadRequest},
-		{"ANTHROPIC_UNREACHABLE", http.StatusBadGateway},
 		{"ONBOARDING_NOT_FOUND", http.StatusNotFound},
 		{"PROJECT_NOT_FOUND", http.StatusNotFound},
 		{"PACKET_SNAPSHOT_NOT_FOUND", http.StatusNotFound},
@@ -409,24 +385,5 @@ func TestWriteServiceErrorStatusTable(t *testing.T) {
 				t.Fatalf("envelope code mismatch: got %q want %q", env.Error.Code, tc.code)
 			}
 		})
-	}
-}
-
-// Hash-mark the underscore — the strict decoder must surface UNKNOWN_JSON_FIELD
-// even when the unknown key looks like an upstream typo of an existing field.
-// (Defensive; not in T1-T13 but cheap to add.)
-func TestOnboardingStrictDecoderTypoField(t *testing.T) {
-	f := newOnboardingFixture(t, http.StatusOK)
-	defer f.cleanup()
-
-	body, _ := json.Marshal(map[string]any{
-		"anthropic_keys": "sk-ant-typo1234", // plural — typo
-	})
-	req := httptest.NewRequest(http.MethodPost, "/v1/onboarding", bytes.NewReader(body))
-	req.AddCookie(f.cookie)
-	rec := httptest.NewRecorder()
-	f.mux.ServeHTTP(rec, req)
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("expected 400, got %d body=%s", rec.Code, rec.Body.String())
 	}
 }

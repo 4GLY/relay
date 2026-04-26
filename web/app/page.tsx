@@ -30,7 +30,7 @@ const cards: PlaceholderCard[] = [
     eyebrow: "S8 · 60 seconds",
     title: "1-click Onboarding",
     blurb:
-      "Paste an Anthropic key. Connect a Relay URL. Receive your first packet inside a minute.",
+      "Create your workspace and receive your first packet inside a minute. Provider keys can wait.",
     ships: "Ships in S8",
   },
 ];

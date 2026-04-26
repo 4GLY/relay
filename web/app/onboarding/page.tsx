@@ -42,7 +42,7 @@ export default function OnboardingPage() {
           maxWidth: "560px",
         }}
       >
-        Coming in S8 — 1-click onboarding flow.
+        Coming in S8 — keyless first-run onboarding. Claude provider keys move to a later settings flow.
       </p>
     </main>
   );

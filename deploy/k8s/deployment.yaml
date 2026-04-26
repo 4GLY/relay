@@ -37,6 +37,11 @@ spec:
             secretKeyRef:
               name: relay-secrets
               key: api_token
+        - name: RELAY_DATA_ENCRYPTION_KEY
+          valueFrom:
+            secretKeyRef:
+              name: relay-secrets
+              key: data_encryption_key
         resources:
           requests:
             cpu: 25m

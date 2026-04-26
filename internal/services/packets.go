@@ -298,7 +298,7 @@ func (s Service) selectStyleCues(ctx context.Context, projectID string, input Pa
 	if input.DisableStyleCues || s.deps.ApprovedHeuristics == nil {
 		return nil, nil, nil
 	}
-	heuristics, err := s.deps.ApprovedHeuristics.ListApprovedHeuristicsByProject(ctx, projectID, input.Workflow, input.ArtifactType, 10)
+	heuristics, err := s.deps.ApprovedHeuristics.ListApprovedHeuristicsByProject(ctx, projectID, input.Workflow, input.ArtifactType, "", 10)
 	if err != nil {
 		return nil, nil, err
 	}

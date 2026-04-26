@@ -128,60 +128,62 @@ func (s Stores) GetHeuristicProposal(ctx context.Context, id string) (domain.Heu
 	return proposal, nil
 }
 
-func (s Stores) ListHeuristicProposalsByProject(ctx context.Context, projectID string, state string, limit int) ([]domain.HeuristicProposal, error) {
+func (s Stores) ListHeuristicProposalsByProject(ctx context.Context, projectID string, state string, cursor string, limit int) ([]domain.HeuristicProposal, error) {
 	if limit <= 0 {
 		limit = 50
 	}
 	rows, err := s.db.Query(ctx, `
-		SELECT id
+		SELECT id, project_id, COALESCE(origin_trace_id, ''), workflow, artifact_type,
+		       heuristic_key, canonical_text, normalized_text, state, source_trace_ids,
+		       source_refs, proposed_by, review_notes, created_at, updated_at
 		FROM heuristic_proposals
 		WHERE project_id = $1
 		  AND ($2 = '' OR state = $2)
-		ORDER BY created_at DESC
-		LIMIT $3
-	`, projectID, state, limit)
+		  AND ($3 = '' OR created_at < $3::timestamptz)
+		ORDER BY created_at DESC, id DESC
+		LIMIT $4
+	`, projectID, state, cursor, limit)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var ids []string
+	items := make([]domain.HeuristicProposal, 0, limit)
 	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err != nil {
+		var item domain.HeuristicProposal
+		var sourceTraceIDs, sourceRefs []byte
+		if err := rows.Scan(&item.ID, &item.ProjectID, &item.OriginTraceID, &item.Workflow, &item.ArtifactType, &item.HeuristicKey, &item.CanonicalText, &item.NormalizedText, &item.State, &sourceTraceIDs, &sourceRefs, &item.ProposedBy, &item.ReviewNotes, &item.CreatedAt, &item.UpdatedAt); err != nil {
 			return nil, err
 		}
-		ids = append(ids, id)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-
-	items := make([]domain.HeuristicProposal, 0, len(ids))
-	for _, id := range ids {
-		item, err := s.GetHeuristicProposal(ctx, id)
-		if err != nil {
-			return nil, err
-		}
+		_ = json.Unmarshal(sourceTraceIDs, &item.SourceTraceIDs)
+		_ = json.Unmarshal(sourceRefs, &item.SourceRefs)
 		items = append(items, item)
 	}
-	return items, nil
+	return items, rows.Err()
 }
 
 func (s Stores) UpdateHeuristicProposalState(ctx context.Context, id string, state string, reviewNotes string) (domain.HeuristicProposal, error) {
-	err := s.db.QueryRow(ctx, `
+	cmd, err := s.db.Exec(ctx, `
 		UPDATE heuristic_proposals
 		SET state = $2,
 		    review_notes = $3,
 		    updated_at = NOW()
 		WHERE id = $1
-		RETURNING id
-	`, id, state, reviewNotes).Scan(&id)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return domain.HeuristicProposal{}, lib.NotFound("HEURISTIC_PROPOSAL_NOT_FOUND", "heuristic proposal not found")
-	}
+		  AND state = 'pending'
+	`, id, state, reviewNotes)
 	if err != nil {
 		return domain.HeuristicProposal{}, err
+	}
+	if cmd.RowsAffected() == 0 {
+		// Distinguish "not found" from "already resolved" by re-fetching.
+		if _, getErr := s.GetHeuristicProposal(ctx, id); getErr != nil {
+			return domain.HeuristicProposal{}, getErr
+		}
+		return domain.HeuristicProposal{}, lib.AppError{
+			Code:      "PROPOSAL_ALREADY_RESOLVED",
+			Message:   "heuristic proposal has already been resolved",
+			Retryable: false,
+		}
 	}
 	return s.GetHeuristicProposal(ctx, id)
 }
@@ -227,46 +229,40 @@ func (s Stores) GetApprovedHeuristic(ctx context.Context, id string) (domain.App
 	return heuristic, nil
 }
 
-func (s Stores) ListApprovedHeuristicsByProject(ctx context.Context, projectID string, workflow string, artifactType string, limit int) ([]domain.ApprovedHeuristic, error) {
+func (s Stores) ListApprovedHeuristicsByProject(ctx context.Context, projectID string, workflow string, artifactType string, cursor string, limit int) ([]domain.ApprovedHeuristic, error) {
 	if limit <= 0 {
 		limit = 50
 	}
 	rows, err := s.db.Query(ctx, `
-		SELECT id
+		SELECT id, project_id, COALESCE(origin_proposal_id, ''), workflow, artifact_type,
+		       heuristic_key, canonical_text, state, source_trace_ids, source_refs,
+		       created_at, updated_at
 		FROM approved_heuristics
 		WHERE project_id = $1
 		  AND state = 'approved'
-		  AND (workflow = '' OR workflow = $2)
-		  AND (artifact_type = '' OR artifact_type = $3)
-		ORDER BY created_at DESC
-		LIMIT $4
-	`, projectID, workflow, artifactType, limit)
+		  AND ($2 = '' OR workflow = $2)
+		  AND ($3 = '' OR artifact_type = $3)
+		  AND ($4 = '' OR created_at < $4::timestamptz)
+		ORDER BY created_at DESC, id DESC
+		LIMIT $5
+	`, projectID, workflow, artifactType, cursor, limit)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var ids []string
+	items := make([]domain.ApprovedHeuristic, 0, limit)
 	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err != nil {
+		var item domain.ApprovedHeuristic
+		var sourceTraceIDs, sourceRefs []byte
+		if err := rows.Scan(&item.ID, &item.ProjectID, &item.OriginProposalID, &item.Workflow, &item.ArtifactType, &item.HeuristicKey, &item.CanonicalText, &item.State, &sourceTraceIDs, &sourceRefs, &item.CreatedAt, &item.UpdatedAt); err != nil {
 			return nil, err
 		}
-		ids = append(ids, id)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-
-	items := make([]domain.ApprovedHeuristic, 0, len(ids))
-	for _, id := range ids {
-		item, err := s.GetApprovedHeuristic(ctx, id)
-		if err != nil {
-			return nil, err
-		}
+		_ = json.Unmarshal(sourceTraceIDs, &item.SourceTraceIDs)
+		_ = json.Unmarshal(sourceRefs, &item.SourceRefs)
 		items = append(items, item)
 	}
-	return items, nil
+	return items, rows.Err()
 }
 
 func (s Stores) UpdateApprovedHeuristicState(ctx context.Context, id string, state string) (domain.ApprovedHeuristic, error) {

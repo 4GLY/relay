@@ -266,6 +266,35 @@ func validateHeuristicProposalReviewInput(input HeuristicProposalReviewInput) er
 	return validateStringFieldLength("review_notes", input.ReviewNotes, maxStyleReviewNotesLength)
 }
 
+func validateListHeuristicProposalsInput(input ListHeuristicProposalsInput) error {
+	if err := validateStringFieldLength("project", input.Project, maxStyleProjectLength); err != nil {
+		return err
+	}
+	if err := validateStringFieldLength("project_id", input.ProjectID, maxStyleIDLength); err != nil {
+		return err
+	}
+	if err := validateStringFieldLength("state", input.State, maxStyleReviewActionLength); err != nil {
+		return err
+	}
+	return validateStringFieldLength("cursor", input.Cursor, maxStyleIDLength)
+}
+
+func validateListApprovedHeuristicsInput(input ListApprovedHeuristicsInput) error {
+	if err := validateStringFieldLength("project", input.Project, maxStyleProjectLength); err != nil {
+		return err
+	}
+	if err := validateStringFieldLength("project_id", input.ProjectID, maxStyleIDLength); err != nil {
+		return err
+	}
+	if err := validateStringFieldLength("workflow", input.Workflow, maxStyleWorkflowLength); err != nil {
+		return err
+	}
+	if err := validateStringFieldLength("artifact_type", input.ArtifactType, maxStyleArtifactTypeLength); err != nil {
+		return err
+	}
+	return validateStringFieldLength("cursor", input.Cursor, maxStyleIDLength)
+}
+
 func validateApprovedHeuristicUpdateInput(input ApprovedHeuristicUpdateInput) error {
 	if err := validateStringFieldLength("project", input.Project, maxStyleProjectLength); err != nil {
 		return err

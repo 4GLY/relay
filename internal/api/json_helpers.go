@@ -113,6 +113,9 @@ func writeServiceError(w http.ResponseWriter, command string, err error) {
 		if appErr.Code == "MISCONFIGURED" {
 			status = http.StatusInternalServerError
 		}
+		if appErr.Code == "PROPOSAL_ALREADY_RESOLVED" {
+			status = http.StatusConflict
+		}
 		writeJSON(w, status, contracts.Failure(command, appErr.Code, appErr.Message, appErr.Retryable, appErr.MissingFields...))
 		return
 	}

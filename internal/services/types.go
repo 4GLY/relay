@@ -235,6 +235,66 @@ type JudgmentTraceWriteResult struct {
 	CuratorJobID string `json:"curator_job_id,omitempty"`
 }
 
+type ListHeuristicProposalsInput struct {
+	Project   string `json:"project,omitempty"`
+	ProjectID string `json:"project_id,omitempty"`
+	State     string `json:"state,omitempty"`
+	Limit     int    `json:"limit,omitempty"`
+	Cursor    string `json:"cursor,omitempty"`
+}
+
+type ListHeuristicProposalsResult struct {
+	Items      []PendingProposalSummary `json:"items"`
+	NextCursor string                   `json:"next_cursor,omitempty"`
+}
+
+type PendingProposalSummary struct {
+	ProposalID     string    `json:"proposal_id"`
+	ProjectID      string    `json:"project_id"`
+	OriginTraceID  string    `json:"origin_trace_id,omitempty"`
+	Workflow       string    `json:"workflow,omitempty"`
+	ArtifactType   string    `json:"artifact_type,omitempty"`
+	HeuristicKey   string    `json:"heuristic_key"`
+	CanonicalText  string    `json:"canonical_text"`
+	NormalizedText string    `json:"normalized_text,omitempty"`
+	State          string    `json:"state"`
+	SourceTraceIDs []string  `json:"source_trace_ids,omitempty"`
+	SourceRefs     []string  `json:"source_refs,omitempty"`
+	ProposedBy     string    `json:"proposed_by,omitempty"`
+	ReviewNotes    string    `json:"review_notes,omitempty"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
+}
+
+type ListApprovedHeuristicsInput struct {
+	Project      string `json:"project,omitempty"`
+	ProjectID    string `json:"project_id,omitempty"`
+	Workflow     string `json:"workflow,omitempty"`
+	ArtifactType string `json:"artifact_type,omitempty"`
+	Limit        int    `json:"limit,omitempty"`
+	Cursor       string `json:"cursor,omitempty"`
+}
+
+type ListApprovedHeuristicsResult struct {
+	Items      []ApprovedHeuristicSummary `json:"items"`
+	NextCursor string                     `json:"next_cursor,omitempty"`
+}
+
+type ApprovedHeuristicSummary struct {
+	HeuristicID      string    `json:"heuristic_id"`
+	ProjectID        string    `json:"project_id"`
+	OriginProposalID string    `json:"origin_proposal_id,omitempty"`
+	Workflow         string    `json:"workflow,omitempty"`
+	ArtifactType     string    `json:"artifact_type,omitempty"`
+	HeuristicKey     string    `json:"heuristic_key"`
+	CanonicalText    string    `json:"canonical_text"`
+	State            string    `json:"state"`
+	SourceTraceIDs   []string  `json:"source_trace_ids,omitempty"`
+	SourceRefs       []string  `json:"source_refs,omitempty"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
+}
+
 type HeuristicProposalCreateInput struct {
 	Project        string   `json:"project"`
 	ProjectID      string   `json:"project_id,omitempty"`

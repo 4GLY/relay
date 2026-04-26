@@ -58,14 +58,14 @@ type JudgmentTraceStore interface {
 type HeuristicProposalStore interface {
 	CreateHeuristicProposal(ctx context.Context, proposal domain.HeuristicProposal) (domain.HeuristicProposal, error)
 	GetHeuristicProposal(ctx context.Context, id string) (domain.HeuristicProposal, error)
-	ListHeuristicProposalsByProject(ctx context.Context, projectID string, state string, limit int) ([]domain.HeuristicProposal, error)
+	ListHeuristicProposalsByProject(ctx context.Context, projectID string, state string, cursor string, limit int) ([]domain.HeuristicProposal, error)
 	UpdateHeuristicProposalState(ctx context.Context, id string, state string, reviewNotes string) (domain.HeuristicProposal, error)
 }
 
 type ApprovedHeuristicStore interface {
 	CreateApprovedHeuristic(ctx context.Context, heuristic domain.ApprovedHeuristic) (domain.ApprovedHeuristic, error)
 	GetApprovedHeuristic(ctx context.Context, id string) (domain.ApprovedHeuristic, error)
-	ListApprovedHeuristicsByProject(ctx context.Context, projectID string, workflow string, artifactType string, limit int) ([]domain.ApprovedHeuristic, error)
+	ListApprovedHeuristicsByProject(ctx context.Context, projectID string, workflow string, artifactType string, cursor string, limit int) ([]domain.ApprovedHeuristic, error)
 	UpdateApprovedHeuristicState(ctx context.Context, id string, state string) (domain.ApprovedHeuristic, error)
 }
 

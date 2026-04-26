@@ -102,6 +102,29 @@ type OAuthState struct {
 	ConsumedAt *time.Time
 }
 
+// UserOnboarding holds per-user onboarding state including the envelope-encrypted
+// Anthropic API key. Key material is nullable: a row whose ciphertext/nonce/salt
+// columns are NULL represents a user who completed onboarding once and then
+// invoked DELETE /v1/onboarding (D5). The project row is preserved across the
+// delete so the user can re-onboard without losing their default project.
+//
+// AnthropicKeyKEKVersion stays non-null in storage so V2.5 rotation can join
+// against it; the application layer regenerates AadSalt on every upsert (E8).
+type UserOnboarding struct {
+	UserID                 string
+	AnthropicKeyCiphertext []byte
+	AnthropicKeyNonce      []byte
+	AnthropicKeyKEKVersion uint8
+	AnthropicKeyPrefix     string
+	AnthropicKeyLast4      string
+	AadSalt                []byte
+	DefaultProjectID       string
+	OnboardingCompletedAt  *time.Time
+	LastValidatedAt        *time.Time
+	CreatedAt              time.Time
+	UpdatedAt              time.Time
+}
+
 type JudgmentTrace struct {
 	ID           string
 	ProjectID    string

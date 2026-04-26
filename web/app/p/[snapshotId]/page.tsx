@@ -1,6 +1,7 @@
-type Params = { snapshotId: string };
+type Params = Promise<{ snapshotId: string }>;
 
-export default function SnapshotPage({ params }: { params: Params }) {
+export default async function SnapshotPage({ params }: { params: Params }) {
+  const { snapshotId } = await params;
   return (
     <main
       style={{
@@ -57,7 +58,7 @@ export default function SnapshotPage({ params }: { params: Params }) {
           letterSpacing: "0.04em",
         }}
       >
-        Requested snapshot · {params.snapshotId}
+        Requested snapshot · {snapshotId}
       </p>
     </main>
   );

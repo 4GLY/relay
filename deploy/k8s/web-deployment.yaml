@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: relay-web
+  namespace: relay
+  labels:
+    app: relay-web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: relay-web
+  template:
+    metadata:
+      labels:
+        app: relay-web
+    spec:
+      containers:
+      - name: relay-web
+        image: ghcr.io/4gly/relay-web:bootstrap
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 3000
+          name: http
+        env:
+        - name: NODE_ENV
+          value: production
+        - name: PORT
+          value: "3000"
+        - name: HOSTNAME
+          value: "0.0.0.0"
+        - name: NEXT_PUBLIC_RELAY_API_URL
+          value: "https://relay.4gly.dev"
+        resources:
+          requests:
+            cpu: 25m
+            memory: 128Mi
+          limits:
+            cpu: 250m
+            memory: 384Mi
+        livenessProbe:
+          httpGet:
+            path: /api/healthz
+            port: 3000
+          initialDelaySeconds: 10
+          periodSeconds: 15
+          timeoutSeconds: 3
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /api/healthz
+            port: 3000
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 3

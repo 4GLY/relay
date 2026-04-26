@@ -1,12 +1,10 @@
-name: publish-relay-api
+name: publish-relay-web
 
 on:
   push:
     branches:
       - main
-    paths-ignore:
-      - "deploy/k8s/**"
-      - "README.md"
+    paths:
       - "web/**"
       - ".github/workflows/publish-relay-web.yml"
 
@@ -44,26 +42,26 @@ jobs:
       - name: Build and push image
         uses: docker/build-push-action@v6
         with:
-          context: .
-          file: ./Dockerfile
+          context: ./web
+          file: ./web/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            ghcr.io/4gly/relay-api:main
-            ghcr.io/4gly/relay-api:sha-${{ github.sha }}
+            ghcr.io/4gly/relay-web:main
+            ghcr.io/4gly/relay-web:sha-${{ github.sha }}
 
       - name: Update deployment image tag
         run: |
           python <<'PY'
           from pathlib import Path
-          path = Path("deploy/k8s/deployment.yaml")
+          path = Path("deploy/k8s/web-deployment.yaml")
           text = path.read_text()
-          old = "image: ghcr.io/4gly/relay-api:bootstrap"
-          if "image: ghcr.io/4gly/relay-api:sha-" in text:
+          old = "image: ghcr.io/4gly/relay-web:bootstrap"
+          if "image: ghcr.io/4gly/relay-web:sha-" in text:
               import re
-              text = re.sub(r"image: ghcr.io/4gly/relay-api:sha-[0-9a-f]{40}", f"image: ghcr.io/4gly/relay-api:sha-${{ github.sha }}", text)
+              text = re.sub(r"image: ghcr.io/4gly/relay-web:sha-[0-9a-f]{40}", f"image: ghcr.io/4gly/relay-web:sha-${{ github.sha }}", text)
           else:
-              text = text.replace(old, f"image: ghcr.io/4gly/relay-api:sha-${{ github.sha }}")
+              text = text.replace(old, f"image: ghcr.io/4gly/relay-web:sha-${{ github.sha }}")
           path.write_text(text)
           PY
 
@@ -73,7 +71,7 @@ jobs:
           RELAY_PUSH_TOKEN: ${{ secrets.RELAY_PUSH_TOKEN }}
           RELAY_PUSH_USERNAME: ${{ vars.RELAY_PUSH_USERNAME }}
         run: |
-          if git diff --quiet -- deploy/k8s/deployment.yaml; then
+          if git diff --quiet -- deploy/k8s/web-deployment.yaml; then
             exit 0
           fi
           if [[ -z "${RELAY_PUSH_TOKEN}" ]]; then
@@ -88,13 +86,13 @@ jobs:
             echo "Repository setting allow_auto_merge must be enabled for manifest sync PRs." >&2
             exit 1
           fi
-          branch="automation/relay-api-deploy-${{ github.sha }}"
-          title="chore: deploy relay-api image sha-${{ github.sha }}"
+          branch="automation/relay-web-deploy-${{ github.sha }}"
+          title="chore: deploy relay-web image sha-${{ github.sha }}"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git remote set-url origin "https://${RELAY_PUSH_USERNAME}:${RELAY_PUSH_TOKEN}@github.com/${{ github.repository }}.git"
           git checkout -b "${branch}"
-          git add deploy/k8s/deployment.yaml
+          git add deploy/k8s/web-deployment.yaml
           git commit -m "${title}"
           git push --force-with-lease origin HEAD:"${branch}"
           pr_url="$(gh pr list --state open --base main --head "${branch}" --json url --jq '.[0].url')"
@@ -103,6 +101,6 @@ jobs:
               --base main \
               --head "${branch}" \
               --title "${title}" \
-              --body $'Automated manifest sync after image publish.\n\n- built image: `ghcr.io/4gly/relay-api:sha-${{ github.sha }}`\n- updated file: `deploy/k8s/deployment.yaml`')"
+              --body $'Automated manifest sync after web image publish.\n\n- built image: `ghcr.io/4gly/relay-web:sha-${{ github.sha }}`\n- updated file: `deploy/k8s/web-deployment.yaml`')"
           fi
           gh pr merge --auto --squash "${pr_url}"

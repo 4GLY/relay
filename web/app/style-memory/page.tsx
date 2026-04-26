@@ -6,7 +6,6 @@ import {
   listApprovedHeuristics,
   listPendingProposals,
   type ApprovedHeuristic,
-  type PendingProposal,
 } from "@/lib/heuristics";
 
 import { Proposals } from "./proposals";

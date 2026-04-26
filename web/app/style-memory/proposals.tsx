@@ -592,7 +592,6 @@ function ProposalCard({
   reduceMotion,
   onFocusCard,
 }: ProposalCardProps) {
-  const isHero = mode === "hero";
   const isQueued = mode === "queued";
   const inflight = status?.kind === "approving" || status?.kind === "rejecting";
   const startedAt = status?.kind === "approving" || status?.kind === "rejecting" ? status.startedAt : 0;

@@ -154,18 +154,6 @@ export function Proposals({
     if (viewHydrated) persistView(view);
   }, [view, viewHydrated]);
 
-  // F3: refetch on focus to pick up cross-tab approvals.
-  useEffect(() => {
-    const onFocus = () => {
-      // Soft refetch: re-fire pending list. We swallow errors silently here;
-      // the main UI keeps last known state on transient failure.
-      void refetchPending();
-    };
-    window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectId]);
-
   const refetchPending = useCallback(async () => {
     try {
       const { listPendingProposals } = await import("@/lib/heuristics");
@@ -191,6 +179,19 @@ export function Proposals({
     setRejectedFailed(false);
     return fresh.items;
   }, [projectId]);
+
+  const refetchReviewState = useCallback(async () => {
+    await Promise.allSettled([refetchPending(), refetchApproved(), refetchRejected()]);
+  }, [refetchApproved, refetchPending, refetchRejected]);
+
+  // F3: refetch on focus to pick up cross-tab review state changes.
+  useEffect(() => {
+    const onFocus = () => {
+      void refetchReviewState();
+    };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [refetchReviewState]);
 
   const pushToast = useCallback((toast: Omit<ToastMessage, "id">) => {
     const id = ++toastSeq;

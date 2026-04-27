@@ -126,6 +126,15 @@ function mockFetch409() {
   );
 }
 
+function mockPendingList(items: unknown[]) {
+  mockFetchOk({
+    ok: true,
+    command: "relay heuristic-proposals list",
+    data: { items },
+    warnings: [],
+  });
+}
+
 function mockApprovedList(items: unknown[]) {
   mockFetchOk({
     ok: true,
@@ -320,6 +329,28 @@ describe("view toggle persistence", () => {
     renderProposals();
     // Batch mode: hint bar with j/k legend appears.
     await waitFor(() => expect(screen.getByText(/navigate/i)).toBeInTheDocument());
+  });
+});
+
+describe("cross-tab refresh", () => {
+  it("refreshes pending, approved, and rejected counts when the tab regains focus", async () => {
+    const user = userEvent.setup();
+    mockPendingList([]);
+    mockApprovedList([serverApproved()]);
+    mockRejectedList([]);
+    renderProposals({ initialApproved: [], initialRejected: fixtureRejected });
+
+    await user.click(screen.getByRole("tab", { name: /rejected1/i }));
+    fireEvent.focus(window);
+
+    await waitFor(() => expect(globalThis.fetch).toHaveBeenCalledTimes(3));
+    const fetchMock = globalThis.fetch as unknown as ReturnType<typeof vi.fn>;
+    expect(fetchMock.mock.calls[0][0]).toContain("state=pending");
+    expect(fetchMock.mock.calls[1][0]).toContain("/v1/approved-heuristics?");
+    expect(fetchMock.mock.calls[2][0]).toContain("state=rejected");
+
+    await user.click(screen.getByRole("tab", { name: /approved1/i }));
+    expect(await screen.findByText("approved from refetch")).toBeInTheDocument();
   });
 });
 

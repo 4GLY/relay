@@ -10,6 +10,13 @@ The CLI is only a local dev/debug wrapper.
 - local: `http://127.0.0.1:8080`
 - production: `https://relay.4gly.dev`
 
+## Public Snapshot Surface
+
+`GET /p/{token}` and `GET /p/{token}/og.png` are served by the Go API and are the
+canonical S7 public snapshot surface. They own public-token lookup, revocation,
+OG metadata, and OG PNG bytes. The Next `web/app/p/[snapshotId]` route is only a
+redirect fallback when a request reaches the web app instead of the API gateway.
+
 ## Auth
 
 - `GET /healthz` is public

@@ -103,3 +103,24 @@ Affected areas:
 
 **Learnings:**
 - Provider credentials now have a dedicated Settings-owned boundary and no longer need to share onboarding state.
+
+### 2026-04-28 - QA Closed
+
+**By:** Codex
+
+**Actions:**
+- Verified GitHub OAuth onboarding reaches `/style-memory?project=proj_28cc65685c63` without requiring provider keys.
+- Standardized authenticated gstack QA on direct headed-browser login; macOS Keychain cookie import is not reliable in this environment.
+- Verified authenticated Style Memory empty, pending, approve, reject, rejected-reason, queue toggle, focus/refetch, and mobile states.
+- Verified authenticated `/settings/providers` invalid-key, connect/masked-status, and disconnect flows.
+- Fixed and deployed the mobile Style Memory shortcut hint overlay issue via PR #72 and deploy PR #73.
+- Rechecked live deployment at `relay.4gly.dev`; Argo is `Synced Healthy` at `92bdd0b`, and `relay-web` is running image `ghcr.io/4gly/relay-web:sha-441e47adf39670f53320aa6fb26657b0f7d11ac1`.
+
+**Verification:**
+- `npm run test -- app/style-memory/proposals.test.tsx lib/heuristics.test.ts` passed 26 tests.
+- `npm run lint` passed.
+- `npm run typecheck` passed.
+- Live mobile recheck passed at 390px with no shortcut-bar overlay and no console errors after clear/reload.
+
+**Outcome:**
+- S8 keyless onboarding and provider settings QA is closed as PASS.

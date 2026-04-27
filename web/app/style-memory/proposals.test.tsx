@@ -355,6 +355,29 @@ describe("cross-tab refresh", () => {
 });
 
 describe("keyboard shortcuts (Contract C)", () => {
+  it("hides the shortcut hint on mobile-width screens", async () => {
+    const original = window.matchMedia;
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: query !== "(min-width: 640px)",
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })) as unknown as typeof window.matchMedia;
+
+    try {
+      window.localStorage.setItem("relay-style-memory-view", "batch");
+      renderProposals();
+
+      await waitFor(() => expect(screen.queryByText(/navigate/i)).not.toBeInTheDocument());
+    } finally {
+      window.matchMedia = original;
+    }
+  });
+
   it("'j' moves focus to next card in batch mode", async () => {
     window.localStorage.setItem("relay-style-memory-view", "batch");
     renderProposals();

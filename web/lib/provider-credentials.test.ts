@@ -81,4 +81,33 @@ describe("provider credential API client", () => {
       expect.objectContaining({ method: "DELETE", credentials: "include" }),
     );
   });
+
+  it("uses the public Relay API URL for browser-side provider settings calls", async () => {
+    vi.stubEnv("NEXT_PUBLIC_RELAY_API_URL", "https://relay.4gly.dev");
+    vi.resetModules();
+    const { connectProviderCredential: connectWithPublicURL } = await import(
+      "./provider-credentials"
+    );
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          ok: true,
+          command: "relay provider credential upsert",
+          data: { provider: "anthropic", connected: true, key_last4: "1234" },
+          warnings: [],
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+    );
+
+    await connectWithPublicURL("sk-ant-settings-1234");
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://relay.4gly.dev/v1/settings/provider-credentials",
+      expect.objectContaining({
+        method: "POST",
+        credentials: "include",
+      }),
+    );
+  });
 });

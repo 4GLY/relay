@@ -127,6 +127,7 @@ export function Proposals({
   const [tab, setTab] = useState<TabKey>("proposals");
   const [view, setView] = useState<ViewMode>("single");
   const [viewHydrated, setViewHydrated] = useState(false);
+  const [showShortcutHint, setShowShortcutHint] = useState(false);
 
   const [statuses, setStatuses] = useState<Record<string, CardStatus>>({});
   const [rejectDraft, setRejectDraft] = useState<RejectDraft | null>(null);
@@ -153,6 +154,18 @@ export function Proposals({
   useEffect(() => {
     if (viewHydrated) persistView(view);
   }, [view, viewHydrated]);
+
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") {
+      setShowShortcutHint(true);
+      return;
+    }
+    const media = window.matchMedia("(min-width: 640px)");
+    const sync = () => setShowShortcutHint(media.matches);
+    sync();
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
+  }, []);
 
   const refetchPending = useCallback(async () => {
     try {
@@ -472,7 +485,7 @@ export function Proposals({
 
       <ToastDock toasts={toasts} />
 
-      {view === "batch" && (
+      {view === "batch" && showShortcutHint && (
         <div style={hintBarStyle} role="status" aria-live="polite">
           <kbd>j</kbd>/<kbd>k</kbd> navigate · <kbd>a</kbd> approve · <kbd>x</kbd> reject · <kbd>Esc</kbd> close
         </div>

@@ -5,7 +5,9 @@ import { relayFetch, type RelayEnvelope } from "@/lib/api";
 import {
   listApprovedHeuristics,
   listPendingProposals,
+  listRejectedProposals,
   type ApprovedHeuristic,
+  type PendingProposal,
 } from "@/lib/heuristics";
 
 import { Proposals } from "./proposals";
@@ -62,9 +64,10 @@ export default async function StyleMemoryPage({
   }
 
   const headers: HeadersInit = { cookie: cookieHeader };
-  const [pendingResult, approvedResult] = await Promise.allSettled([
+  const [pendingResult, approvedResult, rejectedResult] = await Promise.allSettled([
     listPendingProposals(projectId, { headers, limit: 50 }),
     listApprovedHeuristics(projectId, { headers, limit: 100 }),
+    listRejectedProposals(projectId, { headers, limit: 50 }),
   ]);
 
   if (pendingResult.status === "rejected") {
@@ -76,13 +79,19 @@ export default async function StyleMemoryPage({
   const initialApproved: ApprovedHeuristic[] = approvedFetchFailed
     ? []
     : approvedResult.value.items;
+  const rejectedFetchFailed = rejectedResult.status === "rejected";
+  const initialRejected: PendingProposal[] = rejectedFetchFailed
+    ? []
+    : rejectedResult.value.items;
 
   return (
     <Proposals
       projectId={projectId}
       initialPending={initialPending}
       initialApproved={initialApproved}
+      initialRejected={initialRejected}
       approvedFetchFailed={approvedFetchFailed}
+      rejectedFetchFailed={rejectedFetchFailed}
       userDisplayName={me.display_name}
       userId={me.user_id}
     />

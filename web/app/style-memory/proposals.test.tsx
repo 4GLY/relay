@@ -63,6 +63,21 @@ const fixtureApproved: ApprovedHeuristic[] = [
   },
 ];
 
+const fixtureRejected: PendingProposal[] = [
+  {
+    proposalId: "r-1",
+    projectId: "proj",
+    heuristicKey: "kr1",
+    canonicalText: "rejected one",
+    state: "rejected",
+    sourceTraceIds: [],
+    sourceRefs: [],
+    reviewNotes: "reason:stale",
+    createdAt: "2026-04-25T00:00:00Z",
+    updatedAt: "2026-04-25T00:00:00Z",
+  },
+];
+
 beforeEach(() => {
   globalThis.fetch = vi.fn();
   window.localStorage.clear();
@@ -79,7 +94,9 @@ function renderProposals(overrides: Partial<Parameters<typeof Proposals>[0]> = {
       projectId="proj"
       initialPending={fixturePending}
       initialApproved={fixtureApproved}
+      initialRejected={fixtureRejected}
       approvedFetchFailed={false}
+      rejectedFetchFailed={false}
       userId="user-1"
       userDisplayName="hoon"
       {...overrides}
@@ -118,6 +135,15 @@ function mockApprovedList(items: unknown[]) {
   });
 }
 
+function mockRejectedList(items: unknown[]) {
+  mockFetchOk({
+    ok: true,
+    command: "relay heuristic-proposals list",
+    data: { items },
+    warnings: [],
+  });
+}
+
 function serverApproved(overrides: Record<string, unknown> = {}) {
   return {
     heuristic_id: "h-2",
@@ -130,6 +156,24 @@ function serverApproved(overrides: Record<string, unknown> = {}) {
     state: "active",
     source_trace_ids: [],
     source_refs: [],
+    created_at: "2026-04-26T03:00:00Z",
+    updated_at: "2026-04-26T03:00:00Z",
+    ...overrides,
+  };
+}
+
+function serverRejected(overrides: Record<string, unknown> = {}) {
+  return {
+    proposal_id: "p-1",
+    project_id: "proj",
+    workflow: "review",
+    artifact_type: "ts",
+    heuristic_key: "k1",
+    canonical_text: "rejected from refetch",
+    state: "rejected",
+    source_trace_ids: [],
+    source_refs: [],
+    review_notes: "reason:stale",
     created_at: "2026-04-26T03:00:00Z",
     updated_at: "2026-04-26T03:00:00Z",
     ...overrides,
@@ -231,6 +275,31 @@ describe("reject overlay", () => {
 
     await user.type(ta, " adding more chars now");
     expect((screen.getByTestId("reject-submit") as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it("refreshes the rejected list after a successful rejection", async () => {
+    const user = userEvent.setup();
+    mockFetchOk({
+      ok: true,
+      command: "relay heuristic-proposal review",
+      data: { proposal_id: "p-1", project_id: "proj", state: "rejected" },
+      warnings: [],
+    });
+    mockRejectedList([serverRejected()]);
+    renderProposals({ initialRejected: [] });
+
+    await user.click(screen.getAllByText("Reject")[0]);
+    await user.click(screen.getByTestId("reject-chip-stale"));
+    await user.click(screen.getByTestId("reject-submit"));
+
+    await waitFor(() => expect(globalThis.fetch).toHaveBeenCalledTimes(2));
+    const fetchMock = globalThis.fetch as unknown as ReturnType<typeof vi.fn>;
+    expect(fetchMock.mock.calls[1][0]).toContain("/v1/heuristic-proposals?");
+    expect(fetchMock.mock.calls[1][0]).toContain("state=rejected");
+
+    await user.click(screen.getByRole("tab", { name: /rejected1/i }));
+    expect(await screen.findByText("rejected from refetch")).toBeInTheDocument();
+    expect(screen.getByText("reason:stale")).toBeInTheDocument();
   });
 });
 

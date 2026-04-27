@@ -6,6 +6,7 @@ import {
   HeuristicsError,
   listApprovedHeuristics,
   listPendingProposals,
+  listRejectedProposals,
   reviewProposal,
   serializeRejectNotes,
 } from "./heuristics";
@@ -129,6 +130,44 @@ describe("listApprovedHeuristics", () => {
     const result = await listApprovedHeuristics("proj-1");
     expect(result.items[0].heuristicId).toBe("h1");
     expect(result.items[0].canonicalText).toBe("swan text");
+  });
+});
+
+describe("listRejectedProposals", () => {
+  it("lists rejected heuristic proposals", async () => {
+    const fetchMock = globalThis.fetch as unknown as ReturnType<typeof vi.fn>;
+    fetchMock.mockResolvedValueOnce(
+      mockResponse({
+        ok: true,
+        command: "relay heuristic-proposals list",
+        data: {
+          items: [
+            {
+              proposal_id: "prop-r1",
+              project_id: "proj-1",
+              heuristic_key: "key-r1",
+              canonical_text: "reject thing",
+              state: "rejected",
+              source_trace_ids: [],
+              source_refs: [],
+              review_notes: "reason:stale",
+              created_at: "2026-04-26T00:00:00Z",
+              updated_at: "2026-04-26T00:00:00Z",
+            },
+          ],
+        },
+        warnings: [],
+      }),
+    );
+
+    const result = await listRejectedProposals("proj-1", { limit: 50 });
+    expect(result.items[0].proposalId).toBe("prop-r1");
+    expect(result.items[0].state).toBe("rejected");
+    expect(result.items[0].reviewNotes).toBe("reason:stale");
+
+    const calledUrl = fetchMock.mock.calls[0][0] as string;
+    expect(calledUrl).toContain("state=rejected");
+    expect(calledUrl).toContain("limit=50");
   });
 });
 

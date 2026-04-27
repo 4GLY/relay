@@ -193,6 +193,20 @@ export async function listPendingProposals(
   return { items: (data.items ?? []).map(mapPending), nextCursor: data.next_cursor };
 }
 
+export async function listRejectedProposals(
+  projectId: string,
+  opts?: ListOptions,
+): Promise<ListResult<PendingProposal>> {
+  const qs = buildListQuery(projectId, opts, { state: "rejected" });
+  const res = await relayFetch(`/v1/heuristic-proposals?${qs}`, {
+    method: "GET",
+    headers: opts?.headers,
+    signal: opts?.signal,
+  });
+  const data = await unwrap<ServerList<ServerPendingProposal>>(res);
+  return { items: (data.items ?? []).map(mapPending), nextCursor: data.next_cursor };
+}
+
 export async function listApprovedHeuristics(
   projectId: string,
   opts?: ListOptions,

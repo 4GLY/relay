@@ -29,7 +29,9 @@ type Props = {
   projectId: string;
   initialPending: PendingProposal[];
   initialApproved: ApprovedHeuristic[];
+  initialRejected: PendingProposal[];
   approvedFetchFailed: boolean;
+  rejectedFetchFailed: boolean;
   userDisplayName?: string;
   userId: string;
 };
@@ -110,14 +112,18 @@ export function Proposals({
   projectId,
   initialPending,
   initialApproved,
+  initialRejected,
   approvedFetchFailed: initialApprovedFailed,
+  rejectedFetchFailed: initialRejectedFailed,
   userDisplayName,
 }: Props) {
   const reduceMotion = useReducedMotion();
 
   const [pending, setPending] = useState<PendingProposal[]>(() => rankSorted(initialPending));
   const [approved, setApproved] = useState<ApprovedHeuristic[]>(initialApproved);
+  const [rejected, setRejected] = useState<PendingProposal[]>(initialRejected);
   const [approvedFailed, setApprovedFailed] = useState(initialApprovedFailed);
+  const [rejectedFailed, setRejectedFailed] = useState(initialRejectedFailed);
   const [tab, setTab] = useState<TabKey>("proposals");
   const [view, setView] = useState<ViewMode>("single");
   const [viewHydrated, setViewHydrated] = useState(false);
@@ -175,6 +181,14 @@ export function Proposals({
     const fresh = await listApprovedHeuristics(projectId, { limit: 100 });
     setApproved(fresh.items);
     setApprovedFailed(false);
+    return fresh.items;
+  }, [projectId]);
+
+  const refetchRejected = useCallback(async () => {
+    const { listRejectedProposals } = await import("@/lib/heuristics");
+    const fresh = await listRejectedProposals(projectId, { limit: 50 });
+    setRejected(fresh.items);
+    setRejectedFailed(false);
     return fresh.items;
   }, [projectId]);
 
@@ -268,6 +282,11 @@ export function Proposals({
           reviewNotes,
           signal: controller.signal,
         });
+        try {
+          await refetchRejected();
+        } catch {
+          setRejectedFailed(true);
+        }
         setPending((cur) => cur.filter((p) => p.proposalId !== proposalId));
         setStatuses((s) => {
           const next = { ...s };
@@ -287,7 +306,7 @@ export function Proposals({
         setStatuses((s) => ({ ...s, [proposalId]: { kind: "error", message } }));
       }
     },
-    [projectId, pushToast],
+    [projectId, pushToast, refetchRejected],
   );
 
   const cancelInflight = useCallback((proposalId: string) => {
@@ -397,7 +416,7 @@ export function Proposals({
           <TabButton active={tab === "approved"} count={approved.length} onClick={() => setTab("approved")}>
             Approved
           </TabButton>
-          <TabButton active={tab === "rejected"} count={0} onClick={() => setTab("rejected")}>
+          <TabButton active={tab === "rejected"} count={rejected.length} onClick={() => setTab("rejected")}>
             Rejected
           </TabButton>
         </nav>
@@ -436,9 +455,17 @@ export function Proposals({
         )}
 
         {tab === "rejected" && (
-          <p style={emptyStateStyle}>
-            Rejected heuristics live in the curator pipeline as negative-memory signal. Surfacing them in the UI ships in V2.5.
-          </p>
+          <RejectedList
+            items={rejected}
+            failed={rejectedFailed}
+            onRetry={async () => {
+              try {
+                await refetchRejected();
+              } catch {
+                /* keep failed state */
+              }
+            }}
+          />
         )}
       </main>
 
@@ -940,6 +967,63 @@ function ApprovedList({
   );
 }
 
+function RejectedList({
+  items,
+  failed,
+  onRetry,
+}: {
+  items: PendingProposal[];
+  failed: boolean;
+  onRetry: () => void;
+}) {
+  if (failed) {
+    return (
+      <div style={emptyStateBlockStyle}>
+        <p style={{ marginBottom: "12px" }}>Couldn’t load rejected proposals.</p>
+        <button type="button" style={btnStyle("ghost")} onClick={onRetry}>
+          Retry
+        </button>
+      </div>
+    );
+  }
+  if (items.length === 0) {
+    return (
+      <div style={emptyStateBlockStyle}>
+        <p>No rejected proposals yet.</p>
+      </div>
+    );
+  }
+  return (
+    <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "10px" }}>
+      {items.map((p) => (
+        <li
+          key={p.proposalId}
+          style={{
+            border: "1px solid color-mix(in oklab, var(--danger) 35%, var(--border))",
+            borderRadius: "10px",
+            padding: "14px 16px",
+            background: "var(--canvas-raised)",
+            display: "flex",
+            flexDirection: "column",
+            gap: "6px",
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", gap: "12px" }}>
+            <span style={scopeChipStyle}>
+              <span style={{ color: "var(--danger)" }}>×</span>
+              {(p.workflow || "scope") + " × " + (p.artifactType || "any")}
+            </span>
+            <span style={muteMonoStyle}>{p.reviewNotes || "rejected"}</span>
+          </div>
+          <p style={{ fontFamily: "var(--font-mono)", fontSize: "12px", color: "var(--ink-muted)", margin: 0 }}>
+            {p.canonicalText}
+          </p>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function ToastDock({ toasts }: { toasts: ToastMessage[] }) {
   return (
     <div style={toastDockStyle}>
@@ -1396,14 +1480,6 @@ const cancelLinkStyle: CSSProperties = {
   fontSize: "11px",
   cursor: "pointer",
   padding: 0,
-};
-
-const emptyStateStyle: CSSProperties = {
-  fontFamily: "var(--font-display)",
-  fontStyle: "italic",
-  fontSize: "16px",
-  color: "var(--ink-muted)",
-  padding: "40px 0",
 };
 
 const emptyStateBlockStyle: CSSProperties = {

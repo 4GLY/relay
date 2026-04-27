@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: relay-web
-        image: ghcr.io/4gly/relay-web:sha-7cb77b4ed562b324d6edc27dbd8073a573c18f61
+        image: ghcr.io/4gly/relay-web:sha-3a843dd18cb97be3760f1f60447d365713147f85
         imagePullPolicy: Always
         ports:
         - containerPort: 3000

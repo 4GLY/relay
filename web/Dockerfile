@@ -12,6 +12,8 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . ./
 ENV NEXT_TELEMETRY_DISABLED=1
+ARG NEXT_PUBLIC_RELAY_API_URL=http://localhost:8080
+ENV NEXT_PUBLIC_RELAY_API_URL=$NEXT_PUBLIC_RELAY_API_URL
 RUN npm run build
 
 # Slim runtime — relies on `output: "standalone"` in next.config.mjs.

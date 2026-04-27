@@ -46,6 +46,8 @@ jobs:
           file: ./web/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
+          build-args: |
+            NEXT_PUBLIC_RELAY_API_URL=https://relay.4gly.dev
           tags: |
             ghcr.io/4gly/relay-web:main
             ghcr.io/4gly/relay-web:sha-${{ github.sha }}

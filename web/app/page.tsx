@@ -1,7 +1,5 @@
-import Link from "next/link";
-
 type PlaceholderCard = {
-  href: string;
+  href?: string;
   eyebrow: string;
   title: string;
   blurb: string;
@@ -18,12 +16,11 @@ const cards: PlaceholderCard[] = [
     ships: "Ships in S6",
   },
   {
-    href: "/p/example",
     eyebrow: "S7 · public",
     title: "Sharable Snapshot",
     blurb:
       "A handoff packet from one AI agent to another, carrying your judgment style across the gap.",
-    ships: "Ships in S7",
+    ships: "Snapshot link appears after publish",
   },
   {
     href: "/onboarding",
@@ -99,9 +96,10 @@ export default function HomePage() {
         }}
       >
         {cards.map((card) => (
-          <li key={card.href} style={{ display: "flex" }}>
-            <Link
+          <li key={card.title} style={{ display: "flex" }}>
+            <a
               href={card.href}
+              aria-disabled={card.href ? undefined : true}
               style={{
                 display: "flex",
                 flexDirection: "column",
@@ -113,6 +111,7 @@ export default function HomePage() {
                 borderRadius: "12px",
                 color: "var(--ink)",
                 textDecoration: "none",
+                pointerEvents: card.href ? undefined : "none",
                 transition:
                   "border-color 200ms cubic-bezier(0.2,0.8,0.2,1), box-shadow 200ms cubic-bezier(0.2,0.8,0.2,1)",
               }}
@@ -163,7 +162,7 @@ export default function HomePage() {
               >
                 {card.ships} →
               </span>
-            </Link>
+            </a>
           </li>
         ))}
       </ul>

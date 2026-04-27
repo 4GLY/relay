@@ -21,7 +21,7 @@ async function resolveSession(cookieHeader: string): Promise<AuthMe | null> {
   return body.data;
 }
 
-function authStartURL(provider: "github" | "google") {
+function authStartURL(provider: "github") {
   const url = new URL(`/v1/auth/${provider}/start`, RELAY_API_URL);
   url.searchParams.set("redirect_to", "/onboarding");
   return url.toString();
@@ -96,9 +96,6 @@ export default async function OnboardingPage() {
           <div style={signInActionsStyle}>
             <a href={authStartURL("github")} style={authButtonStyle}>
               Continue with GitHub
-            </a>
-            <a href={authStartURL("google")} style={authButtonStyle}>
-              Continue with Google
             </a>
           </div>
         </section>

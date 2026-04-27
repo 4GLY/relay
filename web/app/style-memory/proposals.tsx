@@ -201,6 +201,7 @@ export function Proposals({
       setAnimatingApproveId(proposalId);
       try {
         await reviewProposal({
+          projectId,
           proposalId,
           action: "approve",
           signal: controller.signal,
@@ -232,7 +233,7 @@ export function Proposals({
         setStatuses((s) => ({ ...s, [proposalId]: { kind: "error", message } }));
       }
     },
-    [pushToast, reduceMotion],
+    [projectId, pushToast, reduceMotion],
   );
 
   const submitReject = useCallback(
@@ -248,6 +249,7 @@ export function Proposals({
       try {
         const reviewNotes = serializeRejectNotes(draft.selected, draft.freeText);
         await reviewProposal({
+          projectId,
           proposalId,
           action: "reject",
           reviewNotes,
@@ -272,7 +274,7 @@ export function Proposals({
         setStatuses((s) => ({ ...s, [proposalId]: { kind: "error", message } }));
       }
     },
-    [pushToast],
+    [projectId, pushToast],
   );
 
   const cancelInflight = useCallback((proposalId: string) => {

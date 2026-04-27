@@ -150,6 +150,7 @@ describe("reviewProposal", () => {
     );
 
     const result = await reviewProposal({
+      projectId: "proj-1",
       proposalId: "prop-1",
       action: "approve",
     });
@@ -160,6 +161,7 @@ describe("reviewProposal", () => {
     const init = fetchMock.mock.calls[0][1] as RequestInit;
     expect(init.method).toBe("POST");
     expect(JSON.parse(init.body as string)).toEqual({
+      project_id: "proj-1",
       proposal_id: "prop-1",
       action: "approve",
     });
@@ -177,6 +179,7 @@ describe("reviewProposal", () => {
     );
 
     await reviewProposal({
+      projectId: "proj-1",
       proposalId: "p1",
       action: "reject",
       reviewNotes: serializeRejectNotes("too_broad"),
@@ -184,6 +187,7 @@ describe("reviewProposal", () => {
 
     const init = fetchMock.mock.calls[0][1] as RequestInit;
     expect(JSON.parse(init.body as string)).toEqual({
+      project_id: "proj-1",
       proposal_id: "p1",
       action: "reject",
       review_notes: "reason:too_broad",
@@ -208,7 +212,7 @@ describe("reviewProposal", () => {
     );
 
     await expect(
-      reviewProposal({ proposalId: "p1", action: "approve" }),
+      reviewProposal({ projectId: "proj-1", proposalId: "p1", action: "approve" }),
     ).rejects.toBeInstanceOf(ProposalAlreadyResolvedError);
   });
 });

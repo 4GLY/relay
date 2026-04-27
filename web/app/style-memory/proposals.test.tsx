@@ -135,6 +135,7 @@ describe("approve action", () => {
     const [, init] = fetchMock.mock.calls[0];
     expect((init as RequestInit).method).toBe("POST");
     expect(JSON.parse((init as RequestInit).body as string)).toEqual({
+      project_id: "proj",
       proposal_id: "p-1",
       action: "approve",
     });

@@ -208,6 +208,7 @@ export async function listApprovedHeuristics(
 }
 
 export type ReviewProposalArgs = {
+  projectId: string;
   proposalId: string;
   action: ReviewAction;
   reviewNotes?: string;
@@ -226,6 +227,7 @@ export async function reviewProposal(args: ReviewProposalArgs): Promise<ReviewPr
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
+      project_id: args.projectId,
       proposal_id: args.proposalId,
       action: args.action,
       ...(args.reviewNotes !== undefined ? { review_notes: args.reviewNotes } : {}),

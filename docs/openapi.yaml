@@ -826,6 +826,71 @@ components:
           properties:
             data:
               $ref: '#/components/schemas/OnboardingDeleteData'
+    ProviderCredentialUpsertInput:
+      type: object
+      required: [provider, api_key]
+      additionalProperties: false
+      properties:
+        provider:
+          type: string
+          enum: [anthropic]
+        api_key:
+          type: string
+          description: Provider API key. Encrypted at rest and never returned.
+    ProviderCredentialStatus:
+      type: object
+      required: [provider, connected]
+      properties:
+        provider:
+          type: string
+          enum: [anthropic]
+        connected:
+          type: boolean
+        key_prefix:
+          type: string
+          description: Display-safe leading key fragment.
+        key_last4:
+          type: string
+          description: Display-safe trailing key fragment.
+        updated_at:
+          type: string
+          format: date-time
+    ProviderCredentialListData:
+      type: object
+      required: [credentials]
+      properties:
+        credentials:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProviderCredentialStatus'
+    ProviderCredentialDeleteData:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          const: ok
+    ProviderCredentialStatusResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/ProviderCredentialStatus'
+    ProviderCredentialListResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/ProviderCredentialListData'
+    ProviderCredentialDeleteResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/ProviderCredentialDeleteData'
     AuthLogoutData:
       type: object
       required: [status]
@@ -2011,6 +2076,98 @@ paths:
                 $ref: '#/components/schemas/ErrorEnvelope'
         '404':
           description: User has not completed onboarding
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /v1/settings/provider-credentials:
+    get:
+      tags: [settings]
+      summary: List connected provider credentials for the current user
+      description: |
+        Returns display-safe provider credential status. Raw API keys and
+        ciphertext are never returned. Auth: cookie session only; admin bearer
+        is rejected because credentials are user-owned.
+      operationId: providerCredentialsList
+      responses:
+        '200':
+          description: Provider credential statuses
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProviderCredentialListResponse'
+        '401':
+          description: Missing session cookie or admin-only bearer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+    post:
+      tags: [settings]
+      summary: Connect or replace a provider credential
+      description: |
+        Encrypts a provider API key into user_provider_credentials. This is the
+        Settings-owned provider flow; first-run onboarding never asks for this key.
+      operationId: providerCredentialUpsert
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProviderCredentialUpsertInput'
+      responses:
+        '200':
+          description: Provider credential connected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProviderCredentialStatusResponse'
+        '400':
+          description: Unknown field, missing field, or invalid provider key shape
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '401':
+          description: Missing session cookie or admin-only bearer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: Server misconfiguration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /v1/settings/provider-credentials/{provider}:
+    delete:
+      tags: [settings]
+      summary: Disconnect a provider credential
+      description: Soft-deletes the provider credential without changing onboarding state.
+      operationId: providerCredentialDelete
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [anthropic]
+      responses:
+        '200':
+          description: Provider credential disconnected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProviderCredentialDeleteResponse'
+        '401':
+          description: Missing session cookie or admin-only bearer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: Provider credential is not connected
           content:
             application/json:
               schema:

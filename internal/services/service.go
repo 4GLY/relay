@@ -27,6 +27,7 @@ type Dependencies struct {
 	UserSessions       repositories.UserSessionStore
 	OAuthStates        repositories.OAuthStateStore
 	Onboarding         repositories.OnboardingStore
+	ProviderKeys       repositories.UserProviderCredentialStore
 }
 
 type Service struct {
@@ -40,8 +41,8 @@ func New(deps Dependencies) Service {
 }
 
 // NewWithKEKs builds a Service that can encrypt/decrypt envelope-sealed
-// secrets (Anthropic key, future PII). Used by app.NewRuntime at boot. Tests
-// that don't exercise the onboarding path can keep using New(deps).
+// secrets (provider keys, future PII). Used by app.NewRuntime at boot. Tests
+// that don't exercise secret storage can keep using New(deps).
 func NewWithKEKs(deps Dependencies, keks map[crypto.KEKVersion][]byte, active crypto.KEKVersion) Service {
 	return Service{deps: deps, keks: keks, activeKEKVersion: active}
 }

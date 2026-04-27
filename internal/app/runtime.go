@@ -69,6 +69,7 @@ func NewRuntime(ctx context.Context, cfg config.Config) (Runtime, error) {
 		UserSessions:       stores,
 		OAuthStates:        stores,
 		Onboarding:         stores,
+		ProviderKeys:       stores,
 	}, keks, activeKEK)
 
 	return Runtime{Services: svc, APIKeys: apiKeyStore{stores}}, nil

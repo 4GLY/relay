@@ -125,6 +125,23 @@ type UserOnboarding struct {
 	UpdatedAt              time.Time
 }
 
+// UserProviderCredential stores encrypted user-owned provider credentials
+// outside first-run onboarding. One user can connect one credential per
+// provider; raw key material never leaves the service layer.
+type UserProviderCredential struct {
+	UserID        string
+	Provider      string
+	KeyCiphertext []byte
+	KeyNonce      []byte
+	KeyKEKVersion uint8
+	KeyPrefix     string
+	KeyLast4      string
+	AadSalt       []byte
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	DeletedAt     *time.Time
+}
+
 type JudgmentTrace struct {
 	ID           string
 	ProjectID    string

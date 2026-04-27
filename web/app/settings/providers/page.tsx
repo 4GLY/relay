@@ -1,5 +1,4 @@
 import { cookies } from "next/headers";
-import Link from "next/link";
 
 import { RELAY_API_URL } from "@/lib/api";
 import { listProviderCredentials } from "@/lib/provider-credentials";
@@ -35,9 +34,9 @@ export default async function ProviderSettingsPage() {
         padding: "72px 32px 96px",
       }}
     >
-      <Link href="/onboarding" style={backLinkStyle}>
+      <a href="/onboarding" style={backLinkStyle}>
         Back to onboarding
-      </Link>
+      </a>
       {authenticated ? (
         <ProviderSettingsClient initialCredential={initialCredential} />
       ) : (

@@ -109,6 +109,33 @@ function mockFetch409() {
   );
 }
 
+function mockApprovedList(items: unknown[]) {
+  mockFetchOk({
+    ok: true,
+    command: "relay approved-heuristics list",
+    data: { items },
+    warnings: [],
+  });
+}
+
+function serverApproved(overrides: Record<string, unknown> = {}) {
+  return {
+    heuristic_id: "h-2",
+    project_id: "proj",
+    origin_proposal_id: "p-1",
+    workflow: "review",
+    artifact_type: "ts",
+    heuristic_key: "k1",
+    canonical_text: "approved from refetch",
+    state: "active",
+    source_trace_ids: [],
+    source_refs: [],
+    created_at: "2026-04-26T03:00:00Z",
+    updated_at: "2026-04-26T03:00:00Z",
+    ...overrides,
+  };
+}
+
 describe("<Proposals> hero + queue render", () => {
   it("renders the highest-confidence card as hero and the rest as queued", () => {
     renderProposals();
@@ -128,6 +155,7 @@ describe("approve action", () => {
       data: { proposal_id: "p-1", project_id: "proj", state: "approved" },
       warnings: [],
     });
+    mockApprovedList([serverApproved()]);
     renderProposals();
     await user.click(screen.getByTestId("approve-p-1"));
     await waitFor(() => expect(globalThis.fetch).toHaveBeenCalled());
@@ -139,6 +167,31 @@ describe("approve action", () => {
       proposal_id: "p-1",
       action: "approve",
     });
+  });
+
+  it("refreshes the approved list after a successful approval", async () => {
+    const user = userEvent.setup();
+    mockFetchOk({
+      ok: true,
+      command: "relay heuristic-proposal review",
+      data: {
+        proposal_id: "p-1",
+        approved_heuristic_id: "h-2",
+        project_id: "proj",
+        state: "approved",
+      },
+      warnings: [],
+    });
+    mockApprovedList([serverApproved()]);
+    renderProposals();
+
+    await user.click(screen.getByTestId("approve-p-1"));
+    await waitFor(() => expect(globalThis.fetch).toHaveBeenCalledTimes(2));
+    const fetchMock = globalThis.fetch as unknown as ReturnType<typeof vi.fn>;
+    expect(fetchMock.mock.calls[1][0]).toContain("/v1/approved-heuristics?");
+
+    await user.click(screen.getByRole("tab", { name: /approved1/i }));
+    expect(await screen.findByText("approved from refetch")).toBeInTheDocument();
   });
 
   it("shows 'Already resolved' toast on 409", async () => {
@@ -222,6 +275,7 @@ describe("keyboard shortcuts (Contract C)", () => {
       data: { proposal_id: "p-1", project_id: "proj", state: "approved" },
       warnings: [],
     });
+    mockApprovedList([serverApproved()]);
     renderProposals();
     await waitFor(() => expect(screen.getByText(/navigate/i)).toBeInTheDocument());
 

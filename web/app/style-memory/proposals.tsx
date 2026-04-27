@@ -170,6 +170,14 @@ export function Proposals({
     }
   }, [projectId]);
 
+  const refetchApproved = useCallback(async () => {
+    const { listApprovedHeuristics } = await import("@/lib/heuristics");
+    const fresh = await listApprovedHeuristics(projectId, { limit: 100 });
+    setApproved(fresh.items);
+    setApprovedFailed(false);
+    return fresh.items;
+  }, [projectId]);
+
   const pushToast = useCallback((toast: Omit<ToastMessage, "id">) => {
     const id = ++toastSeq;
     setToasts((t) => [...t, { ...toast, id }]);
@@ -206,6 +214,11 @@ export function Proposals({
           action: "approve",
           signal: controller.signal,
         });
+        try {
+          await refetchApproved();
+        } catch {
+          setApprovedFailed(true);
+        }
         // Hold the swan animation through its full 900ms (or 160ms reduced).
         const holdMs = reduceMotion ? 200 : 950;
         await new Promise((resolve) => setTimeout(resolve, holdMs));
@@ -233,7 +246,7 @@ export function Proposals({
         setStatuses((s) => ({ ...s, [proposalId]: { kind: "error", message } }));
       }
     },
-    [projectId, pushToast, reduceMotion],
+    [projectId, pushToast, reduceMotion, refetchApproved],
   );
 
   const submitReject = useCallback(
@@ -414,10 +427,7 @@ export function Proposals({
             failed={approvedFailed}
             onRetry={async () => {
               try {
-                const { listApprovedHeuristics } = await import("@/lib/heuristics");
-                const fresh = await listApprovedHeuristics(projectId, { limit: 100 });
-                setApproved(fresh.items);
-                setApprovedFailed(false);
+                await refetchApproved();
               } catch {
                 /* keep failed state */
               }

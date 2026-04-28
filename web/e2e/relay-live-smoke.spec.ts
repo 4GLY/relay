@@ -10,6 +10,15 @@ test.beforeAll(() => {
 });
 
 test.describe("Relay V2 live smoke", () => {
+  test("root entry shows sign-in or redirects to the active app", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.getByText(/Relay|Style Memory|First run, no keys/i).first()).toBeVisible();
+    await page.screenshot({
+      path: `${screenshotDir}/s10-root-entry.png`,
+      fullPage: true,
+    });
+  });
+
   test("onboarding is reachable and keyless", async ({ page }) => {
     await page.goto("/onboarding");
     await expect(page.getByRole("heading", { name: /First run, no keys/i })).toBeVisible();

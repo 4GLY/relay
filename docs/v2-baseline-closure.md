@@ -50,6 +50,7 @@ The backend integration suite now covers the full public snapshot lifecycle thro
 
 Playwright smoke coverage now exists for live or local Relay web targets:
 
+- `/`
 - `/onboarding`
 - `/style-memory?project=<project>`
 - `/settings/providers`
@@ -114,7 +115,7 @@ Observed live results:
 
 - `/healthz`: `200 OK`
 - `/p/unknown_s10_snapshot_token`: `410 Gone`
-- Playwright live smoke: `8 passed`, `2 skipped`
+- Playwright live smoke: `10 passed`, `2 skipped`
 
 The two skipped checks are the optional positive public snapshot checks that require `RELAY_QA_PUBLIC_SNAPSHOT_TOKEN`.
 

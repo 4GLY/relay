@@ -1,171 +1,137 @@
-type PlaceholderCard = {
-  href?: string;
-  eyebrow: string;
-  title: string;
-  blurb: string;
-  ships: string;
-};
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 
-const cards: PlaceholderCard[] = [
-  {
-    href: "/style-memory",
-    eyebrow: "S6 · authenticated",
-    title: "Style Memory",
-    blurb:
-      "Approve a duckling, watch it become a swan. The 900 ms signature transform lives here.",
-    ships: "Ships in S6",
-  },
-  {
-    eyebrow: "S7 · public",
-    title: "Sharable Snapshot",
-    blurb:
-      "A handoff packet from one AI agent to another, carrying your judgment style across the gap.",
-    ships: "Snapshot link appears after publish",
-  },
-  {
-    href: "/onboarding",
-    eyebrow: "S8 · 60 seconds",
-    title: "1-click Onboarding",
-    blurb:
-      "Create your workspace and receive your first packet inside a minute. Provider keys can wait.",
-    ships: "Ships in S8",
-  },
-];
+import { RELAY_API_URL, relayFetch, type RelayEnvelope } from "@/lib/api";
+import type { AuthMe } from "@/lib/onboarding";
 
-export default function HomePage() {
+export const dynamic = "force-dynamic";
+
+async function resolveSession(cookieHeader: string): Promise<AuthMe | null> {
+  const res = await relayFetch("/v1/auth/me", {
+    method: "GET",
+    headers: { cookie: cookieHeader },
+    cache: "no-store",
+  });
+  if (res.status === 401) return null;
+  if (!res.ok) return null;
+  const body = (await res.json()) as RelayEnvelope<AuthMe>;
+  if (!body.ok) return null;
+  return body.data;
+}
+
+function authStartURL() {
+  const url = new URL("/v1/auth/github/start", RELAY_API_URL);
+  url.searchParams.set("redirect_to", "/onboarding");
+  return url.toString();
+}
+
+export default async function HomePage() {
+  const cookieStore = await cookies();
+  const me = await resolveSession(cookieStore.toString());
+
+  if (me?.onboarding_complete && me.default_project_id) {
+    redirect(`/style-memory?project=${encodeURIComponent(me.default_project_id)}`);
+  }
+
+  if (me) {
+    redirect("/onboarding");
+  }
+
   return (
-    <main
-      style={{
-        maxWidth: "960px",
-        margin: "0 auto",
-        padding: "96px 32px 120px",
-      }}
-    >
-      <p
-        style={{
-          fontFamily: "var(--font-mono)",
-          fontSize: "11px",
-          letterSpacing: "0.18em",
-          textTransform: "uppercase",
-          color: "var(--muted)",
-          marginBottom: "32px",
-        }}
-      >
-        4gly Labs · Relay V2 · Web scaffold
-      </p>
-
-      <h1
-        style={{
-          fontFamily: "var(--font-display)",
-          fontWeight: 500,
-          fontSize: "clamp(56px, 9vw, 112px)",
-          lineHeight: 0.95,
-          letterSpacing: "-0.03em",
-          color: "var(--ink)",
-          marginBottom: "24px",
-          fontVariationSettings: '"opsz" 144, "SOFT" 50',
-        }}
-      >
-        Relay
-      </h1>
-
-      <p
-        style={{
-          fontFamily: "var(--font-display)",
-          fontStyle: "italic",
-          fontWeight: 400,
-          fontSize: "clamp(20px, 2.8vw, 28px)",
-          lineHeight: 1.35,
-          color: "var(--ink-muted)",
-          maxWidth: "640px",
-          marginBottom: "64px",
-          fontVariationSettings: '"opsz" 48',
-        }}
-      >
-        A quiet engine that turns chaos into swans.
-      </p>
-
-      <ul
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-          gap: "16px",
-          listStyle: "none",
-          padding: 0,
-          margin: 0,
-        }}
-      >
-        {cards.map((card) => (
-          <li key={card.title} style={{ display: "flex" }}>
-            <a
-              href={card.href}
-              aria-disabled={card.href ? undefined : true}
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "12px",
-                width: "100%",
-                padding: "24px 22px",
-                background: "var(--canvas-raised)",
-                border: "1px solid var(--border)",
-                borderRadius: "12px",
-                color: "var(--ink)",
-                textDecoration: "none",
-                pointerEvents: card.href ? undefined : "none",
-                transition:
-                  "border-color 200ms cubic-bezier(0.2,0.8,0.2,1), box-shadow 200ms cubic-bezier(0.2,0.8,0.2,1)",
-              }}
-            >
-              <span
-                style={{
-                  fontFamily: "var(--font-mono)",
-                  fontSize: "10.5px",
-                  letterSpacing: "0.14em",
-                  textTransform: "uppercase",
-                  color: "var(--muted)",
-                }}
-              >
-                {card.eyebrow}
-              </span>
-              <h2
-                style={{
-                  fontFamily: "var(--font-display)",
-                  fontWeight: 500,
-                  fontSize: "24px",
-                  letterSpacing: "-0.018em",
-                  margin: 0,
-                  fontVariationSettings: '"opsz" 96',
-                }}
-              >
-                {card.title}
-              </h2>
-              <p
-                style={{
-                  fontFamily: "var(--font-sans)",
-                  fontSize: "14px",
-                  lineHeight: 1.55,
-                  color: "var(--ink-muted)",
-                  margin: 0,
-                }}
-              >
-                {card.blurb}
-              </p>
-              <span
-                style={{
-                  fontFamily: "var(--font-mono)",
-                  fontSize: "10.5px",
-                  letterSpacing: "0.10em",
-                  textTransform: "uppercase",
-                  color: "var(--magic-primary-strong)",
-                  marginTop: "auto",
-                }}
-              >
-                {card.ships} →
-              </span>
-            </a>
-          </li>
-        ))}
-      </ul>
+    <main style={pageStyle}>
+      <p style={eyebrowStyle}>4gly Labs · Relay</p>
+      <h1 style={titleStyle}>Relay</h1>
+      <p style={subtitleStyle}>A quiet engine that turns chaos into swans.</p>
+      <section style={panelStyle} aria-labelledby="entry-title">
+        <h2 id="entry-title" style={panelTitleStyle}>
+          Sign in to start
+        </h2>
+        <p style={panelCopyStyle}>
+          Relay creates a private workspace first. Provider keys stay in Settings,
+          not in first-run setup.
+        </p>
+        <a href={authStartURL()} style={buttonStyle}>
+          Continue with GitHub
+        </a>
+      </section>
     </main>
   );
 }
+
+const pageStyle: React.CSSProperties = {
+  maxWidth: "760px",
+  margin: "0 auto",
+  padding: "96px 32px 120px",
+};
+
+const eyebrowStyle: React.CSSProperties = {
+  fontFamily: "var(--font-mono)",
+  fontSize: "11px",
+  letterSpacing: "0.18em",
+  textTransform: "uppercase",
+  color: "var(--muted)",
+  marginBottom: "32px",
+};
+
+const titleStyle: React.CSSProperties = {
+  fontFamily: "var(--font-display)",
+  fontWeight: 500,
+  fontSize: "clamp(56px, 9vw, 112px)",
+  lineHeight: 0.95,
+  letterSpacing: "-0.03em",
+  color: "var(--ink)",
+  marginBottom: "24px",
+  fontVariationSettings: '"opsz" 144, "SOFT" 50',
+};
+
+const subtitleStyle: React.CSSProperties = {
+  fontFamily: "var(--font-display)",
+  fontStyle: "italic",
+  fontWeight: 400,
+  fontSize: "clamp(20px, 2.8vw, 28px)",
+  lineHeight: 1.35,
+  color: "var(--ink-muted)",
+  maxWidth: "640px",
+  marginBottom: "42px",
+  fontVariationSettings: '"opsz" 48',
+};
+
+const panelStyle: React.CSSProperties = {
+  maxWidth: "560px",
+  padding: "28px",
+  border: "1px solid var(--border)",
+  borderRadius: "8px",
+  background: "var(--canvas-raised)",
+};
+
+const panelTitleStyle: React.CSSProperties = {
+  margin: "0 0 12px",
+  fontFamily: "var(--font-display)",
+  fontWeight: 500,
+  fontSize: "30px",
+  letterSpacing: "-0.015em",
+  fontVariationSettings: '"opsz" 96',
+};
+
+const panelCopyStyle: React.CSSProperties = {
+  margin: "0 0 22px",
+  color: "var(--ink-muted)",
+  fontSize: "15px",
+  lineHeight: 1.6,
+};
+
+const buttonStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  minHeight: "42px",
+  padding: "0 16px",
+  borderRadius: "8px",
+  border: "1px solid var(--border-strong)",
+  color: "var(--canvas)",
+  background: "var(--ink)",
+  textDecoration: "none",
+  fontFamily: "var(--font-sans)",
+  fontSize: "14px",
+  fontWeight: 800,
+};

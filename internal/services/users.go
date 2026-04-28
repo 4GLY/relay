@@ -13,15 +13,13 @@ import (
 const (
 	userSessionTTL = 30 * 24 * time.Hour
 	// userSessionRefreshWindow is the rolling-refresh threshold. When a session
-	// is closer to expiry than this, ResolveSession rotates the cookie token
-	// and extends expires_at by another userSessionTTL. The old token is
-	// invalidated server-side via atomic UPDATE on token_hash match.
+	// is closer to expiry than this, ResolveSession keeps the cookie token
+	// stable and extends expires_at by another userSessionTTL.
 	//
-	// V2 baseline policy: 30-day absolute TTL + 7-day rolling refresh on
-	// /v1/auth/me only. Other authenticated endpoints validate without
-	// rotating to avoid the concurrent-request race that would log a sibling
-	// tab out. Extending rotation to middleware paths needs a token grace
-	// window; tracked in TODOS.md as V2.5.
+	// V2.5 policy: 30-day TTL + 7-day rolling refresh on /v1/auth/me only.
+	// Other authenticated endpoints validate without extending the session.
+	// Keeping token material stable makes concurrent /me polls idempotent, so a
+	// sibling tab cannot be logged out by a refresh race.
 	userSessionRefreshWindow = 7 * 24 * time.Hour
 	oauthStateTTL            = 10 * time.Minute
 )
@@ -32,9 +30,10 @@ type SignInResult struct {
 	SessionExpiresAt time.Time
 }
 
-// SessionResolution is the result of ResolveSession. When Refreshed is true
-// the caller MUST replace the session cookie with SessionToken and
-// SessionExpiresAt; the old cookie value is no longer valid.
+// SessionResolution is the result of ResolveSession. When Refreshed is true the
+// caller MUST re-set the session cookie with SessionToken and SessionExpiresAt.
+// V2.5 keeps SessionToken equal to the incoming cookie value and only extends
+// the expiry.
 type SessionResolution struct {
 	User             domain.User
 	Refreshed        bool
@@ -167,12 +166,10 @@ func (s Service) GetUserBySessionToken(ctx context.Context, rawToken string) (do
 	return s.deps.Users.GetUserByID(ctx, session.UserID)
 }
 
-// ResolveSession validates the cookie token, returns the user, and rotates
-// the token if the session is within userSessionRefreshWindow of expiry.
-// Rotation is race-safe: the underlying store performs an atomic UPDATE on
-// the (id, current_token_hash) pair, so concurrent rotations cannot both
-// succeed. Use this for /v1/auth/me; other authenticated paths call
-// GetUserBySessionToken which validates without rotating.
+// ResolveSession validates the cookie token, returns the user, and extends the
+// session expiry if it is within userSessionRefreshWindow of expiry. Use this
+// for /v1/auth/me; other authenticated paths call GetUserBySessionToken which
+// validates without extending the session.
 func (s Service) ResolveSession(ctx context.Context, rawToken string) (SessionResolution, error) {
 	if strings.TrimSpace(rawToken) == "" {
 		return SessionResolution{}, lib.Forbidden("UNAUTHORIZED", "session token is required")
@@ -195,25 +192,21 @@ func (s Service) ResolveSession(ctx context.Context, rawToken string) (SessionRe
 		return SessionResolution{User: user}, nil
 	}
 
-	newToken, err := lib.NewSecretToken("rsess")
-	if err != nil {
-		return SessionResolution{}, err
-	}
 	newExpiresAt := time.Now().Add(userSessionTTL)
-	rotated, err := s.deps.UserSessions.RotateUserSession(ctx, session.ID, currentHash, lib.TokenHash(newToken), newExpiresAt)
+	refreshed, err := s.deps.UserSessions.RefreshUserSessionExpiry(ctx, session.ID, currentHash, newExpiresAt)
 	if err != nil {
 		return SessionResolution{}, err
 	}
-	if !rotated {
-		// Lost the rotation race. Caller's cookie is now stale; the next
-		// request will 401 and the user will sign in again. Acceptable V2
-		// edge case for concurrent /me polls within the rotation window.
+	if !refreshed {
+		// A concurrent request may have refreshed or revoked the session first.
+		// The current request is still authorized because lookup already
+		// succeeded; it just has no newer expiry to write back.
 		return SessionResolution{User: user}, nil
 	}
 	return SessionResolution{
 		User:             user,
 		Refreshed:        true,
-		SessionToken:     newToken,
+		SessionToken:     rawToken,
 		SessionExpiresAt: newExpiresAt,
 	}, nil
 }

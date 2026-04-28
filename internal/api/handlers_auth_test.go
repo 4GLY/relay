@@ -202,10 +202,9 @@ func TestAuthCallbackExchangeFailureLeavesStateUnconsumed(t *testing.T) {
 	}
 }
 
-// TestAuthMeRotatesNearExpirySession pins the P0-2 fix: /v1/auth/me rotates
-// the cookie token when the session is within the refresh window, and the
-// old cookie value is invalidated immediately.
-func TestAuthMeRotatesNearExpirySession(t *testing.T) {
+// TestAuthMeRefreshesNearExpirySession keeps the cookie token stable while
+// extending expiry, so concurrent tabs do not invalidate one another.
+func TestAuthMeRefreshesNearExpirySession(t *testing.T) {
 	states := newAuthFakeOAuthStateStore()
 	sessions := newAuthFakeUserSessionStore()
 	svc := services.New(services.Dependencies{
@@ -271,34 +270,34 @@ func TestAuthMeRotatesNearExpirySession(t *testing.T) {
 		t.Fatalf("expected 200 from /me, got %d body=%s", meRec.Code, meRec.Body.String())
 	}
 
-	var rotatedCookie *http.Cookie
+	var refreshedCookie *http.Cookie
 	for _, c := range meRec.Result().Cookies() {
 		if c.Name == sessionCookieName {
-			rotatedCookie = c
+			refreshedCookie = c
 			break
 		}
 	}
-	if rotatedCookie == nil {
-		t.Fatal("expected /me to issue a rotated session cookie")
+	if refreshedCookie == nil {
+		t.Fatal("expected /me to reissue the session cookie")
 	}
-	if rotatedCookie.Value == sessionCookie.Value {
-		t.Fatal("expected rotated cookie to carry a fresh token value")
+	if refreshedCookie.Value != sessionCookie.Value {
+		t.Fatalf("expected refreshed cookie to keep stable token, got %q vs %q", refreshedCookie.Value, sessionCookie.Value)
 	}
 
 	staleReq := httptest.NewRequest(http.MethodGet, "/v1/auth/me", nil)
 	staleReq.AddCookie(sessionCookie)
 	staleRec := httptest.NewRecorder()
 	mux.ServeHTTP(staleRec, staleReq)
-	if staleRec.Code != http.StatusUnauthorized {
-		t.Fatalf("expected 401 with old cookie post-rotation, got %d", staleRec.Code)
+	if staleRec.Code != http.StatusOK {
+		t.Fatalf("expected 200 with original cookie post-refresh, got %d body=%s", staleRec.Code, staleRec.Body.String())
 	}
 
 	freshReq := httptest.NewRequest(http.MethodGet, "/v1/auth/me", nil)
-	freshReq.AddCookie(rotatedCookie)
+	freshReq.AddCookie(refreshedCookie)
 	freshRec := httptest.NewRecorder()
 	mux.ServeHTTP(freshRec, freshReq)
 	if freshRec.Code != http.StatusOK {
-		t.Fatalf("expected 200 with rotated cookie, got %d body=%s", freshRec.Code, freshRec.Body.String())
+		t.Fatalf("expected 200 with refreshed cookie, got %d body=%s", freshRec.Code, freshRec.Body.String())
 	}
 }
 

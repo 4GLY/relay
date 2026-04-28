@@ -13,7 +13,9 @@ type apiFakeUserStore struct {
 	items map[string]domain.User
 }
 
-func newAuthFakeUserStore() *apiFakeUserStore { return &apiFakeUserStore{items: map[string]domain.User{}} }
+func newAuthFakeUserStore() *apiFakeUserStore {
+	return &apiFakeUserStore{items: map[string]domain.User{}}
+}
 
 func (s *apiFakeUserStore) CreateUser(_ context.Context, user domain.User) (domain.User, error) {
 	if _, ok := s.items[user.ID]; ok {
@@ -131,7 +133,7 @@ func (s *apiFakeUserSessionStore) GetUserSessionByTokenHash(_ context.Context, t
 	return domain.UserSession{}, lib.NotFound("USER_SESSION_NOT_FOUND", "user session not found")
 }
 
-func (s *apiFakeUserSessionStore) RotateUserSession(_ context.Context, sessionID string, currentTokenHash string, newTokenHash string, newExpiresAt time.Time) (bool, error) {
+func (s *apiFakeUserSessionStore) RefreshUserSessionExpiry(_ context.Context, sessionID string, currentTokenHash string, newExpiresAt time.Time) (bool, error) {
 	session, ok := s.items[sessionID]
 	if !ok {
 		return false, nil
@@ -145,7 +147,6 @@ func (s *apiFakeUserSessionStore) RotateUserSession(_ context.Context, sessionID
 	if !session.ExpiresAt.After(time.Now()) {
 		return false, nil
 	}
-	session.TokenHash = newTokenHash
 	session.ExpiresAt = newExpiresAt
 	s.items[sessionID] = session
 	return true, nil

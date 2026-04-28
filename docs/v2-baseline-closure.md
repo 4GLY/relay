@@ -119,6 +119,12 @@ Observed live results:
 
 The two skipped checks are the optional positive public snapshot checks that require `RELAY_QA_PUBLIC_SNAPSHOT_TOKEN`.
 
+Post-closure live QA hardening:
+
+- `scripts/qa/run_live_e2e.sh` now seeds temporary live QA state and runs authenticated browser coverage without manual cookie setup.
+- The live authenticated suite covers completed-onboarding redirect, owned Style Memory queue rendering, Provider Settings validation/store/delete, and positive public snapshot HTML + OG PNG.
+- Latest run: `17 passed`, `1 skipped`; the skipped case is the mobile duplicate of the provider credential mutation to avoid cross-browser state races.
+
 ## QA Artifacts
 
 Tracked implementation plan:

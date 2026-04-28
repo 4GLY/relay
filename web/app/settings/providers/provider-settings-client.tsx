@@ -51,6 +51,14 @@ export function ProviderSettingsClient({ initialCredential }: Props) {
 
   const busy = status === "saving" || status === "disconnecting";
   const canSave = apiKey.trim().length > 0 && !busy;
+  const statusMessage =
+    status === "saving"
+      ? "Encrypting and saving provider key."
+      : status === "disconnecting"
+        ? "Removing stored provider key."
+        : credential?.connected
+          ? "Settings only. Your key is available to Claude-backed features but first-run onboarding stays keyless."
+          : "Settings only. Add a key later when Claude-backed features need one.";
 
   return (
     <section style={panelStyle} aria-labelledby="provider-title">
@@ -63,9 +71,10 @@ export function ProviderSettingsClient({ initialCredential }: Props) {
           Connect Anthropic only when Claude-backed features need it. This key is not
           part of first-run onboarding.
         </p>
+        <p style={settingsOnlyStyle}>Settings only · optional after onboarding</p>
       </div>
 
-      <div style={statusRowStyle}>
+      <div style={statusRowStyle} aria-live="polite">
         <span style={credential?.connected ? connectedDotStyle : disconnectedDotStyle} />
         <div>
           <strong style={statusTitleStyle}>
@@ -76,6 +85,7 @@ export function ProviderSettingsClient({ initialCredential }: Props) {
               ? `${credential.key_prefix ?? "sk-ant"} ending ${credential.key_last4 ?? "••••"}`
               : "No provider key is stored for this user."}
           </p>
+          <p style={statusHelpStyle}>{statusMessage}</p>
         </div>
       </div>
 
@@ -91,6 +101,9 @@ export function ProviderSettingsClient({ initialCredential }: Props) {
         autoComplete="off"
         style={inputStyle}
       />
+      <p style={fieldHelpStyle}>
+        The raw key is encrypted before storage. Relay returns only masked metadata here.
+      </p>
 
       <div style={actionsStyle}>
         <button
@@ -160,6 +173,21 @@ const copyStyle: React.CSSProperties = {
   lineHeight: 1.6,
 };
 
+const settingsOnlyStyle: React.CSSProperties = {
+  display: "inline-flex",
+  minHeight: "28px",
+  alignItems: "center",
+  border: "1px solid var(--border)",
+  borderRadius: "999px",
+  padding: "0 10px",
+  margin: "0 0 24px",
+  color: "var(--ink-muted)",
+  fontFamily: "var(--font-mono)",
+  fontSize: "11px",
+  letterSpacing: "0.08em",
+  textTransform: "uppercase",
+};
+
 const statusRowStyle: React.CSSProperties = {
   display: "grid",
   gridTemplateColumns: "16px minmax(0, 1fr)",
@@ -195,6 +223,13 @@ const statusCopyStyle: React.CSSProperties = {
   fontSize: "13px",
 };
 
+const statusHelpStyle: React.CSSProperties = {
+  margin: "8px 0 0",
+  color: "var(--muted)",
+  fontSize: "12px",
+  lineHeight: 1.5,
+};
+
 const labelStyle: React.CSSProperties = {
   display: "block",
   marginBottom: "8px",
@@ -212,6 +247,13 @@ const inputStyle: React.CSSProperties = {
   color: "var(--ink)",
   fontFamily: "var(--font-mono)",
   fontSize: "13px",
+};
+
+const fieldHelpStyle: React.CSSProperties = {
+  margin: "8px 0 0",
+  color: "var(--muted)",
+  fontSize: "12px",
+  lineHeight: 1.5,
 };
 
 const actionsStyle: React.CSSProperties = {

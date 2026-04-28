@@ -211,7 +211,7 @@ func TestResolveSessionLeavesFreshSessionAlone(t *testing.T) {
 	}
 }
 
-func TestResolveSessionRotatesNearExpiry(t *testing.T) {
+func TestResolveSessionRefreshesNearExpiryWithoutChangingToken(t *testing.T) {
 	svc, _, _, sessions, _ := newAuthService()
 
 	result, err := svc.SignInWithOAuthProfile(context.Background(), oauth.Profile{
@@ -235,20 +235,57 @@ func TestResolveSessionRotatesNearExpiry(t *testing.T) {
 		t.Fatalf("ResolveSession error: %v", err)
 	}
 	if !res.Refreshed {
-		t.Fatal("expected near-expiry session to rotate")
+		t.Fatal("expected near-expiry session to refresh")
 	}
-	if res.SessionToken == "" || res.SessionToken == result.SessionToken {
-		t.Fatalf("expected fresh token, got %q (old: %q)", res.SessionToken, result.SessionToken)
+	if res.SessionToken != result.SessionToken {
+		t.Fatalf("expected stable session token, got %q (old: %q)", res.SessionToken, result.SessionToken)
 	}
 	if !res.SessionExpiresAt.After(time.Now().Add(29 * 24 * time.Hour)) {
 		t.Fatalf("expected new expiry ~30d out, got %v", res.SessionExpiresAt)
 	}
 
-	if _, err := svc.GetUserBySessionToken(context.Background(), result.SessionToken); err == nil {
-		t.Fatal("expected old token to be invalid after rotation")
+	if _, err := svc.GetUserBySessionToken(context.Background(), result.SessionToken); err != nil {
+		t.Fatalf("expected stable token to remain valid after refresh, got %v", err)
 	}
-	if _, err := svc.GetUserBySessionToken(context.Background(), res.SessionToken); err != nil {
-		t.Fatalf("expected new token to be valid, got %v", err)
+}
+
+func TestResolveSessionConcurrentRefreshKeepsStableTokenValid(t *testing.T) {
+	svc, _, _, sessions, _ := newAuthService()
+
+	result, err := svc.SignInWithOAuthProfile(context.Background(), oauth.Profile{
+		Provider:       "github",
+		ProviderUserID: "1001",
+		Login:          "octo",
+		Email:          "octo@example.com",
+		DisplayName:    "Octo",
+	})
+	if err != nil {
+		t.Fatalf("sign-in error: %v", err)
+	}
+	for id, sess := range sessions.items {
+		sess.ExpiresAt = time.Now().Add(3 * 24 * time.Hour)
+		sessions.items[id] = sess
+	}
+
+	first, err := svc.ResolveSession(context.Background(), result.SessionToken)
+	if err != nil {
+		t.Fatalf("first ResolveSession error: %v", err)
+	}
+	second, err := svc.ResolveSession(context.Background(), result.SessionToken)
+	if err != nil {
+		t.Fatalf("second ResolveSession error: %v", err)
+	}
+	if !first.Refreshed {
+		t.Fatal("expected first near-expiry request to refresh")
+	}
+	if first.SessionToken != result.SessionToken {
+		t.Fatalf("expected first refresh to keep token stable, got %q", first.SessionToken)
+	}
+	if second.Refreshed {
+		t.Fatal("expected second request to see fresh expiry and skip refresh")
+	}
+	if _, err := svc.GetUserBySessionToken(context.Background(), result.SessionToken); err != nil {
+		t.Fatalf("expected original token to remain valid after concurrent refreshes, got %v", err)
 	}
 }
 

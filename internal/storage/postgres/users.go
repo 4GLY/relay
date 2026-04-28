@@ -157,21 +157,19 @@ func (s Stores) GetUserSessionByTokenHash(ctx context.Context, tokenHash string)
 	return session, nil
 }
 
-// RotateUserSession atomically rotates a session's token_hash + expires_at,
-// guarded by the session id and the caller's current token_hash. Concurrent
-// rotations cannot both succeed: the WHERE clause matches at most one row, and
-// the loser sees rotated=false. Already-revoked or expired sessions also
-// return rotated=false.
-func (s Stores) RotateUserSession(ctx context.Context, sessionID string, currentTokenHash string, newTokenHash string, newExpiresAt time.Time) (bool, error) {
+// RefreshUserSessionExpiry atomically extends a session's expiry while keeping
+// the cookie token stable. The token_hash guard prevents refreshing an already
+// rotated/revoked/expired session if a future implementation changes token
+// material again.
+func (s Stores) RefreshUserSessionExpiry(ctx context.Context, sessionID string, currentTokenHash string, newExpiresAt time.Time) (bool, error) {
 	cmd, err := s.db.Exec(ctx, `
 		UPDATE user_sessions
-		SET token_hash = $3,
-		    expires_at = $4
+		SET expires_at = $3
 		WHERE id = $1
 		  AND token_hash = $2
 		  AND revoked_at IS NULL
 		  AND expires_at > NOW()
-	`, sessionID, currentTokenHash, newTokenHash, newExpiresAt)
+	`, sessionID, currentTokenHash, newExpiresAt)
 	if err != nil {
 		return false, err
 	}

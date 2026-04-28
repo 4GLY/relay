@@ -5,8 +5,8 @@ Deferred work tracked outside the active CEO/eng/design plans. Each item referen
 ## V2 implementation status
 
 - **S1 (auth foundation)** ✅ DONE 2026-04-25 on branch `feat/s1-auth-foundation` — migration `0007_users.sql`, domain types, repositories, OAuth provider abstraction (GitHub + Google with the E4 mitigation), cookie session middleware, `/v1/auth/{provider}/start|callback`, `/v1/auth/me`, `/v1/auth/logout`, project-owner authorization for style-memory writes (R1 admin path preserved), unit tests, OpenAPI updates.
-  - **Session rotation policy** (V2 baseline, 2026-04-26): user sessions enforce 30-day absolute TTL + 7-day rolling refresh on `/v1/auth/me` only. Old tokens invalidate server-side via atomic `UPDATE WHERE token_hash = current` (race-safe). Other authenticated endpoints (style-memory, etc.) validate without rotating. Concurrent `/me` polls within the rotation window can lose the race and force a single re-login on the losing tab — accepted edge case.
-  - **V2.5 follow-up**: extend rotation to middleware paths once a token grace-window mechanism (e.g. `previous_token_hash` column with short overlap) is in place to avoid concurrent-request race that would log a sibling tab out.
+  - **Session refresh policy** (V2.5 stable-token update, 2026-04-28): user sessions enforce 30-day TTL + 7-day rolling refresh on `/v1/auth/me` only. Refresh keeps the `relay_session` token value stable and extends `user_sessions.expires_at`, so concurrent `/me` polls cannot invalidate a sibling tab's cookie. Other authenticated endpoints (style-memory, etc.) validate without extending expiry.
+  - **Future session work**: token-family/grace-window storage is deferred until Relay needs device/session management, "sign out other devices," token-family analytics, or theft-detection semantics.
 
 
 ## Deferred from V2 CEO Plan Rev 2 (2026-04-25, post-Codex reframe)

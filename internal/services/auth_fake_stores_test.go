@@ -134,7 +134,7 @@ func (s *fakeUserSessionStore) GetUserSessionByTokenHash(_ context.Context, toke
 	return domain.UserSession{}, lib.NotFound("USER_SESSION_NOT_FOUND", "user session not found")
 }
 
-func (s *fakeUserSessionStore) RotateUserSession(_ context.Context, sessionID string, currentTokenHash string, newTokenHash string, newExpiresAt time.Time) (bool, error) {
+func (s *fakeUserSessionStore) RefreshUserSessionExpiry(_ context.Context, sessionID string, currentTokenHash string, newExpiresAt time.Time) (bool, error) {
 	session, ok := s.items[sessionID]
 	if !ok {
 		return false, nil
@@ -148,7 +148,6 @@ func (s *fakeUserSessionStore) RotateUserSession(_ context.Context, sessionID st
 	if !session.ExpiresAt.After(time.Now()) {
 		return false, nil
 	}
-	session.TokenHash = newTokenHash
 	session.ExpiresAt = newExpiresAt
 	s.items[sessionID] = session
 	return true, nil

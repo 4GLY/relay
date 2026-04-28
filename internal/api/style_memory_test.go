@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 
 	"relay/internal/app"
@@ -50,10 +51,13 @@ func (s *apiFakeJudgmentTraceStore) ListJudgmentTracesByProject(_ context.Contex
 }
 
 type apiFakeHeuristicProposalStore struct {
+	mu    sync.Mutex
 	items map[string]domain.HeuristicProposal
 }
 
 func (s *apiFakeHeuristicProposalStore) CreateHeuristicProposal(_ context.Context, proposal domain.HeuristicProposal) (domain.HeuristicProposal, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if s.items == nil {
 		s.items = map[string]domain.HeuristicProposal{}
 	}
@@ -65,6 +69,8 @@ func (s *apiFakeHeuristicProposalStore) CreateHeuristicProposal(_ context.Contex
 }
 
 func (s *apiFakeHeuristicProposalStore) GetHeuristicProposal(_ context.Context, id string) (domain.HeuristicProposal, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	item, ok := s.items[id]
 	if !ok {
 		return domain.HeuristicProposal{}, lib.NotFound("HEURISTIC_PROPOSAL_NOT_FOUND", "heuristic proposal not found")
@@ -73,6 +79,8 @@ func (s *apiFakeHeuristicProposalStore) GetHeuristicProposal(_ context.Context, 
 }
 
 func (s *apiFakeHeuristicProposalStore) ListHeuristicProposalsByProject(_ context.Context, projectID string, state string, _ string, _ int) ([]domain.HeuristicProposal, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	var items []domain.HeuristicProposal
 	for _, item := range s.items {
 		if item.ProjectID == projectID && (state == "" || item.State == state) {
@@ -83,6 +91,8 @@ func (s *apiFakeHeuristicProposalStore) ListHeuristicProposalsByProject(_ contex
 }
 
 func (s *apiFakeHeuristicProposalStore) UpdateHeuristicProposalState(_ context.Context, id string, state string, reviewNotes string) (domain.HeuristicProposal, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	item, ok := s.items[id]
 	if !ok {
 		return domain.HeuristicProposal{}, lib.NotFound("HEURISTIC_PROPOSAL_NOT_FOUND", "heuristic proposal not found")

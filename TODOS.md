@@ -25,6 +25,7 @@ Items below are **NOT in V2** but tracked for V2.5 / V3.
 - Unblocks: full DESIGN.md realization, dense workspace experience, signature ribbon
 - Depends on: V2 ship + at least one cycle of demand evidence
 - Source: CEO plan Rev 2 Scope Decision #4
+- V2.5 entry slice: `docs/v2-5-project-explorer-scope.md`
 
 **2. B: Public Style Profile** — `/u/{username}/style` (the LinkedIn-for-engineering-judgment surface)
 - Effort: L/XL (full effort estimate revised after Codex finding #1: cross-project aggregation, slug reservation, privacy state, publish UX. User model lands in V2 baseline so partial reuse.)

@@ -178,6 +178,20 @@ func (s *fakePacketSnapshotStore) LatestPacketSnapshotByProject(_ context.Contex
 	return domain.PacketSnapshot{}, lib.NotFound("PACKET_SNAPSHOT_NOT_FOUND", "packet snapshot not found")
 }
 
+func (s *fakePacketSnapshotStore) LatestAnyPacketSnapshotByProject(_ context.Context, projectID string) (domain.PacketSnapshot, error) {
+	if s.latest.ProjectID == projectID {
+		return s.latest, nil
+	}
+	return domain.PacketSnapshot{}, lib.NotFound("PACKET_SNAPSHOT_NOT_FOUND", "packet snapshot not found")
+}
+
+func (s *fakePacketSnapshotStore) CountPacketSnapshotsByProject(_ context.Context, projectID string) (int, error) {
+	if s.latest.ProjectID == projectID && s.latest.ID != "" {
+		return 1, nil
+	}
+	return 0, nil
+}
+
 func (s *fakePacketSnapshotStore) MakePacketSnapshotPublic(_ context.Context, snapshotID string, publicToken string, ogImagePath string) (domain.PacketSnapshot, error) {
 	if s.latest.ID != snapshotID {
 		return domain.PacketSnapshot{}, lib.NotFound("PACKET_SNAPSHOT_NOT_FOUND", "packet snapshot not found")
@@ -326,6 +340,51 @@ func TestHandleProjectGraphUsesProjectID(t *testing.T) {
 	}
 	if !bytes.Contains(rec.Body.Bytes(), []byte(`"type":"derived_from"`)) {
 		t.Fatalf("expected derived_from edges, got %s", rec.Body.String())
+	}
+}
+
+func TestHandleProjectExplorerUsesProjectID(t *testing.T) {
+	projectID := lib.ProjectID("relay")
+	handler := testHandler(projectID)
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/projects/"+projectID+"/explorer", nil)
+	req = req.WithContext(services.ContextWithAuthInfo(req.Context(), services.AuthInfo{
+		IsAdmin: true,
+		Scope:   services.APIKeyScopeGlobal,
+	}))
+	rec := httptest.NewRecorder()
+
+	handler.handleProjectShow(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
+	}
+	if !bytes.Contains(rec.Body.Bytes(), []byte(`"command":"relay project explorer"`)) {
+		t.Fatalf("expected explorer command, got %s", rec.Body.String())
+	}
+	if !bytes.Contains(rec.Body.Bytes(), []byte(`"packet_snapshots":1`)) {
+		t.Fatalf("expected packet snapshot count, got %s", rec.Body.String())
+	}
+}
+
+func TestHandleProjectJudgmentTracesUsesProjectID(t *testing.T) {
+	projectID := lib.ProjectID("relay")
+	handler := testHandler(projectID)
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/projects/"+projectID+"/judgment-traces", nil)
+	req = req.WithContext(services.ContextWithAuthInfo(req.Context(), services.AuthInfo{
+		IsAdmin: true,
+		Scope:   services.APIKeyScopeGlobal,
+	}))
+	rec := httptest.NewRecorder()
+
+	handler.handleProjectShow(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
+	}
+	if !bytes.Contains(rec.Body.Bytes(), []byte(`"command":"relay judgment-traces list"`)) {
+		t.Fatalf("expected judgment traces command, got %s", rec.Body.String())
 	}
 }
 

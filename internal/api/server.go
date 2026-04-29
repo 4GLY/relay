@@ -85,7 +85,7 @@ func buildMux(handler Handler, cfg config.Config, runtime app.Runtime) *http.Ser
 	mux.HandleFunc("/v1/approved-heuristics/update", requireSessionOrAdmin(adminToken, handler.services, handler.handleApprovedHeuristicUpdate))
 	mux.HandleFunc("/v1/promote", requireBearerToken(adminToken, runtime.APIKeys, handler.handlePromote))
 	mux.HandleFunc("/v1/packets/build", requireBearerToken(adminToken, runtime.APIKeys, handler.handlePacketBuild))
-	mux.HandleFunc("/v1/projects/", requireBearerToken(adminToken, runtime.APIKeys, handler.handleProjectShow))
+	mux.HandleFunc("/v1/projects/", requireBearerTokenOrSession(adminToken, runtime.APIKeys, handler.services, handler.handleProjectShow))
 	mux.HandleFunc("/v1/snapshots/", requireAdminBearerToken(adminToken, handler.handleSnapshotAdmin))
 	mux.HandleFunc("/p/", handler.handlePublicSnapshotPage)
 	mux.HandleFunc("/v1/auth/", handler.handleAuthRouter)

@@ -357,6 +357,25 @@ func (s Stores) LatestPacketSnapshotByProject(ctx context.Context, projectID str
 	`, projectID, packetKind, target))
 }
 
+func (s Stores) LatestAnyPacketSnapshotByProject(ctx context.Context, projectID string) (domain.PacketSnapshot, error) {
+	return scanPacketSnapshot(s.db.QueryRow(ctx, `
+		SELECT id, project_id, packet_kind, target, schema_version, task_summary,
+		       rendered_body, style_cues, supporting_notes, supporting_decisions,
+		       supporting_questions, supporting_artifacts, why_included,
+		       approved_heuristic_ids, decision_ids, open_question_ids,
+		       source_artifact_ids, missing_context, public_readable,
+		       COALESCE(public_token, ''), og_image_path, created_at
+		FROM packet_snapshots
+		WHERE project_id = $1
+		ORDER BY created_at DESC, id DESC
+		LIMIT 1
+	`, projectID))
+}
+
+func (s Stores) CountPacketSnapshotsByProject(ctx context.Context, projectID string) (int, error) {
+	return countByProject(ctx, s.db, "packet_snapshots", projectID)
+}
+
 func scanPacketSnapshot(row pgx.Row) (domain.PacketSnapshot, error) {
 	var snapshot domain.PacketSnapshot
 	var heuristicIDs, decisionIDs, openQuestionIDs, artifactIDs, missingContext, whyIncluded []byte

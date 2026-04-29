@@ -8,6 +8,7 @@ import (
 	"relay/internal/contracts"
 	"relay/internal/lib"
 	"relay/internal/services"
+	"relay/internal/storage/repositories"
 )
 
 // requireSessionOrAdmin gates a handler behind two accepted credentials:
@@ -43,6 +44,41 @@ func requireSessionOrAdmin(adminToken string, svc services.Service, next http.Ha
 		cookie, err := r.Cookie(sessionCookieName)
 		if err != nil || cookie.Value == "" {
 			writeJSON(w, http.StatusUnauthorized, contracts.Failure("api auth", "UNAUTHORIZED", "missing session cookie or admin bearer token", false, "Authorization", sessionCookieName))
+			return
+		}
+		user, err := svc.GetUserBySessionToken(r.Context(), cookie.Value)
+		if err != nil {
+			if appErr, ok := err.(lib.AppError); ok && appErr.Code == "MISCONFIGURED" {
+				writeJSON(w, http.StatusInternalServerError, contracts.Failure("api auth", appErr.Code, appErr.Message, false))
+				return
+			}
+			writeJSON(w, http.StatusUnauthorized, contracts.Failure("api auth", "UNAUTHORIZED", "invalid or expired session", false))
+			return
+		}
+		ctx := services.ContextWithAuthInfo(r.Context(), services.AuthInfo{
+			UserID: user.ID,
+			Scope:  services.APIKeyScopeGlobal,
+		})
+		next(w, r.WithContext(ctx))
+	}
+}
+
+func requireBearerTokenOrSession(adminToken string, apiKeys repositories.APIKeyStore, svc services.Service, next http.HandlerFunc) http.HandlerFunc {
+	if adminToken == "" && apiKeys == nil {
+		return func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(w, http.StatusInternalServerError, contracts.Failure("api auth", "MISCONFIGURED", "bearer auth is not configured", false, "RELAY_ADMIN_TOKEN or RELAY_API_TOKEN"))
+		}
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		if authInfo, ok := authorizeBearerToken(r, adminToken, apiKeys); ok {
+			next(w, r.WithContext(services.ContextWithAuthInfo(r.Context(), authInfo)))
+			return
+		}
+
+		cookie, err := r.Cookie(sessionCookieName)
+		if err != nil || cookie.Value == "" {
+			writeJSON(w, http.StatusUnauthorized, contracts.Failure("api auth", "UNAUTHORIZED", "missing bearer token or session cookie", false, "Authorization", sessionCookieName))
 			return
 		}
 		user, err := svc.GetUserBySessionToken(r.Context(), cookie.Value)

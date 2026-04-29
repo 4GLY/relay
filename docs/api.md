@@ -443,6 +443,64 @@ Contract notes:
 - inferred edges carry `status=candidate`, `score`, and `why_included`
 - packet nodes and packet `includes` edges are not part of this first slice yet because packet history is not listed independently
 
+### `GET /v1/projects/{project_id}/explorer`
+
+Purpose:
+- return the first V2.5 Project Explorer read model for an authenticated user
+
+Auth:
+- bootstrap admin bearer, issued bearer token, or `relay_session` cookie
+- session callers must own the project
+- project-scoped keys must be bound to the same project
+
+Path params:
+- `project_id`: canonical project id, not project name
+
+Response fields:
+- `project`: `project_id`, `name`, `status`
+- `counts`: notes, artifacts, decisions, open questions, judgment traces, pending proposals, approved heuristics, rejected proposals, packet snapshots
+- `latest_snapshot`: latest packet snapshot summary when present
+- `style_memory`: preview of the next pending proposal when present
+- `recent_activity`: compact recent judgment trace / approved heuristic activity
+
+Contract notes:
+- this is a read-only aggregation endpoint; mutation stays on Style Memory and packet APIs
+- full packet content stays on `GET /v1/projects/{project_id}/packet-snapshots/latest`
+- proposal counts currently use the Style Memory stores and are capped by the first read-model slice, not cross-project analytics
+
+### `GET /v1/projects/{project_id}/judgment-traces`
+
+Purpose:
+- list compact judgment trace cards for Project Explorer and the later Trace Browser surface
+
+Auth:
+- bootstrap admin bearer, issued bearer token, or `relay_session` cookie
+- session callers must own the project
+- project-scoped keys must be bound to the same project
+
+Path params:
+- `project_id`: canonical project id, not project name
+
+Query params:
+- `limit`: optional max item count, defaults to `20`, max `100`
+- `cursor`: accepted for forward compatibility; pagination cursor emission is not implemented in this first slice
+
+Response fields:
+- `items[]`
+- `next_cursor`
+
+Item fields:
+- `trace_id`
+- `project_id`
+- `task_id`
+- `agent_id`
+- `workflow`
+- `artifact_type`
+- `decision`
+- `rationale`
+- `source_refs`
+- `created_at`
+
 ### `GET /v1/projects/{project_id}/retrieve`
 
 Purpose:

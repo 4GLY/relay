@@ -22,6 +22,10 @@ components:
       type: http
       scheme: bearer
       bearerFormat: opaque token
+    CookieAuth:
+      type: apiKey
+      in: cookie
+      name: relay_session
   schemas:
     SuccessEnvelope:
       type: object
@@ -682,6 +686,138 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ProjectRetrieveHit'
+    ProjectExplorerProject:
+      type: object
+      required: [project_id, name, status]
+      properties:
+        project_id:
+          type: string
+        name:
+          type: string
+        status:
+          type: string
+    ProjectExplorerCounts:
+      type: object
+      required:
+        - notes
+        - artifacts
+        - decisions
+        - open_questions
+        - judgment_traces
+        - pending_proposals
+        - approved_heuristics
+        - rejected_proposals
+        - packet_snapshots
+      properties:
+        notes:
+          type: integer
+        artifacts:
+          type: integer
+        decisions:
+          type: integer
+        open_questions:
+          type: integer
+        judgment_traces:
+          type: integer
+        pending_proposals:
+          type: integer
+        approved_heuristics:
+          type: integer
+        rejected_proposals:
+          type: integer
+        packet_snapshots:
+          type: integer
+    ProjectExplorerSnapshot:
+      type: object
+      required: [snapshot_id, packet_kind, target, created_at, public_readable]
+      properties:
+        snapshot_id:
+          type: string
+        packet_kind:
+          type: string
+        target:
+          type: string
+        task_summary:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        public_readable:
+          type: boolean
+    ProjectExplorerStyleMemory:
+      type: object
+      properties:
+        next_proposal_id:
+          type: string
+        next_proposal_text:
+          type: string
+    ProjectExplorerActivity:
+      type: object
+      required: [kind, id, title, created_at]
+      properties:
+        kind:
+          type: string
+          enum: [judgment_trace, approved_heuristic]
+        id:
+          type: string
+        title:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+    ProjectExplorerResult:
+      type: object
+      required: [project, counts, style_memory, recent_activity]
+      properties:
+        project:
+          $ref: '#/components/schemas/ProjectExplorerProject'
+        counts:
+          $ref: '#/components/schemas/ProjectExplorerCounts'
+        latest_snapshot:
+          $ref: '#/components/schemas/ProjectExplorerSnapshot'
+        style_memory:
+          $ref: '#/components/schemas/ProjectExplorerStyleMemory'
+        recent_activity:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProjectExplorerActivity'
+    JudgmentTraceSummary:
+      type: object
+      required: [trace_id, project_id, decision, created_at]
+      properties:
+        trace_id:
+          type: string
+        project_id:
+          type: string
+        task_id:
+          type: string
+        agent_id:
+          type: string
+        workflow:
+          type: string
+        artifact_type:
+          type: string
+        decision:
+          type: string
+        rationale:
+          type: string
+        source_refs:
+          type: array
+          items:
+            type: string
+        created_at:
+          type: string
+          format: date-time
+    ListJudgmentTracesResult:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/JudgmentTraceSummary'
+        next_cursor:
+          type: string
     IssueAPIKeyInput:
       type: object
       required: [name]
@@ -1003,6 +1139,20 @@ components:
           properties:
             data:
               $ref: '#/components/schemas/ProjectRetrieveResult'
+    ProjectExplorerResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/ProjectExplorerResult'
+    ListJudgmentTracesResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/ListJudgmentTracesResult'
     IssueAPIKeyResponse:
       allOf:
         - $ref: '#/components/schemas/SuccessEnvelope'
@@ -1685,6 +1835,115 @@ paths:
                 $ref: '#/components/schemas/ProjectGraphResponse'
         '401':
           description: Missing or invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /v1/projects/{project_id}/explorer:
+    get:
+      tags: [memory]
+      summary: Show the authenticated Project Explorer read model
+      description: >
+        Read-only V2.5 Project Explorer aggregate. Accepts a bearer token or
+        a `relay_session` cookie. Session callers must own the project.
+      operationId: showProjectExplorer
+      security:
+        - BearerAuth: []
+        - CookieAuth: []
+      parameters:
+        - name: project_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Project Explorer read model
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectExplorerResponse'
+        '401':
+          description: Missing or invalid bearer token or session cookie
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '403':
+          description: Project is not owned by the authenticated user or bound to the project key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /v1/projects/{project_id}/judgment-traces:
+    get:
+      tags: [memory]
+      summary: List compact judgment traces for Project Explorer
+      operationId: listProjectJudgmentTraces
+      security:
+        - BearerAuth: []
+        - CookieAuth: []
+      parameters:
+        - name: project_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Judgment trace list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListJudgmentTracesResponse'
+        '400':
+          description: Invalid limit
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '401':
+          description: Missing or invalid bearer token or session cookie
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '403':
+          description: Project is not owned by the authenticated user or bound to the project key
           content:
             application/json:
               schema:

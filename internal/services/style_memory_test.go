@@ -182,6 +182,34 @@ func (s *fakePacketSnapshotStore) LatestPacketSnapshotByProject(_ context.Contex
 	return latest, nil
 }
 
+func (s *fakePacketSnapshotStore) LatestAnyPacketSnapshotByProject(_ context.Context, projectID string) (domain.PacketSnapshot, error) {
+	var latest domain.PacketSnapshot
+	found := false
+	for _, item := range s.items {
+		if item.ProjectID != projectID {
+			continue
+		}
+		if !found || item.CreatedAt.After(latest.CreatedAt) || (item.CreatedAt.Equal(latest.CreatedAt) && item.ID > latest.ID) {
+			latest = item
+			found = true
+		}
+	}
+	if !found {
+		return domain.PacketSnapshot{}, lib.NotFound("PACKET_SNAPSHOT_NOT_FOUND", "packet snapshot not found")
+	}
+	return latest, nil
+}
+
+func (s *fakePacketSnapshotStore) CountPacketSnapshotsByProject(_ context.Context, projectID string) (int, error) {
+	count := 0
+	for _, item := range s.items {
+		if item.ProjectID == projectID {
+			count++
+		}
+	}
+	return count, nil
+}
+
 func (s *fakePacketSnapshotStore) MakePacketSnapshotPublic(_ context.Context, snapshotID string, publicToken string, ogImagePath string) (domain.PacketSnapshot, error) {
 	if s.items == nil {
 		return domain.PacketSnapshot{}, lib.NotFound("PACKET_SNAPSHOT_NOT_FOUND", "packet snapshot not found")

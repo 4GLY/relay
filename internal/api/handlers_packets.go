@@ -32,6 +32,14 @@ func (h Handler) handleProjectShow(w http.ResponseWriter, r *http.Request) {
 		h.handleProjectGraph(w, r, projectID)
 		return
 	}
+	if action == "explorer" {
+		h.handleProjectExplorer(w, r, projectID)
+		return
+	}
+	if action == "judgment-traces" {
+		h.handleProjectJudgmentTraces(w, r, projectID)
+		return
+	}
 	if action == "retrieve" {
 		h.handleProjectRetrieve(w, r, projectID)
 		return
@@ -55,6 +63,37 @@ func (h Handler) handleProjectGraph(w http.ResponseWriter, r *http.Request, proj
 		return
 	}
 	writeJSON(w, http.StatusOK, contracts.Success("relay project graph", result))
+}
+
+func (h Handler) handleProjectExplorer(w http.ResponseWriter, r *http.Request, projectID string) {
+	result, err := h.services.ProjectExplorer(r.Context(), services.ProjectExplorerInput{ProjectID: projectID})
+	if err != nil {
+		writeServiceError(w, "relay project explorer", err)
+		return
+	}
+	writeJSON(w, http.StatusOK, contracts.Success("relay project explorer", result))
+}
+
+func (h Handler) handleProjectJudgmentTraces(w http.ResponseWriter, r *http.Request, projectID string) {
+	limit := 0
+	if rawLimit := strings.TrimSpace(r.URL.Query().Get("limit")); rawLimit != "" {
+		parsed, err := strconv.Atoi(rawLimit)
+		if err != nil || parsed < 0 {
+			writeJSON(w, http.StatusBadRequest, contracts.Failure("relay judgment-traces list", "INVALID_LIMIT", "limit must be a non-negative integer", false, "limit"))
+			return
+		}
+		limit = parsed
+	}
+	result, err := h.services.ListJudgmentTraces(r.Context(), services.ListJudgmentTracesInput{
+		ProjectID: projectID,
+		Limit:     limit,
+		Cursor:    strings.TrimSpace(r.URL.Query().Get("cursor")),
+	})
+	if err != nil {
+		writeServiceError(w, "relay judgment-traces list", err)
+		return
+	}
+	writeJSON(w, http.StatusOK, contracts.Success("relay judgment-traces list", result))
 }
 
 func (h Handler) handleProjectRetrieve(w http.ResponseWriter, r *http.Request, projectID string) {

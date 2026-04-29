@@ -168,6 +168,18 @@ func (c *Client) ProjectGraph(ctx context.Context, projectID string) (services.P
 	return doJSON[services.ProjectGraphResult](ctx, c.httpClient, c.clientToken, http.MethodGet, c.baseURL+"/v1/projects/"+projectID+"/graph", nil)
 }
 
+func (c *Client) ProjectExplorer(ctx context.Context, projectID string) (services.ProjectExplorerResult, error) {
+	return doJSON[services.ProjectExplorerResult](ctx, c.httpClient, c.clientToken, http.MethodGet, c.baseURL+"/v1/projects/"+projectID+"/explorer", nil)
+}
+
+func (c *Client) ListJudgmentTraces(ctx context.Context, projectID string, limit int) (services.ListJudgmentTracesResult, error) {
+	endpoint := c.baseURL + "/v1/projects/" + projectID + "/judgment-traces"
+	if limit > 0 {
+		endpoint += "?limit=" + strconv.Itoa(limit)
+	}
+	return doJSON[services.ListJudgmentTracesResult](ctx, c.httpClient, c.clientToken, http.MethodGet, endpoint, nil)
+}
+
 func (c *Client) ProjectRetrieve(ctx context.Context, projectID string, query string, limit int) (services.ProjectRetrieveResult, error) {
 	endpoint := c.baseURL + "/v1/projects/" + projectID + "/retrieve?query=" + url.QueryEscape(query)
 	if limit > 0 {

@@ -67,6 +67,57 @@ type ProjectGraphResult struct {
 	Edges     []ProjectGraphEdge `json:"edges"`
 }
 
+type ProjectExplorerInput struct {
+	ProjectID string `json:"project_id"`
+}
+
+type ProjectExplorerResult struct {
+	Project        ProjectExplorerProject     `json:"project"`
+	Counts         ProjectExplorerCounts      `json:"counts"`
+	LatestSnapshot *ProjectExplorerSnapshot   `json:"latest_snapshot,omitempty"`
+	StyleMemory    ProjectExplorerStyleMemory `json:"style_memory"`
+	RecentActivity []ProjectExplorerActivity  `json:"recent_activity"`
+}
+
+type ProjectExplorerProject struct {
+	ProjectID string `json:"project_id"`
+	Name      string `json:"name"`
+	Status    string `json:"status"`
+}
+
+type ProjectExplorerCounts struct {
+	Notes              int `json:"notes"`
+	Artifacts          int `json:"artifacts"`
+	Decisions          int `json:"decisions"`
+	OpenQuestions      int `json:"open_questions"`
+	JudgmentTraces     int `json:"judgment_traces"`
+	PendingProposals   int `json:"pending_proposals"`
+	ApprovedHeuristics int `json:"approved_heuristics"`
+	RejectedProposals  int `json:"rejected_proposals"`
+	PacketSnapshots    int `json:"packet_snapshots"`
+}
+
+type ProjectExplorerSnapshot struct {
+	SnapshotID     string    `json:"snapshot_id"`
+	PacketKind     string    `json:"packet_kind"`
+	Target         string    `json:"target"`
+	TaskSummary    string    `json:"task_summary,omitempty"`
+	CreatedAt      time.Time `json:"created_at"`
+	PublicReadable bool      `json:"public_readable"`
+}
+
+type ProjectExplorerStyleMemory struct {
+	NextProposalID   string `json:"next_proposal_id,omitempty"`
+	NextProposalText string `json:"next_proposal_text,omitempty"`
+}
+
+type ProjectExplorerActivity struct {
+	Kind      string    `json:"kind"`
+	ID        string    `json:"id"`
+	Title     string    `json:"title"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
 type ProjectGraphNode struct {
 	ID         string `json:"id"`
 	Kind       string `json:"kind"`
@@ -233,6 +284,30 @@ type JudgmentTraceWriteResult struct {
 	TraceID      string `json:"trace_id"`
 	ProjectID    string `json:"project_id"`
 	CuratorJobID string `json:"curator_job_id,omitempty"`
+}
+
+type ListJudgmentTracesInput struct {
+	ProjectID string `json:"project_id,omitempty"`
+	Limit     int    `json:"limit,omitempty"`
+	Cursor    string `json:"cursor,omitempty"`
+}
+
+type ListJudgmentTracesResult struct {
+	Items      []JudgmentTraceSummary `json:"items"`
+	NextCursor string                 `json:"next_cursor,omitempty"`
+}
+
+type JudgmentTraceSummary struct {
+	TraceID      string    `json:"trace_id"`
+	ProjectID    string    `json:"project_id"`
+	TaskID       string    `json:"task_id,omitempty"`
+	AgentID      string    `json:"agent_id,omitempty"`
+	Workflow     string    `json:"workflow,omitempty"`
+	ArtifactType string    `json:"artifact_type,omitempty"`
+	Decision     string    `json:"decision"`
+	Rationale    string    `json:"rationale,omitempty"`
+	SourceRefs   []string  `json:"source_refs,omitempty"`
+	CreatedAt    time.Time `json:"created_at"`
 }
 
 type ListHeuristicProposalsInput struct {

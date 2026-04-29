@@ -53,10 +53,9 @@ export default async function StyleMemoryPage({
     redirect("/?return=/style-memory");
   }
 
-  // V2 baseline: backend `/v1/auth/me` does not yet expose the caller's
-  // primary project_id. We accept `?project=<id>` as the source of truth and
-  // render an empty-state ask when missing. /onboarding (S8) will land on
-  // /style-memory?project=<id>; the project picker UI is V2.5 territory.
+  // V2.5: `/v1/auth/me` exposes default_project_id for entry routing, but
+  // Style Memory still accepts `?project=<id>` as its explicit review surface
+  // contract. The Project Explorer route will become the default workspace.
   const projectId = (params.project ?? "").trim();
 
   if (!projectId) {

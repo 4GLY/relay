@@ -34,12 +34,24 @@ If `RELAY_DATABASE_URL` is not set, the script reads
 
 ## Latest Result
 
-Run ID: `qa2026042823444641b442`
+Run ID: `qa20260429000502c10725`
+
+Target: `https://relay.4gly.dev`
+
+Deployment evidence:
+
+- Source commit under test: `4553d0e79f67acc1409ef9eb33e6f6f51203c659`
+- Argo revision: `fa6bc7bd5d5a011de30fe0310a82f4de8da2bc81`
+- Argo status: `Synced / Healthy`
+- `relay-web`: `ghcr.io/4gly/relay-web:sha-4553d0e79f67acc1409ef9eb33e6f6f51203c659`
+- `relay-api`: `ghcr.io/4gly/relay-api:sha-4553d0e79f67acc1409ef9eb33e6f6f51203c659`
+- `relay-curator-worker`: `ghcr.io/4gly/relay-api:sha-4553d0e79f67acc1409ef9eb33e6f6f51203c659`
 
 Observed result:
 
 - `17 passed`
 - `1 skipped`
+- public snapshot fixture: `/p/psnap_qa20260429000502c10725_token`
 
 The skipped test is the mobile project for the provider credential mutation.
 That mutation intentionally runs once on desktop Chromium to avoid two browser

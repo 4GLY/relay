@@ -53,9 +53,9 @@ export default async function StyleMemoryPage({
     redirect("/?return=/style-memory");
   }
 
-  // V2.5: `/v1/auth/me` exposes default_project_id for entry routing, but
-  // Style Memory still accepts `?project=<id>` as its explicit review surface
-  // contract. The Project Explorer route will become the default workspace.
+  // V2.5: `/v1/auth/me` exposes default_project_id for Project Explorer entry
+  // routing, while Style Memory keeps `?project=<id>` as its explicit review
+  // surface contract.
   const projectId = (params.project ?? "").trim();
 
   if (!projectId) {

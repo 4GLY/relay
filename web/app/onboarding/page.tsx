@@ -32,7 +32,7 @@ export default async function OnboardingPage() {
   const me = await resolveSession(cookieStore.toString());
 
   if (me?.onboarding_complete && me.default_project_id) {
-    redirect(`/style-memory?project=${encodeURIComponent(me.default_project_id)}`);
+    redirect(`/projects/${encodeURIComponent(me.default_project_id)}`);
   }
 
   return (

@@ -22,7 +22,7 @@ describe("<OnboardingClient>", () => {
     vi.clearAllMocks();
   });
 
-  it("completes keyless onboarding and routes to Style Memory with the default project", async () => {
+  it("completes keyless onboarding and routes to Project Explorer with the default project", async () => {
     vi.mocked(completeOnboarding).mockResolvedValueOnce({
       onboarding_complete: true,
       default_project_id: "proj_personal",
@@ -35,7 +35,7 @@ describe("<OnboardingClient>", () => {
 
     await waitFor(() => {
       expect(completeOnboarding).toHaveBeenCalledTimes(1);
-      expect(push).toHaveBeenCalledWith("/style-memory?project=proj_personal");
+      expect(push).toHaveBeenCalledWith("/projects/proj_personal");
       expect(refresh).toHaveBeenCalledTimes(1);
     });
   });

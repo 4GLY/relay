@@ -1,0 +1,543 @@
+import { cookies } from "next/headers";
+import Link from "next/link";
+import { redirect } from "next/navigation";
+
+import { RELAY_API_URL, relayFetch, type RelayEnvelope } from "@/lib/api";
+import type { AuthMe } from "@/lib/onboarding";
+import {
+  getProjectExplorer,
+  ProjectExplorerError,
+  type ProjectExplorer,
+} from "@/lib/project-explorer";
+
+export const dynamic = "force-dynamic";
+
+type PageParams = {
+  projectId: string;
+};
+
+async function resolveSession(cookieHeader: string): Promise<AuthMe | null> {
+  const res = await relayFetch("/v1/auth/me", {
+    method: "GET",
+    headers: { cookie: cookieHeader },
+    cache: "no-store",
+  });
+  if (res.status === 401) return null;
+  if (!res.ok) return null;
+  const body = (await res.json()) as RelayEnvelope<AuthMe>;
+  if (!body.ok) return null;
+  return body.data;
+}
+
+function signInURL(projectId: string) {
+  const url = new URL("/v1/auth/github/start", RELAY_API_URL);
+  url.searchParams.set("redirect_to", `/projects/${projectId}`);
+  return url.toString();
+}
+
+export default async function ProjectExplorerPage({
+  params,
+}: {
+  params: Promise<PageParams>;
+}) {
+  const { projectId } = await params;
+  const cookieStore = await cookies();
+  const cookieHeader = cookieStore.toString();
+  const me = await resolveSession(cookieHeader);
+
+  if (!me) {
+    return <SignInRequired projectId={projectId} />;
+  }
+
+  if (!me.onboarding_complete) {
+    redirect("/onboarding");
+  }
+
+  let explorer: ProjectExplorer;
+  try {
+    explorer = await getProjectExplorer(projectId, {
+      headers: { cookie: cookieHeader },
+    });
+  } catch (error) {
+    return <ExplorerError projectId={projectId} error={error} userDisplayName={me.display_name} />;
+  }
+
+  return <Explorer explorer={explorer} userDisplayName={me.display_name} />;
+}
+
+function Explorer({
+  explorer,
+  userDisplayName,
+}: {
+  explorer: ProjectExplorer;
+  userDisplayName?: string;
+}) {
+  const c = explorer.counts;
+  const memoryReady = c.pendingProposals > 0
+    ? `${c.pendingProposals} proposal${c.pendingProposals === 1 ? "" : "s"} waiting`
+    : `${c.approvedHeuristics} swan${c.approvedHeuristics === 1 ? "" : "s"} minted`;
+
+  return (
+    <main style={pageStyle}>
+      <header style={topbarStyle}>
+        <Link href="/" style={brandStyle}>
+          Relay<span style={{ color: "var(--magic-primary-strong)" }}>.</span>
+        </Link>
+        <span style={userStyle}>{userDisplayName ?? "signed in"}</span>
+      </header>
+
+      <section style={heroStyle} aria-labelledby="project-title">
+        <p style={eyebrowStyle}>Project Explorer · {explorer.project.status}</p>
+        <div style={heroRowStyle}>
+          <div>
+            <h1 id="project-title" style={titleStyle}>
+              {explorer.project.name}
+            </h1>
+            <p style={subtitleStyle}>{memoryReady}</p>
+          </div>
+          <nav style={actionsStyle} aria-label="Project actions">
+            <a href={`/style-memory?project=${encodeURIComponent(explorer.project.projectId)}`} style={primaryLinkStyle}>
+              Style Memory
+            </a>
+            <a href="/settings/providers" style={secondaryLinkStyle}>
+              Provider Settings
+            </a>
+          </nav>
+        </div>
+      </section>
+
+      <section style={metricsGridStyle} aria-label="Project counts">
+        <Metric label="Notes" value={c.notes} />
+        <Metric label="Artifacts" value={c.artifacts} />
+        <Metric label="Decisions" value={c.decisions} />
+        <Metric label="Questions" value={c.openQuestions} />
+        <Metric label="Traces" value={c.judgmentTraces} />
+        <Metric label="Snapshots" value={c.packetSnapshots} />
+      </section>
+
+      <section style={workGridStyle}>
+        <Panel title="Style Memory" kicker={`${c.pendingProposals} pending`}>
+          {explorer.styleMemory.nextProposalText ? (
+            <>
+              <p style={proposalTextStyle}>{explorer.styleMemory.nextProposalText}</p>
+              <a
+                href={`/style-memory?project=${encodeURIComponent(explorer.project.projectId)}`}
+                style={inlineActionStyle}
+              >
+                Review proposal
+              </a>
+            </>
+          ) : (
+            <p style={quietCopyStyle}>No pending proposals.</p>
+          )}
+        </Panel>
+
+        <Panel title="Latest Snapshot" kicker={`${c.packetSnapshots} total`}>
+          {explorer.latestSnapshot ? (
+            <Snapshot snapshot={explorer.latestSnapshot} />
+          ) : (
+            <p style={quietCopyStyle}>No packet snapshots yet.</p>
+          )}
+        </Panel>
+
+        <Panel title="Recent Activity" kicker={`${explorer.recentActivity.length} latest`}>
+          {explorer.recentActivity.length > 0 ? (
+            <ol style={activityListStyle}>
+              {explorer.recentActivity.map((item) => (
+                <li key={`${item.kind}:${item.id}`} style={activityItemStyle}>
+                  <span style={activityKindStyle}>{formatKind(item.kind)}</span>
+                  <span style={activityTitleStyle}>{item.title}</span>
+                  <time dateTime={item.createdAt} style={activityTimeStyle}>
+                    {formatDate(item.createdAt)}
+                  </time>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p style={quietCopyStyle}>No recent activity.</p>
+          )}
+        </Panel>
+      </section>
+    </main>
+  );
+}
+
+function Metric({ label, value }: { label: string; value: number }) {
+  return (
+    <div style={metricStyle}>
+      <span style={metricValueStyle}>{value}</span>
+      <span style={metricLabelStyle}>{label}</span>
+    </div>
+  );
+}
+
+function Panel({
+  title,
+  kicker,
+  children,
+}: {
+  title: string;
+  kicker: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section style={panelStyle}>
+      <div style={panelHeaderStyle}>
+        <h2 style={panelTitleStyle}>{title}</h2>
+        <span style={panelKickerStyle}>{kicker}</span>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function Snapshot({ snapshot }: { snapshot: NonNullable<ProjectExplorer["latestSnapshot"]> }) {
+  return (
+    <div>
+      <p style={snapshotTitleStyle}>{snapshot.taskSummary || snapshot.target}</p>
+      <dl style={snapshotMetaStyle}>
+        <div>
+          <dt style={metaLabelStyle}>Kind</dt>
+          <dd style={metaValueStyle}>{snapshot.packetKind}</dd>
+        </div>
+        <div>
+          <dt style={metaLabelStyle}>Visibility</dt>
+          <dd style={metaValueStyle}>{snapshot.publicReadable ? "public" : "private"}</dd>
+        </div>
+        <div>
+          <dt style={metaLabelStyle}>Created</dt>
+          <dd style={metaValueStyle}>{formatDate(snapshot.createdAt)}</dd>
+        </div>
+      </dl>
+    </div>
+  );
+}
+
+function SignInRequired({ projectId }: { projectId: string }) {
+  return (
+    <main style={emptyPageStyle}>
+      <p style={eyebrowStyle}>Project Explorer</p>
+      <h1 style={emptyTitleStyle}>Sign in first</h1>
+      <p style={quietCopyStyle}>Project workspaces are private.</p>
+      <a href={signInURL(projectId)} style={primaryLinkStyle}>
+        Continue with GitHub
+      </a>
+    </main>
+  );
+}
+
+function ExplorerError({
+  projectId,
+  error,
+  userDisplayName,
+}: {
+  projectId: string;
+  error: unknown;
+  userDisplayName?: string;
+}) {
+  const code = error instanceof ProjectExplorerError ? error.code : "UNKNOWN";
+  const message = error instanceof Error ? error.message : "Project Explorer failed to load.";
+  return (
+    <main style={emptyPageStyle}>
+      <p style={eyebrowStyle}>Project Explorer · {userDisplayName ?? "signed in"}</p>
+      <h1 style={emptyTitleStyle}>Couldn’t open this project</h1>
+      <p style={errorBoxStyle}>
+        {code}: {message}
+      </p>
+      <a href={`/projects/${encodeURIComponent(projectId)}`} style={primaryLinkStyle}>
+        Retry
+      </a>
+    </main>
+  );
+}
+
+function formatDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("en", {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
+function formatKind(kind: string) {
+  return kind.replaceAll("_", " ");
+}
+
+const pageStyle: React.CSSProperties = {
+  maxWidth: "1180px",
+  margin: "0 auto",
+  padding: "0 28px 96px",
+};
+
+const topbarStyle: React.CSSProperties = {
+  minHeight: "74px",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  borderBottom: "1px solid var(--border)",
+};
+
+const brandStyle: React.CSSProperties = {
+  color: "var(--ink)",
+  fontFamily: "var(--font-display)",
+  fontSize: "30px",
+  fontWeight: 700,
+  textDecoration: "none",
+  fontVariationSettings: '"opsz" 96',
+};
+
+const userStyle: React.CSSProperties = {
+  color: "var(--muted)",
+  fontFamily: "var(--font-mono)",
+  fontSize: "13px",
+  letterSpacing: "0.16em",
+};
+
+const heroStyle: React.CSSProperties = {
+  padding: "72px 0 36px",
+};
+
+const heroRowStyle: React.CSSProperties = {
+  display: "flex",
+  gap: "28px",
+  alignItems: "flex-end",
+  justifyContent: "space-between",
+  flexWrap: "wrap",
+};
+
+const eyebrowStyle: React.CSSProperties = {
+  margin: "0 0 14px",
+  color: "var(--muted)",
+  fontFamily: "var(--font-mono)",
+  fontSize: "12px",
+  letterSpacing: "0.16em",
+  textTransform: "uppercase",
+};
+
+const titleStyle: React.CSSProperties = {
+  margin: 0,
+  color: "var(--ink)",
+  fontFamily: "var(--font-display)",
+  fontSize: "clamp(48px, 7vw, 84px)",
+  fontWeight: 500,
+  lineHeight: 1,
+  fontVariationSettings: '"opsz" 144, "SOFT" 50',
+};
+
+const subtitleStyle: React.CSSProperties = {
+  margin: "14px 0 0",
+  color: "var(--ink-muted)",
+  fontFamily: "var(--font-display)",
+  fontSize: "24px",
+  fontStyle: "italic",
+  fontVariationSettings: '"opsz" 48',
+};
+
+const actionsStyle: React.CSSProperties = {
+  display: "flex",
+  gap: "12px",
+  flexWrap: "wrap",
+};
+
+const primaryLinkStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  minHeight: "46px",
+  padding: "0 18px",
+  borderRadius: "8px",
+  background: "var(--ink)",
+  color: "var(--canvas)",
+  fontWeight: 800,
+  textDecoration: "none",
+};
+
+const secondaryLinkStyle: React.CSSProperties = {
+  ...primaryLinkStyle,
+  background: "transparent",
+  color: "var(--ink)",
+  border: "1px solid var(--border-strong)",
+};
+
+const metricsGridStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+  gap: "12px",
+  marginBottom: "28px",
+};
+
+const metricStyle: React.CSSProperties = {
+  padding: "18px",
+  border: "1px solid var(--border)",
+  borderRadius: "8px",
+  background: "var(--canvas-raised)",
+};
+
+const metricValueStyle: React.CSSProperties = {
+  display: "block",
+  color: "var(--ink)",
+  fontFamily: "var(--font-display)",
+  fontSize: "36px",
+  lineHeight: 1,
+  fontWeight: 500,
+};
+
+const metricLabelStyle: React.CSSProperties = {
+  display: "block",
+  marginTop: "10px",
+  color: "var(--muted)",
+  fontFamily: "var(--font-mono)",
+  fontSize: "11px",
+  letterSpacing: "0.14em",
+  textTransform: "uppercase",
+};
+
+const workGridStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+  gap: "16px",
+  alignItems: "stretch",
+};
+
+const panelStyle: React.CSSProperties = {
+  minHeight: "260px",
+  padding: "24px",
+  border: "1px solid var(--border)",
+  borderRadius: "8px",
+  background: "var(--canvas-raised)",
+};
+
+const panelHeaderStyle: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  gap: "16px",
+  marginBottom: "22px",
+};
+
+const panelTitleStyle: React.CSSProperties = {
+  margin: 0,
+  fontFamily: "var(--font-display)",
+  fontSize: "28px",
+  fontWeight: 500,
+};
+
+const panelKickerStyle: React.CSSProperties = {
+  color: "var(--muted)",
+  fontFamily: "var(--font-mono)",
+  fontSize: "11px",
+  letterSpacing: "0.14em",
+  textTransform: "uppercase",
+  whiteSpace: "nowrap",
+};
+
+const proposalTextStyle: React.CSSProperties = {
+  margin: "0 0 22px",
+  color: "var(--ink)",
+  fontFamily: "var(--font-mono)",
+  fontSize: "17px",
+  lineHeight: 1.6,
+};
+
+const inlineActionStyle: React.CSSProperties = {
+  color: "var(--magic-primary-strong)",
+  fontWeight: 800,
+  textDecoration: "none",
+};
+
+const quietCopyStyle: React.CSSProperties = {
+  margin: 0,
+  color: "var(--ink-muted)",
+  fontSize: "16px",
+  lineHeight: 1.6,
+};
+
+const snapshotTitleStyle: React.CSSProperties = {
+  margin: "0 0 22px",
+  color: "var(--ink)",
+  fontFamily: "var(--font-display)",
+  fontSize: "24px",
+  fontStyle: "italic",
+  lineHeight: 1.35,
+};
+
+const snapshotMetaStyle: React.CSSProperties = {
+  display: "grid",
+  gap: "12px",
+  margin: 0,
+};
+
+const metaLabelStyle: React.CSSProperties = {
+  color: "var(--muted)",
+  fontFamily: "var(--font-mono)",
+  fontSize: "11px",
+  letterSpacing: "0.14em",
+  textTransform: "uppercase",
+};
+
+const metaValueStyle: React.CSSProperties = {
+  margin: "2px 0 0",
+  color: "var(--ink)",
+  fontWeight: 800,
+};
+
+const activityListStyle: React.CSSProperties = {
+  display: "grid",
+  gap: "14px",
+  margin: 0,
+  padding: 0,
+  listStyle: "none",
+};
+
+const activityItemStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr)",
+  gap: "4px",
+  paddingBottom: "14px",
+  borderBottom: "1px solid var(--border)",
+};
+
+const activityKindStyle: React.CSSProperties = {
+  color: "var(--magic-primary-strong)",
+  fontFamily: "var(--font-mono)",
+  fontSize: "11px",
+  letterSpacing: "0.14em",
+  textTransform: "uppercase",
+};
+
+const activityTitleStyle: React.CSSProperties = {
+  color: "var(--ink)",
+  fontSize: "15px",
+  fontWeight: 800,
+};
+
+const activityTimeStyle: React.CSSProperties = {
+  color: "var(--muted)",
+  fontSize: "13px",
+};
+
+const emptyPageStyle: React.CSSProperties = {
+  maxWidth: "620px",
+  margin: "0 auto",
+  padding: "120px 32px",
+};
+
+const emptyTitleStyle: React.CSSProperties = {
+  margin: "0 0 18px",
+  fontFamily: "var(--font-display)",
+  fontSize: "46px",
+  fontWeight: 500,
+};
+
+const errorBoxStyle: React.CSSProperties = {
+  margin: "0 0 22px",
+  padding: "14px",
+  border: "1px solid var(--danger)",
+  borderRadius: "8px",
+  color: "var(--danger)",
+  background: "color-mix(in srgb, var(--danger) 8%, transparent)",
+  fontFamily: "var(--font-mono)",
+  fontSize: "13px",
+};

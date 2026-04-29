@@ -19,7 +19,7 @@ export function OnboardingClient({ userDisplayName }: Props) {
     setError("");
     try {
       const result = await completeOnboarding();
-      router.push(`/style-memory?project=${encodeURIComponent(result.default_project_id)}`);
+      router.push(`/projects/${encodeURIComponent(result.default_project_id)}`);
       router.refresh();
     } catch (err) {
       setStatus("error");
@@ -42,7 +42,7 @@ export function OnboardingClient({ userDisplayName }: Props) {
           Create your Relay workspace
         </h1>
         <p style={copyStyle}>
-          Relay will create your Personal project and send you straight into Style Memory.
+          Relay will create your Personal project and send you straight into Project Explorer.
           Claude provider keys stay out of first-run setup.
         </p>
         <div style={actionsStyle}>

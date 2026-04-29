@@ -76,7 +76,7 @@ describe("<HomePage>", () => {
     expect(mocks.redirect).toHaveBeenCalledWith("/onboarding");
   });
 
-  it("redirects fully onboarded users to their Style Memory project", async () => {
+  it("redirects fully onboarded users to their Project Explorer", async () => {
     mocks.relayFetch.mockResolvedValueOnce(
       authResponse(200, {
         ok: true,
@@ -91,9 +91,7 @@ describe("<HomePage>", () => {
       }),
     );
 
-    await expect(HomePage()).rejects.toThrow(
-      "NEXT_REDIRECT:/style-memory?project=proj_personal",
-    );
-    expect(mocks.redirect).toHaveBeenCalledWith("/style-memory?project=proj_personal");
+    await expect(HomePage()).rejects.toThrow("NEXT_REDIRECT:/projects/proj_personal");
+    expect(mocks.redirect).toHaveBeenCalledWith("/projects/proj_personal");
   });
 });

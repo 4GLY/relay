@@ -28,6 +28,7 @@ V2 scope 재정의 이후 범위: 최소 authenticated Style Memory UI + A(Shara
 - Source: CEO plan Rev 2 Scope Decision #4
 - V2.5 진입 slice: `docs/v2-5-project-explorer-scope.md`
 - Decision Graph slice: `docs/v2-5-decision-graph-scope.md`
+- 다음 Packet Builder slice: `docs/v2-5-packet-builder-wysiwyg-scope.md`
 
 **2. B: Public Style Profile** — `/u/{username}/style`, engineering judgment용 LinkedIn surface
 - Effort: L/XL. cross-project aggregation, slug reservation, privacy state, publish UX 때문에 Rev 1의 M 추정은 크게 과소평가였다. User model은 V2 baseline에 들어갔으므로 일부 재사용 가능.

@@ -606,7 +606,7 @@ components:
           type: string
         kind:
           type: string
-          enum: [project, note, artifact, decision, open_question]
+          enum: [project, note, artifact, decision, open_question, judgment_trace, heuristic_proposal, approved_heuristic, packet_snapshot]
         title:
           type: string
         source:
@@ -615,6 +615,21 @@ components:
           type: string
         trust_level:
           type: string
+        workflow:
+          type: string
+        artifact_type:
+          type: string
+        state:
+          type: string
+        packet_kind:
+          type: string
+        target:
+          type: string
+        public_readable:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
     ProjectGraphEdge:
       type: object
       required: [type, from, to]
@@ -1230,6 +1245,7 @@ paths:
       operationId: listApiKeys
       security:
         - BearerAuth: []
+        - CookieAuth: []
       responses:
         '200':
           description: API key list

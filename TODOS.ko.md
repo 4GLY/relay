@@ -19,13 +19,16 @@ V2 scope 재정의 이후 범위: 최소 authenticated Style Memory UI + A(Shara
 
 ### V2.5 (load-bearing, V2 ship 이후 다음 제품 사이클)
 
-**1. DESIGN.md 남은 4개 priority screen** — Project Explorer, Trace browser, Decision Graph, Packet Builder WYSIWYG
-- Effort: L, UI 약 5일 + backend read-model API 약 5일
-- 이월 이유: Codex finding #3. 이 화면들은 단순 UI가 아니라 backend read-model 작업이 크다. 현재 `judgment_traces`, pending proposals, approved heuristics list endpoint가 없고, project graph도 traces/heuristics를 포함하지 않는다. V2는 1개 화면만 ship한다.
+**1. DESIGN.md 남은 priority screen** — Decision Graph, Packet Builder WYSIWYG
+- Status: Project Explorer와 Trace Browser는 2026-04-30 V2.5 첫 slice로 ship했고 live E2E coverage까지 완료했다.
+- 남은 Effort: M/L UI + M backend read-model polish
+- 계속 추적하는 이유: Decision Graph는 Style Memory와 packet evidence까지 포함하는 canonical graph projection이 필요하고, Packet Builder는 latest snapshot read 이상으로 작성/검토 surface가 필요하다.
 - Unblocks: DESIGN.md 전체 구현, dense workspace experience, signature ribbon
 - Depends on: V2 ship + 최소 한 사이클의 demand evidence
 - Source: CEO plan Rev 2 Scope Decision #4
 - V2.5 진입 slice: `docs/v2-5-project-explorer-scope.md`
+- Decision Graph slice: `docs/v2-5-decision-graph-scope.md`
+- 다음 Packet Builder slice: `docs/v2-5-packet-builder-wysiwyg-scope.md`
 
 **2. B: Public Style Profile** — `/u/{username}/style`, engineering judgment용 LinkedIn surface
 - Effort: L/XL. cross-project aggregation, slug reservation, privacy state, publish UX 때문에 Rev 1의 M 추정은 크게 과소평가였다. User model은 V2 baseline에 들어갔으므로 일부 재사용 가능.
@@ -156,9 +159,10 @@ V2 scope 재정의 이후 범위: 최소 authenticated Style Memory UI + A(Shara
 
 ### Medium — V2.5 territory
 
-**D9. Decision Graph magic-color misuse fix**
+**D9. Decision Graph magic-color misuse fix** ✅ 2026-04-30 첫 slice에서 반영
 - magic color를 graph vocabulary로 쓰지 말고 selected/yielded transform path에만 예약한다.
-- Effort: S, 약 1-2시간
+- 첫 Decision Graph slice는 기본 edge를 neutral stroke로 두고, selected/yielded path에만 magic accent를 사용한다.
+- interactive filtering과 layout control을 추가할 때도 이 규칙을 유지한다.
 
 **D10. Packet Builder source panel default-closed**
 - source panel이 기본 open이면 packet document를 방해한다. 기본 collapsed로 두고 toggle로 승격한다.
@@ -182,7 +186,7 @@ Cross-model design review는 7개 surface 전체에서 약 40개의 누락 state
 
 **Onboarding**: invalid Anthropic key, Relay URL unreachable, OAuth cancelled, secret-storage consent prompt, prior trace 없음, first packet build failure, Anthropic rate limit/quota, returning user short-circuit
 
-**V2.5 surfaces**: Project Explorer, Judgment Traces, Decision Graph, Packet Builder의 약 16개 추가 state는 V2.5 entry 시 design review에서 spec한다.
+**V2.5 surfaces**: Decision Graph와 Packet Builder의 남은 state는 각 surface slice에서 spec한다. Project Explorer와 Judgment Traces는 첫 shipped state와 live E2E coverage가 생겼다.
 
 ## 운영 개선 (gstack 관련)
 

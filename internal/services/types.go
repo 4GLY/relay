@@ -120,12 +120,19 @@ type ProjectExplorerActivity struct {
 }
 
 type ProjectGraphNode struct {
-	ID         string `json:"id"`
-	Kind       string `json:"kind"`
-	Title      string `json:"title,omitempty"`
-	Source     string `json:"source,omitempty"`
-	SourcePath string `json:"source_path,omitempty"`
-	TrustLevel string `json:"trust_level,omitempty"`
+	ID             string `json:"id"`
+	Kind           string `json:"kind"`
+	Title          string `json:"title,omitempty"`
+	Source         string `json:"source,omitempty"`
+	SourcePath     string `json:"source_path,omitempty"`
+	TrustLevel     string `json:"trust_level,omitempty"`
+	Workflow       string `json:"workflow,omitempty"`
+	ArtifactType   string `json:"artifact_type,omitempty"`
+	State          string `json:"state,omitempty"`
+	PacketKind     string `json:"packet_kind,omitempty"`
+	Target         string `json:"target,omitempty"`
+	PublicReadable bool   `json:"public_readable,omitempty"`
+	CreatedAt      string `json:"created_at,omitempty"`
 }
 
 type ProjectGraphEdge struct {

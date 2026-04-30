@@ -6,6 +6,8 @@ const publicSnapshotToken = process.env.RELAY_QA_PUBLIC_SNAPSHOT_TOKEN;
 const sessionCookie = process.env.RELAY_QA_SESSION_COOKIE;
 const authenticatedProjectID = process.env.RELAY_QA_AUTH_PROJECT_ID ?? projectID;
 const screenshotDir = "../.gstack/qa-reports/screenshots";
+const baseURL = process.env.RELAY_WEB_BASE_URL ?? "https://relay.4gly.dev";
+const isLocalWebBase = /^https?:\/\/(127\.0\.0\.1|localhost)(:|\/|$)/.test(baseURL);
 
 test.beforeAll(() => {
   mkdirSync(screenshotDir, { recursive: true });
@@ -64,6 +66,8 @@ test.describe("Relay V2 live smoke", () => {
   });
 
   test("unknown public snapshot returns the revoked-state page", async ({ page }) => {
+    test.skip(isLocalWebBase, "Next /p route is a placeholder redirect; verify canonical public snapshots on live Go routing");
+
     const response = await page.goto("/p/unknown_s10_snapshot_token");
     expect(response?.status()).toBe(410);
     await expect(page.getByText(/no longer available/i)).toBeVisible();
@@ -75,6 +79,7 @@ test.describe("Relay V2 live smoke", () => {
 
   test("public snapshot renders canonical HTML when a token is supplied", async ({ page }) => {
     test.skip(!publicSnapshotToken, "Set RELAY_QA_PUBLIC_SNAPSHOT_TOKEN to verify a live public snapshot");
+    test.skip(isLocalWebBase, "Next /p route is a placeholder redirect; verify canonical public snapshots on live Go routing");
 
     const response = await page.goto(`/p/${publicSnapshotToken}`);
     expect(response?.status()).toBe(200);
@@ -96,12 +101,53 @@ test.describe("Relay authenticated live smoke", () => {
     await addSessionCookie(page);
   });
 
-  test("onboarding redirects completed users into Style Memory", async ({ page }) => {
+  test("onboarding redirects completed users into Project Explorer", async ({ page }) => {
     await page.goto("/onboarding");
-    await expect(page.getByRole("heading", { name: /Style Memory/i })).toBeVisible();
-    await expect(page.getByText(/Relay E2E|QA E2E|Style Memory/i).first()).toBeVisible();
+    await expect(page).toHaveURL(new RegExp(`/projects/${authenticatedProjectID}$`));
+    await expect(page.getByText(/Project Explorer/i).first()).toBeVisible();
+    await expect(page.getByRole("link", { name: "Style Memory" })).toBeVisible();
     await page.screenshot({
       path: `${screenshotDir}/s10-auth-onboarding-redirect.png`,
+      fullPage: true,
+    });
+  });
+
+  test("project explorer links core project surfaces", async ({ page }) => {
+    await page.goto("/");
+    await expect(page).toHaveURL(new RegExp(`/projects/${authenticatedProjectID}$`));
+    await expect(page.getByText(/Project Explorer/i).first()).toBeVisible();
+    await expect(page.getByText(/Snapshots/i).first()).toBeVisible();
+    await expect(page.getByRole("link", { name: "Style Memory" })).toHaveAttribute(
+      "href",
+      `/style-memory?project=${authenticatedProjectID}`,
+    );
+    await expect(page.getByRole("link", { name: "Trace Browser" })).toHaveAttribute(
+      "href",
+      `/projects/${authenticatedProjectID}/traces`,
+    );
+    if (publicSnapshotToken && !isLocalWebBase) {
+      await expect(page.getByRole("link", { name: "Open public snapshot" })).toHaveAttribute(
+        "href",
+        `/p/${publicSnapshotToken}`,
+      );
+    }
+    await page.screenshot({
+      path: `${screenshotDir}/s10-auth-project-explorer.png`,
+      fullPage: true,
+    });
+  });
+
+  test("trace browser renders authenticated judgment traces", async ({ page }) => {
+    await page.goto(`/projects/${authenticatedProjectID}/traces`);
+    await expect(page.getByRole("heading", { name: "Trace Browser" })).toBeVisible();
+    await expect(page.getByText(/Prefer explicit recovery actions over generic error states/i)).toBeVisible();
+    await expect(page.getByText(/qa:live:e2e/i)).toBeVisible();
+    await expect(page.getByRole("link", { name: "Project Explorer" })).toHaveAttribute(
+      "href",
+      `/projects/${authenticatedProjectID}`,
+    );
+    await page.screenshot({
+      path: `${screenshotDir}/s10-auth-trace-browser.png`,
       fullPage: true,
     });
   });
@@ -122,6 +168,7 @@ test.describe("Relay authenticated live smoke", () => {
       test.info().project.name !== "chromium",
       "Provider credential mutation runs once to avoid cross-project state races",
     );
+    test.skip(isLocalWebBase, "Provider credential mutation requires same-origin live routing");
 
     await page.goto("/settings/providers");
     await expect(page.getByRole("heading", { name: /Claude provider/i })).toBeVisible();

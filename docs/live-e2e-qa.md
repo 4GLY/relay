@@ -109,3 +109,38 @@ Cleanup verification:
 
 - QA browser sessions created for this run: `3`
 - QA browser sessions revoked after the run: `3`
+
+## Pre-Deploy Project Explorer + Trace Browser QA
+
+Date: 2026-04-30
+
+Target: `http://127.0.0.1:3000` web, backed by `https://relay.4gly.dev` API
+
+Run ID: `qa20260430011628e3e478`
+
+Scope:
+
+- Project Explorer is covered by the automated authenticated live smoke suite.
+- Project Explorer links to Style Memory and Trace Browser.
+- Trace Browser renders live judgment trace fixtures on desktop Chromium and
+  mobile Chrome.
+- The script-created project, user, session, judgment trace, heuristic proposal,
+  and packet snapshot fixtures were cleaned up by `scripts/qa/run_live_e2e.sh`.
+
+Observed result:
+
+- `16 passed`
+- `6 skipped`
+- temporary project: `proj_qa20260430011628e3e478`
+- temporary public snapshot fixture:
+  `/p/psnap_qa20260430011628e3e478_token`
+
+Skip notes:
+
+- Public snapshot route checks are skipped against local Next because `/p/*`
+  is only a placeholder redirect there; canonical public snapshot routing is
+  verified on the live Go surface.
+- Provider credential mutation is skipped against local web because it requires
+  same-origin live routing.
+- The Project Explorer public snapshot link check is reserved for live deploy
+  because the pre-deploy live API does not yet include `latest_snapshot.public_token`.

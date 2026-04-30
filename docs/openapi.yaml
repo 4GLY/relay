@@ -744,6 +744,8 @@ components:
           format: date-time
         public_readable:
           type: boolean
+        public_token:
+          type: string
     ProjectExplorerStyleMemory:
       type: object
       properties:

@@ -24,6 +24,7 @@ export type ProjectExplorer = {
     taskSummary?: string;
     createdAt: string;
     publicReadable: boolean;
+    publicToken?: string;
   };
   styleMemory: {
     nextProposalId?: string;
@@ -61,6 +62,7 @@ type ServerProjectExplorer = {
     task_summary?: string;
     created_at: string;
     public_readable: boolean;
+    public_token?: string;
   };
   style_memory: {
     next_proposal_id?: string;
@@ -145,6 +147,7 @@ function mapExplorer(data: ServerProjectExplorer): ProjectExplorer {
           taskSummary: data.latest_snapshot.task_summary || undefined,
           createdAt: data.latest_snapshot.created_at,
           publicReadable: data.latest_snapshot.public_readable,
+          publicToken: data.latest_snapshot.public_token || undefined,
         }
       : undefined,
     styleMemory: {

@@ -62,12 +62,19 @@ const explorer = {
     taskSummary: "Design handoff",
     createdAt: "2026-04-29T00:00:00Z",
     publicReadable: true,
+    publicToken: "psnap_public_token",
   },
   styleMemory: {
     nextProposalId: "hprop_1",
     nextProposalText: "Prefer specific recovery actions.",
   },
   recentActivity: [
+    {
+      kind: "judgment_trace",
+      id: "trace_1",
+      title: "Prefer explicit retry paths.",
+      createdAt: "2026-04-29T00:01:00Z",
+    },
     {
       kind: "approved_heuristic",
       id: "heur_1",
@@ -105,6 +112,18 @@ describe("<ProjectExplorerPage>", () => {
     expect(screen.getByRole("link", { name: "Style Memory" })).toHaveAttribute(
       "href",
       "/style-memory?project=proj_1",
+    );
+    expect(screen.getByRole("link", { name: "Trace Browser" })).toHaveAttribute(
+      "href",
+      "/projects/proj_1/traces",
+    );
+    expect(screen.getByRole("link", { name: "Open public snapshot" })).toHaveAttribute(
+      "href",
+      "/p/psnap_public_token",
+    );
+    expect(screen.getByRole("link", { name: "Prefer explicit retry paths." })).toHaveAttribute(
+      "href",
+      "/projects/proj_1/traces?trace=trace_1",
     );
     expect(screen.getAllByText("Prefer specific recovery actions.")).toHaveLength(2);
     expect(screen.getByText("Design handoff")).toBeVisible();

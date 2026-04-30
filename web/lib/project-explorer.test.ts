@@ -47,6 +47,7 @@ describe("getProjectExplorer", () => {
             task_summary: "handoff summary",
             created_at: "2026-04-29T00:00:00Z",
             public_readable: true,
+            public_token: "psnap_public_token",
           },
           style_memory: {
             next_proposal_id: "hprop_1",
@@ -73,6 +74,7 @@ describe("getProjectExplorer", () => {
     expect(result.counts.openQuestions).toBe(4);
     expect(result.counts.pendingProposals).toBe(6);
     expect(result.latestSnapshot?.snapshotId).toBe("psnap_1");
+    expect(result.latestSnapshot?.publicToken).toBe("psnap_public_token");
     expect(result.styleMemory.nextProposalId).toBe("hprop_1");
     expect(result.recentActivity[0].kind).toBe("approved_heuristic");
 

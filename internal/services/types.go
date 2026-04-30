@@ -104,6 +104,7 @@ type ProjectExplorerSnapshot struct {
 	TaskSummary    string    `json:"task_summary,omitempty"`
 	CreatedAt      time.Time `json:"created_at"`
 	PublicReadable bool      `json:"public_readable"`
+	PublicToken    string    `json:"public_token,omitempty"`
 }
 
 type ProjectExplorerStyleMemory struct {

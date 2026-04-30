@@ -34,28 +34,38 @@ If `RELAY_DATABASE_URL` is not set, the script reads
 
 ## Latest Result
 
-Run ID: `qa20260429000502c10725`
+Run ID: `qa20260430014649fd5582`
 
 Target: `https://relay.4gly.dev`
 
 Deployment evidence:
 
-- Source commit under test: `4553d0e79f67acc1409ef9eb33e6f6f51203c659`
-- Argo revision: `fa6bc7bd5d5a011de30fe0310a82f4de8da2bc81`
+- Source commit under test: `f7b338ad53df2e99e14ed8b8d98c5d97639a53e3`
+- Deploy commit under test: `db274b18599e672a5686c666711e23d66b8cea14`
+- Argo revision: `db274b18599e672a5686c666711e23d66b8cea14`
 - Argo status: `Synced / Healthy`
-- `relay-web`: `ghcr.io/4gly/relay-web:sha-4553d0e79f67acc1409ef9eb33e6f6f51203c659`
-- `relay-api`: `ghcr.io/4gly/relay-api:sha-4553d0e79f67acc1409ef9eb33e6f6f51203c659`
-- `relay-curator-worker`: `ghcr.io/4gly/relay-api:sha-4553d0e79f67acc1409ef9eb33e6f6f51203c659`
+- `relay-web`: `ghcr.io/4gly/relay-web:sha-f7b338ad53df2e99e14ed8b8d98c5d97639a53e3`
+- `relay-api`: `ghcr.io/4gly/relay-api:sha-f7b338ad53df2e99e14ed8b8d98c5d97639a53e3`
+- `relay-curator-worker`: `ghcr.io/4gly/relay-api:sha-f7b338ad53df2e99e14ed8b8d98c5d97639a53e3`
 
 Observed result:
 
-- `17 passed`
+- `21 passed`
 - `1 skipped`
-- public snapshot fixture: `/p/psnap_qa20260429000502c10725_token`
+- public snapshot fixture: `/p/psnap_qa20260430014649fd5582_token`
 
 The skipped test is the mobile project for the provider credential mutation.
 That mutation intentionally runs once on desktop Chromium to avoid two browser
 projects racing on the same user-owned credential row.
+
+Additional authenticated coverage:
+
+- `/onboarding` redirects completed users into Project Explorer.
+- Project Explorer links to Style Memory and Trace Browser.
+- Project Explorer exposes the latest public snapshot link when
+  `latest_snapshot.public_token` is present.
+- Trace Browser renders seeded judgment traces on desktop Chromium and mobile
+  Chrome.
 
 Cleanup verification:
 

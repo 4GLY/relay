@@ -47,25 +47,25 @@ The live suite covers:
 
 ## Latest Result
 
-Run ID: `qa20260430110812ba79d2`
+Run ID: `qa202604301114048db40a`
 
 Target: `https://relay.4gly.dev`
 
 Deployment evidence:
 
-- Source commit under test: `b9628d51fd6788951be304fd74271bccd4bbee0c`
-- Deploy commit under test: `52d7dbb1ac11c11988d55ed3479b88c0410da491`
-- Argo revision: `52d7dbb1ac11c11988d55ed3479b88c0410da491`
+- Source commit under test: `e22ec25c041e11609e5ea4e6e248b84e05db9bbb`
+- Deploy commit under test: `188e8e95f0970dd355c4711e57cbaa8bc0c52fa7`
+- Argo revision: `188e8e95f0970dd355c4711e57cbaa8bc0c52fa7`
 - Argo status: `Synced / Healthy`
-- `relay-web`: `ghcr.io/4gly/relay-web:sha-b9628d51fd6788951be304fd74271bccd4bbee0c`
-- `relay-api`: `ghcr.io/4gly/relay-api:sha-b9628d51fd6788951be304fd74271bccd4bbee0c`
-- `relay-curator-worker`: `ghcr.io/4gly/relay-api:sha-b9628d51fd6788951be304fd74271bccd4bbee0c`
+- `relay-web`: `ghcr.io/4gly/relay-web:sha-e22ec25c041e11609e5ea4e6e248b84e05db9bbb`
+- `relay-api`: `ghcr.io/4gly/relay-api:sha-e22ec25c041e11609e5ea4e6e248b84e05db9bbb`
+- `relay-curator-worker`: `ghcr.io/4gly/relay-api:sha-e22ec25c041e11609e5ea4e6e248b84e05db9bbb`
 
 Observed result:
 
 - `30 passed`
 - `2 skipped`
-- public snapshot fixture: `/p/psnap_qa20260430110812ba79d2_token`
+- public snapshot fixture: `/p/psnap_qa202604301114048db40a_token`
 
 The skipped tests are the mobile projects for provider credential and API key
 mutations. Those mutations intentionally run once on desktop Chromium to avoid

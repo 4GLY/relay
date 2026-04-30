@@ -102,9 +102,10 @@ Auth model:
 - `RELAY_ADMIN_TOKEN` is the preferred bootstrap admin token
 - `RELAY_API_TOKEN` remains a legacy fallback for bootstrap/admin compatibility
 - `RELAY_CLIENT_TOKEN` is the issued client token for normal `/v1/*` and `/mcp` use
-- issued API keys can be minted through `POST /v1/api-keys/issue`
-- issued API keys can be listed through `GET /v1/api-keys`
-- issued API keys can be revoked through `POST /v1/api-keys/revoke`
+- operator API keys can be minted through `POST /v1/api-keys/issue`
+- operator API keys can be listed through `GET /v1/api-keys`
+- operator API keys can be revoked through `POST /v1/api-keys/revoke`
+- signed-in users can manage their own client keys at `/settings/api-keys`, backed by `POST /v1/settings/api-keys`
 
 ## Environment
 

@@ -200,6 +200,102 @@ Contract notes:
 - bootstrap admin token is not affected
 - list and revoke responses include the key scope and project binding when present
 
+### `GET /v1/settings/api-keys`
+
+Purpose:
+- list Relay API keys owned by the current signed-in user
+- support the user-facing Settings page without exposing bootstrap admin powers
+
+Auth:
+- cookie session only
+- admin bearer tokens are rejected for this route because no user owner can be inferred
+
+Response body:
+
+```json
+{
+  "ok": true,
+  "command": "relay user api-key list",
+  "data": {
+    "items": [
+      {
+        "key_id": "key_xxx",
+        "name": "Laptop CLI",
+        "token_prefix": "relay_live_xxx",
+        "scope": "global",
+        "revoked": false
+      }
+    ]
+  },
+  "warnings": []
+}
+```
+
+Contract notes:
+- raw tokens are never returned from list responses
+- only keys with `owner_user_id` matching the current session user are returned
+
+### `POST /v1/settings/api-keys`
+
+Purpose:
+- issue a Relay API key owned by the current signed-in user
+- provide a client token for API and MCP consumers
+
+Auth:
+- cookie session only
+
+Request body:
+
+```json
+{
+  "name": "Laptop CLI"
+}
+```
+
+Response body:
+
+```json
+{
+  "ok": true,
+  "command": "relay user api-key issue",
+  "data": {
+    "key_id": "key_xxx",
+    "name": "Laptop CLI",
+    "token": "relay_live_xxx",
+    "token_prefix": "relay_live_xxx",
+    "scope": "global"
+  },
+  "warnings": []
+}
+```
+
+Contract notes:
+- plaintext token is returned once, only in this issue response
+- user-owned keys are global scope in this version
+- `scope`, `project`, and `project_id` are rejected on the user settings route
+- only the token hash is stored in Postgres
+
+### `POST /v1/settings/api-keys/revoke`
+
+Purpose:
+- revoke a Relay API key owned by the current signed-in user
+
+Auth:
+- cookie session only
+
+Request body:
+
+```json
+{
+  "key_id": "key_xxx"
+}
+```
+
+Contract notes:
+- a user cannot revoke another user's key
+- cross-owner key ids return not found
+- revoke responses do not include the raw token
+
 ### `POST /v1/capture`
 
 Purpose:

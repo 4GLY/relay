@@ -1,7 +1,8 @@
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { RELAY_API_URL, relayFetch, type RelayEnvelope } from "@/lib/api";
+import { getDictionary, resolveLocale } from "@/lib/i18n";
 import type { AuthMe } from "@/lib/onboarding";
 
 import { OnboardingClient } from "./onboarding-client";
@@ -29,7 +30,13 @@ function authStartURL(provider: "github") {
 
 export default async function OnboardingPage() {
   const cookieStore = await cookies();
+  const headerStore = await headers();
   const me = await resolveSession(cookieStore.toString());
+  const locale = resolveLocale({
+    cookie: cookieStore.toString(),
+    acceptLanguage: headerStore.get("accept-language") ?? undefined,
+  });
+  const dictionary = getDictionary(locale);
 
   if (me?.onboarding_complete && me.default_project_id) {
     redirect(`/projects/${encodeURIComponent(me.default_project_id)}`);
@@ -53,7 +60,7 @@ export default async function OnboardingPage() {
           marginBottom: "16px",
         }}
       >
-        Slice 8 · 60 seconds
+        {dictionary.onboarding.page.eyebrow}
       </p>
       <h1
         style={{
@@ -67,7 +74,7 @@ export default async function OnboardingPage() {
           fontVariationSettings: '"opsz" 144, "SOFT" 50',
         }}
       >
-        First run, no keys
+        {dictionary.onboarding.page.title}
       </h1>
       <p
         style={{
@@ -79,23 +86,23 @@ export default async function OnboardingPage() {
           marginBottom: "36px",
         }}
       >
-        Relay starts by creating a private workspace. Provider keys are a Settings
-        concern, not a gate on the first minute.
+        {dictionary.onboarding.page.subtitle}
       </p>
       {me ? (
-        <OnboardingClient userDisplayName={me.display_name ?? me.email} />
+        <OnboardingClient
+          copy={dictionary.onboarding.client}
+          locale={locale}
+          userDisplayName={me.display_name ?? me.email}
+        />
       ) : (
         <section style={signInPanelStyle} aria-labelledby="signin-title">
           <h2 id="signin-title" style={signInTitleStyle}>
-            Sign in to create your workspace
+            {dictionary.onboarding.page.signInTitle}
           </h2>
-          <p style={signInCopyStyle}>
-            Use an identity provider first. Relay will create your Personal project
-            after you return here.
-          </p>
+          <p style={signInCopyStyle}>{dictionary.onboarding.page.signInCopy}</p>
           <div style={signInActionsStyle}>
             <a href={authStartURL("github")} style={authButtonStyle}>
-              Continue with GitHub
+              {dictionary.common.continueWithGitHub}
             </a>
           </div>
         </section>

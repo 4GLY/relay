@@ -65,6 +65,44 @@ test.describe("Relay V2 live smoke", () => {
     });
   });
 
+  test("api key settings renders an authenticated or redirectable state", async ({ page }) => {
+    await page.goto("/settings/api-keys");
+    await expect(page.getByText(/API key settings|Relay API keys|Sign in/i).first()).toBeVisible();
+    await page.screenshot({
+      path: `${screenshotDir}/s10-settings-api-keys.png`,
+      fullPage: true,
+    });
+  });
+
+  test("Korean locale renders first-run and settings copy", async ({ page }) => {
+    const cookieURL = test.info().project.use.baseURL ?? process.env.RELAY_WEB_BASE_URL ?? "https://relay.4gly.dev";
+    await page.context().addCookies([
+      {
+        name: "relay_locale",
+        value: "ko",
+        url: cookieURL,
+        sameSite: "Lax",
+        secure: cookieURL.startsWith("https://"),
+      },
+    ]);
+
+    await page.goto("/");
+    await expect(page.getByText(/시작하려면 로그인하세요|Relay 시작하기/i).first()).toBeVisible();
+
+    await page.goto("/onboarding");
+    await expect(page.getByText(/키 없이 시작하는 첫 실행|Relay 작업공간 만들기/i).first()).toBeVisible();
+
+    await page.goto("/settings/providers");
+    await expect(page.getByText(/Provider 설정|먼저 로그인하세요|Claude provider/i).first()).toBeVisible();
+
+    await page.goto("/settings/api-keys");
+    await expect(page.getByText(/Relay API 키|먼저 로그인하세요/i).first()).toBeVisible();
+    await page.screenshot({
+      path: `${screenshotDir}/s10-ko-settings-api-keys.png`,
+      fullPage: true,
+    });
+  });
+
   test("unknown public snapshot returns the revoked-state page", async ({ page }) => {
     test.skip(isLocalWebBase, "Next /p route is a placeholder redirect; verify canonical public snapshots on live Go routing");
 
@@ -229,6 +267,37 @@ test.describe("Relay authenticated live smoke", () => {
     await expect(page.getByText("Not connected")).toBeVisible();
     await page.screenshot({
       path: `${screenshotDir}/s10-auth-settings-providers.png`,
+      fullPage: true,
+    });
+  });
+
+  test("api key settings issues one-time tokens and revokes user keys", async ({ page }) => {
+    test.skip(
+      test.info().project.name !== "chromium",
+      "API key mutation runs once to avoid shared user-owned key state races",
+    );
+    test.skip(isLocalWebBase, "API key mutation requires same-origin live routing");
+
+    const keyName = `e2e-${Date.now()}`;
+    await page.goto("/settings/api-keys");
+    await expect(page.getByRole("heading", { name: /Relay API keys/i })).toBeVisible();
+
+    await page.getByLabel(/Key name/i).fill(keyName);
+    await page.getByTestId("issue-api-key").click();
+    await expect(page.getByText(/Copy this token now/i)).toBeVisible();
+    await expect(page.getByLabel(/Raw token/i)).toHaveValue(/relay_live_/i);
+    await expect(page.getByText(keyName)).toBeVisible();
+
+    await page.reload();
+    await expect(page.getByText(keyName)).toBeVisible();
+    await expect(page.getByText(/Copy this token now/i)).toHaveCount(0);
+    await expect(page.getByLabel(/Raw token/i)).toHaveCount(0);
+
+    await page.getByTestId(/revoke-api-key-/).first().click();
+    await page.getByTestId(/confirm-revoke-/).first().click();
+    await expect(page.getByText(/Revoked/i).first()).toBeVisible();
+    await page.screenshot({
+      path: `${screenshotDir}/s10-auth-settings-api-keys.png`,
       fullPage: true,
     });
   });

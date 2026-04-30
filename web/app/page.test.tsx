@@ -8,11 +8,12 @@ const mocks = vi.hoisted(() => ({
     throw new Error(`NEXT_REDIRECT:${path}`);
   }),
   cookies: vi.fn(),
+  headers: vi.fn(),
   relayFetch: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
-vi.mock("next/headers", () => ({ cookies: mocks.cookies }));
+vi.mock("next/headers", () => ({ cookies: mocks.cookies, headers: mocks.headers }));
 vi.mock("@/lib/api", () => ({
   RELAY_API_URL: "https://relay.4gly.dev",
   relayFetch: mocks.relayFetch,
@@ -21,6 +22,12 @@ vi.mock("@/lib/api", () => ({
 function cookieStore(value = "relay_session=test") {
   return {
     toString: () => value,
+  };
+}
+
+function headerStore(acceptLanguage = "en-US,en;q=0.9") {
+  return {
+    get: (name: string) => (name.toLowerCase() === "accept-language" ? acceptLanguage : null),
   };
 }
 
@@ -36,6 +43,7 @@ describe("<HomePage>", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.cookies.mockResolvedValue(cookieStore());
+    mocks.headers.mockResolvedValue(headerStore());
   });
 
   it("shows the GitHub sign-in entry when there is no session", async () => {
@@ -93,5 +101,21 @@ describe("<HomePage>", () => {
 
     await expect(HomePage()).rejects.toThrow("NEXT_REDIRECT:/projects/proj_personal");
     expect(mocks.redirect).toHaveBeenCalledWith("/projects/proj_personal");
+  });
+
+  it("renders korean root copy when locale resolves to ko", async () => {
+    mocks.headers.mockResolvedValueOnce(headerStore("ko-KR,ko;q=0.9,en;q=0.8"));
+    mocks.relayFetch.mockResolvedValueOnce(
+      authResponse(401, {
+        ok: false,
+        command: "relay auth me",
+        error: { code: "UNAUTHENTICATED", message: "missing session", retryable: false },
+      }),
+    );
+
+    render(await HomePage());
+
+    expect(screen.getByText("흩어진 작업을 조용히 백조처럼 정리하는 엔진.")).toBeVisible();
+    expect(screen.getByRole("link", { name: "GitHub로 계속하기" })).toBeVisible();
   });
 });

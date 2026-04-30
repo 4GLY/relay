@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
+import { cookies, headers } from "next/headers";
 import { Fraunces, Nunito, JetBrains_Mono } from "next/font/google";
+
+import { resolveLocale } from "@/lib/i18n";
+
 import "./globals.css";
 
 const fraunces = Fraunces({
@@ -41,12 +45,19 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  const cookieStore = await cookies();
+  const headerStore = await headers();
+  const locale = resolveLocale({
+    cookie: cookieStore.toString(),
+    acceptLanguage: headerStore.get("accept-language") ?? undefined,
+  });
+
   return (
     <html
-      lang="en"
+      lang={locale}
       className={`${fraunces.variable} ${nunito.variable} ${jetbrainsMono.variable}`}
     >
       <body

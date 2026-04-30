@@ -262,6 +262,20 @@ func (s *fakeAPIKeyStore) ListAPIKeys(_ context.Context) ([]domain.APIKey, error
 	return items, nil
 }
 
+func (s *fakeAPIKeyStore) ListAPIKeysByOwner(_ context.Context, userID string) ([]domain.APIKey, error) {
+	items, err := s.ListAPIKeys(context.Background())
+	if err != nil {
+		return nil, err
+	}
+	var filtered []domain.APIKey
+	for _, item := range items {
+		if item.OwnerUserID == userID {
+			filtered = append(filtered, item)
+		}
+	}
+	return filtered, nil
+}
+
 func (s *fakeAPIKeyStore) RevokeAPIKey(_ context.Context, keyID string) (domain.APIKey, error) {
 	for hash, item := range s.itemsByHash {
 		if item.ID == keyID {
@@ -278,6 +292,101 @@ func (s *fakeAPIKeyStore) RevokeAPIKey(_ context.Context, keyID string) (domain.
 		}
 	}
 	return domain.APIKey{}, lib.NotFound("API_KEY_NOT_FOUND_BY_ID", "api key not found")
+}
+
+func (s *fakeAPIKeyStore) RevokeAPIKeyByOwner(_ context.Context, userID string, keyID string) (domain.APIKey, error) {
+	for hash, item := range s.itemsByHash {
+		if item.ID == keyID && item.OwnerUserID == userID {
+			item.Revoked = true
+			s.itemsByHash[hash] = item
+			return item, nil
+		}
+	}
+	for i, item := range s.created {
+		if item.ID == keyID && item.OwnerUserID == userID {
+			item.Revoked = true
+			s.created[i] = item
+			return item, nil
+		}
+	}
+	return domain.APIKey{}, lib.NotFound("API_KEY_NOT_FOUND_BY_ID", "api key not found")
+}
+
+type userAPIKeyFixture struct {
+	mux         *http.ServeMux
+	keyStore    *fakeAPIKeyStore
+	ownerCookie *http.Cookie
+	otherCookie *http.Cookie
+}
+
+func newUserAPIKeyFixture(t *testing.T) *userAPIKeyFixture {
+	t.Helper()
+
+	users := newAuthFakeUserStore()
+	users.items["usr_owner"] = domain.User{ID: "usr_owner", Email: "owner@relay.test", DisplayName: "owner"}
+	users.items["usr_other"] = domain.User{ID: "usr_other", Email: "other@relay.test", DisplayName: "other"}
+
+	sessions := newAuthFakeUserSessionStore()
+	ownerToken, err := lib.NewSecretToken("rsess")
+	if err != nil {
+		t.Fatalf("owner token: %v", err)
+	}
+	otherToken, err := lib.NewSecretToken("rsess")
+	if err != nil {
+		t.Fatalf("other token: %v", err)
+	}
+	if _, err := sessions.CreateUserSession(context.Background(), domain.UserSession{
+		ID:        "usess_owner",
+		UserID:    "usr_owner",
+		TokenHash: lib.TokenHash(ownerToken),
+		ExpiresAt: time.Now().Add(30 * 24 * time.Hour),
+	}); err != nil {
+		t.Fatalf("owner session: %v", err)
+	}
+	if _, err := sessions.CreateUserSession(context.Background(), domain.UserSession{
+		ID:        "usess_other",
+		UserID:    "usr_other",
+		TokenHash: lib.TokenHash(otherToken),
+		ExpiresAt: time.Now().Add(30 * 24 * time.Hour),
+	}); err != nil {
+		t.Fatalf("other session: %v", err)
+	}
+
+	keyStore := &fakeAPIKeyStore{
+		itemsByHash: map[string]domain.APIKey{
+			"hash-owner": {
+				ID:          "key_owner",
+				Name:        "owner-key",
+				TokenHash:   "hash-owner",
+				TokenPrefix: "relay_live_owner",
+				OwnerUserID: "usr_owner",
+			},
+			"hash-other": {
+				ID:          "key_other",
+				Name:        "other-key",
+				TokenHash:   "hash-other",
+				TokenPrefix: "relay_live_other",
+				OwnerUserID: "usr_other",
+			},
+		},
+	}
+
+	svc := services.New(services.Dependencies{
+		Users:        users,
+		UserSessions: sessions,
+		APIKeys:      keyStore,
+	})
+	mux := buildMux(Handler{services: svc}, config.Config{APIToken: "admin-token"}, app.Runtime{
+		Services: svc,
+		APIKeys:  keyStore,
+	})
+
+	return &userAPIKeyFixture{
+		mux:         mux,
+		keyStore:    keyStore,
+		ownerCookie: &http.Cookie{Name: sessionCookieName, Value: ownerToken},
+		otherCookie: &http.Cookie{Name: sessionCookieName, Value: otherToken},
+	}
 }
 
 func TestHealthz(t *testing.T) {
@@ -838,6 +947,124 @@ func TestRevokeAPIKeyRouteRevokesIssuedKey(t *testing.T) {
 
 	if rec2.Code != http.StatusUnauthorized {
 		t.Fatalf("expected 401 after revoke, got %d body=%s", rec2.Code, rec2.Body.String())
+	}
+}
+
+func TestUserAPIKeysRouteRequiresSessionCookie(t *testing.T) {
+	f := newUserAPIKeyFixture(t)
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/settings/api-keys", nil)
+	rec := httptest.NewRecorder()
+	f.mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401, got %d body=%s", rec.Code, rec.Body.String())
+	}
+
+	req = httptest.NewRequest(http.MethodGet, "/v1/settings/api-keys", nil)
+	req.Header.Set("Authorization", "Bearer admin-token")
+	rec = httptest.NewRecorder()
+	f.mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("expected admin bearer to be rejected for user route, got %d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestUserAPIKeysIssueListAndRevoke(t *testing.T) {
+	f := newUserAPIKeyFixture(t)
+
+	issueReq := httptest.NewRequest(http.MethodPost, "/v1/settings/api-keys", bytes.NewReader([]byte(`{"name":"personal-agent"}`)))
+	issueReq.Header.Set("Content-Type", "application/json")
+	issueReq.AddCookie(f.ownerCookie)
+	issueRec := httptest.NewRecorder()
+	f.mux.ServeHTTP(issueRec, issueReq)
+	if issueRec.Code != http.StatusOK {
+		t.Fatalf("expected issue 200, got %d body=%s", issueRec.Code, issueRec.Body.String())
+	}
+	if len(f.keyStore.created) != 1 {
+		t.Fatalf("expected one created key, got %d", len(f.keyStore.created))
+	}
+	if f.keyStore.created[0].OwnerUserID != "usr_owner" {
+		t.Fatalf("expected owner user id usr_owner, got %q", f.keyStore.created[0].OwnerUserID)
+	}
+	if f.keyStore.created[0].Scope != services.APIKeyScopeGlobal {
+		t.Fatalf("expected global scope, got %q", f.keyStore.created[0].Scope)
+	}
+	if !bytes.Contains(issueRec.Body.Bytes(), []byte(`"token":`)) {
+		t.Fatalf("expected raw token on issue response, got %s", issueRec.Body.String())
+	}
+
+	listReq := httptest.NewRequest(http.MethodGet, "/v1/settings/api-keys", nil)
+	listReq.AddCookie(f.ownerCookie)
+	listRec := httptest.NewRecorder()
+	f.mux.ServeHTTP(listRec, listReq)
+	if listRec.Code != http.StatusOK {
+		t.Fatalf("expected list 200, got %d body=%s", listRec.Code, listRec.Body.String())
+	}
+	if !bytes.Contains(listRec.Body.Bytes(), []byte(`"key_id":"key_owner"`)) {
+		t.Fatalf("expected owner key in list, got %s", listRec.Body.String())
+	}
+	if !bytes.Contains(listRec.Body.Bytes(), []byte(`"key_id":"`+f.keyStore.created[0].ID+`"`)) {
+		t.Fatalf("expected issued key in list, got %s", listRec.Body.String())
+	}
+	if bytes.Contains(listRec.Body.Bytes(), []byte(`"key_id":"key_other"`)) {
+		t.Fatalf("expected other user's key to be hidden, got %s", listRec.Body.String())
+	}
+	if bytes.Contains(listRec.Body.Bytes(), []byte(`"token":`)) {
+		t.Fatalf("expected raw token to be omitted from list, got %s", listRec.Body.String())
+	}
+
+	revokeReq := httptest.NewRequest(http.MethodPost, "/v1/settings/api-keys/revoke", bytes.NewReader([]byte(`{"key_id":"`+f.keyStore.created[0].ID+`"}`)))
+	revokeReq.Header.Set("Content-Type", "application/json")
+	revokeReq.AddCookie(f.ownerCookie)
+	revokeRec := httptest.NewRecorder()
+	f.mux.ServeHTTP(revokeRec, revokeReq)
+	if revokeRec.Code != http.StatusOK {
+		t.Fatalf("expected revoke 200, got %d body=%s", revokeRec.Code, revokeRec.Body.String())
+	}
+	if !bytes.Contains(revokeRec.Body.Bytes(), []byte(`"revoked":true`)) {
+		t.Fatalf("expected revoked response, got %s", revokeRec.Body.String())
+	}
+	if bytes.Contains(revokeRec.Body.Bytes(), []byte(`"token":`)) {
+		t.Fatalf("expected raw token to be omitted from revoke, got %s", revokeRec.Body.String())
+	}
+}
+
+func TestUserAPIKeysOwnerIsolation(t *testing.T) {
+	f := newUserAPIKeyFixture(t)
+
+	listReq := httptest.NewRequest(http.MethodGet, "/v1/settings/api-keys", nil)
+	listReq.AddCookie(f.otherCookie)
+	listRec := httptest.NewRecorder()
+	f.mux.ServeHTTP(listRec, listReq)
+	if listRec.Code != http.StatusOK {
+		t.Fatalf("expected list 200, got %d body=%s", listRec.Code, listRec.Body.String())
+	}
+	if !bytes.Contains(listRec.Body.Bytes(), []byte(`"key_id":"key_other"`)) {
+		t.Fatalf("expected other owner's key in list, got %s", listRec.Body.String())
+	}
+	if bytes.Contains(listRec.Body.Bytes(), []byte(`"key_id":"key_owner"`)) {
+		t.Fatalf("expected owner key to stay hidden from other user, got %s", listRec.Body.String())
+	}
+
+	revokeReq := httptest.NewRequest(http.MethodPost, "/v1/settings/api-keys/revoke", bytes.NewReader([]byte(`{"key_id":"key_owner"}`)))
+	revokeReq.Header.Set("Content-Type", "application/json")
+	revokeReq.AddCookie(f.otherCookie)
+	revokeRec := httptest.NewRecorder()
+	f.mux.ServeHTTP(revokeRec, revokeReq)
+	if revokeRec.Code != http.StatusNotFound {
+		t.Fatalf("expected 404 for cross-owner revoke, got %d body=%s", revokeRec.Code, revokeRec.Body.String())
+	}
+}
+
+func TestAdminAPIKeysRouteRejectsUserSession(t *testing.T) {
+	f := newUserAPIKeyFixture(t)
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/api-keys", nil)
+	req.AddCookie(f.ownerCookie)
+	rec := httptest.NewRecorder()
+	f.mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("expected session cookie to be rejected on admin api keys route, got %d body=%s", rec.Code, rec.Body.String())
 	}
 }
 

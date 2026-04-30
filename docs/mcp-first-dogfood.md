@@ -42,6 +42,10 @@ go run ./cmd/relay-mcp
 ./skills/relay-api-agent/scripts/relay-api.sh doctor
 ```
 
+웹에 로그인한 사용자는 `/settings/api-keys`에서 자기 계정에 묶인 Relay
+client token을 발급할 수도 있다. 이 키는 API/MCP 접근용이다. Anthropic 같은
+외부 provider key는 `/settings/providers`에서 따로 관리한다.
+
 ## Daily Flow
 
 1. 작업 시작 전에 `relay_retrieve_project`로 현재 task와 관련된 기억을 가져온다.

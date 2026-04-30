@@ -209,6 +209,20 @@ func (s *fakeAPIKeyStore) ListAPIKeys(_ context.Context) ([]domain.APIKey, error
 	return items, nil
 }
 
+func (s *fakeAPIKeyStore) ListAPIKeysByOwner(_ context.Context, userID string) ([]domain.APIKey, error) {
+	items, err := s.ListAPIKeys(context.Background())
+	if err != nil {
+		return nil, err
+	}
+	var filtered []domain.APIKey
+	for _, item := range items {
+		if item.OwnerUserID == userID {
+			filtered = append(filtered, item)
+		}
+	}
+	return filtered, nil
+}
+
 func (s *fakeAPIKeyStore) RevokeAPIKey(_ context.Context, keyID string) (domain.APIKey, error) {
 	for hash, item := range s.itemsByHash {
 		if item.ID == keyID {
@@ -219,6 +233,24 @@ func (s *fakeAPIKeyStore) RevokeAPIKey(_ context.Context, keyID string) (domain.
 	}
 	for i, item := range s.created {
 		if item.ID == keyID {
+			item.Revoked = true
+			s.created[i] = item
+			return item, nil
+		}
+	}
+	return domain.APIKey{}, lib.NotFound("API_KEY_NOT_FOUND_BY_ID", "api key not found")
+}
+
+func (s *fakeAPIKeyStore) RevokeAPIKeyByOwner(_ context.Context, userID string, keyID string) (domain.APIKey, error) {
+	for hash, item := range s.itemsByHash {
+		if item.ID == keyID && item.OwnerUserID == userID {
+			item.Revoked = true
+			s.itemsByHash[hash] = item
+			return item, nil
+		}
+	}
+	for i, item := range s.created {
+		if item.ID == keyID && item.OwnerUserID == userID {
 			item.Revoked = true
 			s.created[i] = item
 			return item, nil
@@ -1835,6 +1867,226 @@ func TestRevokeAPIKey(t *testing.T) {
 	}
 	if !result.Revoked {
 		t.Fatalf("expected revoked result")
+	}
+}
+
+func TestIssueUserAPIKeySetsOwnerAndGlobalScope(t *testing.T) {
+	keys := &fakeAPIKeyStore{}
+	service := New(Dependencies{
+		Projects:      &fakeProjectStore{},
+		Notes:         &fakeNoteStore{},
+		Artifacts:     &fakeArtifactStore{},
+		Decisions:     &fakeDecisionStore{},
+		OpenQuestions: &fakeOpenQuestionStore{},
+		Packets:       &fakePacketStore{},
+		APIKeys:       keys,
+	})
+
+	ctx := ContextWithAuthInfo(context.Background(), AuthInfo{
+		UserID: "usr_1",
+		Scope:  APIKeyScopeGlobal,
+	})
+
+	result, err := service.IssueUserAPIKey(ctx, IssueAPIKeyInput{
+		Name: "personal",
+	})
+	if err != nil {
+		t.Fatalf("IssueUserAPIKey returned error: %v", err)
+	}
+	if result.Token == "" {
+		t.Fatal("expected raw token on issue")
+	}
+	if len(keys.created) != 1 {
+		t.Fatalf("expected 1 created key, got %d", len(keys.created))
+	}
+	if keys.created[0].OwnerUserID != "usr_1" {
+		t.Fatalf("expected owner user id usr_1, got %q", keys.created[0].OwnerUserID)
+	}
+	if keys.created[0].Scope != APIKeyScopeGlobal {
+		t.Fatalf("expected global scope, got %q", keys.created[0].Scope)
+	}
+	if keys.created[0].ProjectID != "" {
+		t.Fatalf("expected empty project binding, got %q", keys.created[0].ProjectID)
+	}
+}
+
+func TestIssueUserAPIKeyRejectsScopeAndProjectInput(t *testing.T) {
+	service := New(Dependencies{
+		Projects:      &fakeProjectStore{},
+		Notes:         &fakeNoteStore{},
+		Artifacts:     &fakeArtifactStore{},
+		Decisions:     &fakeDecisionStore{},
+		OpenQuestions: &fakeOpenQuestionStore{},
+		Packets:       &fakePacketStore{},
+		APIKeys:       &fakeAPIKeyStore{},
+	})
+
+	ctx := ContextWithAuthInfo(context.Background(), AuthInfo{
+		UserID: "usr_1",
+		Scope:  APIKeyScopeGlobal,
+	})
+
+	_, err := service.IssueUserAPIKey(ctx, IssueAPIKeyInput{
+		Name:    "personal",
+		Scope:   APIKeyScopeProject,
+		Project: "relay",
+	})
+	if err == nil {
+		t.Fatal("expected user API key issue to reject scope/project input")
+	}
+	appErr, ok := err.(lib.AppError)
+	if !ok {
+		t.Fatalf("expected AppError, got %T", err)
+	}
+	if appErr.Code != "INVALID_USER_API_KEY_INPUT" {
+		t.Fatalf("expected INVALID_USER_API_KEY_INPUT, got %q", appErr.Code)
+	}
+}
+
+func TestListUserAPIKeysFiltersByOwner(t *testing.T) {
+	keys := &fakeAPIKeyStore{
+		itemsByHash: map[string]domain.APIKey{
+			"hash-owner": {
+				ID:          "key_owner",
+				Name:        "owner",
+				TokenHash:   "hash-owner",
+				TokenPrefix: "relay_live_owner",
+				OwnerUserID: "usr_owner",
+			},
+			"hash-other": {
+				ID:          "key_other",
+				Name:        "other",
+				TokenHash:   "hash-other",
+				TokenPrefix: "relay_live_other",
+				OwnerUserID: "usr_other",
+			},
+		},
+	}
+	service := New(Dependencies{
+		Projects:      &fakeProjectStore{},
+		Notes:         &fakeNoteStore{},
+		Artifacts:     &fakeArtifactStore{},
+		Decisions:     &fakeDecisionStore{},
+		OpenQuestions: &fakeOpenQuestionStore{},
+		Packets:       &fakePacketStore{},
+		APIKeys:       keys,
+	})
+
+	ctx := ContextWithAuthInfo(context.Background(), AuthInfo{
+		UserID: "usr_owner",
+		Scope:  APIKeyScopeGlobal,
+	})
+
+	result, err := service.ListUserAPIKeys(ctx)
+	if err != nil {
+		t.Fatalf("ListUserAPIKeys returned error: %v", err)
+	}
+	if len(result.Items) != 1 {
+		t.Fatalf("expected 1 user api key, got %d", len(result.Items))
+	}
+	if result.Items[0].KeyID != "key_owner" {
+		t.Fatalf("expected owner key, got %q", result.Items[0].KeyID)
+	}
+}
+
+func TestRevokeUserAPIKeyRejectsOtherOwners(t *testing.T) {
+	keys := &fakeAPIKeyStore{
+		itemsByHash: map[string]domain.APIKey{
+			"hash-owner": {
+				ID:          "key_owner",
+				Name:        "owner",
+				TokenHash:   "hash-owner",
+				TokenPrefix: "relay_live_owner",
+				OwnerUserID: "usr_owner",
+			},
+			"hash-other": {
+				ID:          "key_other",
+				Name:        "other",
+				TokenHash:   "hash-other",
+				TokenPrefix: "relay_live_other",
+				OwnerUserID: "usr_other",
+			},
+		},
+	}
+	service := New(Dependencies{
+		Projects:      &fakeProjectStore{},
+		Notes:         &fakeNoteStore{},
+		Artifacts:     &fakeArtifactStore{},
+		Decisions:     &fakeDecisionStore{},
+		OpenQuestions: &fakeOpenQuestionStore{},
+		Packets:       &fakePacketStore{},
+		APIKeys:       keys,
+	})
+
+	ctx := ContextWithAuthInfo(context.Background(), AuthInfo{
+		UserID: "usr_owner",
+		Scope:  APIKeyScopeGlobal,
+	})
+
+	if _, err := service.RevokeUserAPIKey(ctx, RevokeAPIKeyInput{KeyID: "key_owner"}); err != nil {
+		t.Fatalf("expected owner revoke to succeed: %v", err)
+	}
+	if _, err := service.RevokeUserAPIKey(ctx, RevokeAPIKeyInput{KeyID: "key_other"}); err == nil {
+		t.Fatal("expected cross-owner revoke to fail")
+	} else if appErr, ok := err.(lib.AppError); !ok || appErr.Code != "API_KEY_NOT_FOUND_BY_ID" {
+		t.Fatalf("expected API_KEY_NOT_FOUND_BY_ID, got %v", err)
+	}
+}
+
+func TestUserAPIKeyMethodsRequireUserAuth(t *testing.T) {
+	service := New(Dependencies{
+		Projects:      &fakeProjectStore{},
+		Notes:         &fakeNoteStore{},
+		Artifacts:     &fakeArtifactStore{},
+		Decisions:     &fakeDecisionStore{},
+		OpenQuestions: &fakeOpenQuestionStore{},
+		Packets:       &fakePacketStore{},
+		APIKeys:       &fakeAPIKeyStore{},
+	})
+
+	tests := []struct {
+		name string
+		run  func(context.Context) error
+	}{
+		{
+			name: "issue missing auth",
+			run: func(ctx context.Context) error {
+				_, err := service.IssueUserAPIKey(ctx, IssueAPIKeyInput{Name: "agent"})
+				return err
+			},
+		},
+		{
+			name: "list admin auth",
+			run: func(_ context.Context) error {
+				ctx := ContextWithAuthInfo(context.Background(), AuthInfo{IsAdmin: true, Scope: APIKeyScopeGlobal})
+				_, err := service.ListUserAPIKeys(ctx)
+				return err
+			},
+		},
+		{
+			name: "revoke api key auth",
+			run: func(_ context.Context) error {
+				ctx := ContextWithAuthInfo(context.Background(), AuthInfo{KeyID: "key_1", Scope: APIKeyScopeGlobal})
+				_, err := service.RevokeUserAPIKey(ctx, RevokeAPIKeyInput{KeyID: "key_1"})
+				return err
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.run(context.Background())
+			if err == nil {
+				t.Fatal("expected user auth requirement failure")
+			}
+			appErr, ok := err.(lib.AppError)
+			if !ok {
+				t.Fatalf("expected AppError, got %T", err)
+			}
+			if appErr.Code != "UNAUTHORIZED" {
+				t.Fatalf("expected UNAUTHORIZED, got %q", appErr.Code)
+			}
+		})
 	}
 }
 

@@ -111,6 +111,9 @@ function Explorer({
             <a href="/settings/providers" style={secondaryLinkStyle}>
               Provider Settings
             </a>
+            <a href="/settings/api-keys" style={secondaryLinkStyle}>
+              API Key Settings
+            </a>
           </nav>
         </div>
       </section>

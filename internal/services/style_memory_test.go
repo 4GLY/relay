@@ -728,6 +728,8 @@ func TestLatestPacketSnapshotReturnsImmutablePacket(t *testing.T) {
 			ApprovedHeuristicIDs: []string{"heur_1"},
 			DecisionIDs:          []string{"dec_1"},
 			MissingContext:       []string{"none"},
+			PublicReadable:       true,
+			PublicToken:          "psnap_public_token",
 			CreatedAt:            time.Now(),
 		},
 	}}
@@ -753,5 +755,18 @@ func TestLatestPacketSnapshotReturnsImmutablePacket(t *testing.T) {
 	}
 	if len(result.SupportingNotes) != 1 || result.SupportingNotes[0].NoteID != "note_1" {
 		t.Fatalf("expected decoded supporting notes, got %#v", result.SupportingNotes)
+	}
+	if !result.PublicReadable || result.PublicToken != "psnap_public_token" {
+		t.Fatalf("expected public snapshot metadata, got %#v", result)
+	}
+
+	latestAny, err := service.LatestPacketSnapshot(context.Background(), PacketSnapshotReadInput{
+		Project: "relay",
+	})
+	if err != nil {
+		t.Fatalf("LatestPacketSnapshot without filters returned error: %v", err)
+	}
+	if latestAny.SnapshotID != "psnap_new" {
+		t.Fatalf("expected latest any snapshot, got %#v", latestAny)
 	}
 }

@@ -129,7 +129,7 @@ test.describe("Relay authenticated live smoke", () => {
       "href",
       `/projects/${authenticatedProjectID}/graph`,
     );
-    await expect(page.getByRole("link", { name: "Packet Builder" })).toHaveAttribute(
+    await expect(page.getByRole("link", { name: "Packet Builder", exact: true })).toHaveAttribute(
       "href",
       `/projects/${authenticatedProjectID}/packet-builder`,
     );
@@ -178,7 +178,7 @@ test.describe("Relay authenticated live smoke", () => {
   test("packet builder renders the latest snapshot document", async ({ page }) => {
     await page.goto(`/projects/${authenticatedProjectID}/packet-builder`);
     await expect(page.getByRole("heading", { name: "Packet Builder" })).toBeVisible();
-    await expect(page.getByText(/Prefer explicit recovery actions over generic error states/i)).toBeVisible();
+    await expect(page.getByText(/verify public snapshot positive route automation/i)).toBeVisible();
     await expect(page.getByText("Source evidence")).toBeVisible();
     await expect(page.getByRole("link", { name: "Project Explorer" })).toHaveAttribute(
       "href",

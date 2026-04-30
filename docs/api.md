@@ -412,8 +412,8 @@ Purpose:
 - power the Packet Builder WYSIWYG first slice without exposing packet source panels by default
 
 Query params:
-- `type`: optional packet kind; defaults to `resume`
-- `target`: optional packet target; defaults to `codex`
+- `type`: optional packet kind filter; when omitted with `target`, the endpoint returns the latest snapshot for any kind/target
+- `target`: optional packet target filter; used only when `type` or `target` is provided
 
 Contract notes:
 - requires project access through a session cookie or bearer auth

@@ -409,6 +409,14 @@ func (s Service) LatestPacketSnapshot(ctx context.Context, input PacketSnapshotR
 		return PacketSnapshotReadResult{}, err
 	}
 
+	if input.Type == "" && input.Target == "" {
+		snapshot, err := s.deps.PacketSnapshots.LatestAnyPacketSnapshotByProject(ctx, project.ID)
+		if err != nil {
+			return PacketSnapshotReadResult{}, err
+		}
+		return packetSnapshotReadResult(snapshot)
+	}
+
 	packetType := contracts.NormalizePacketKind(input.Type)
 	target := contracts.NormalizePacketTarget(input.Target)
 	snapshot, err := s.deps.PacketSnapshots.LatestPacketSnapshotByProject(ctx, project.ID, packetType, target)

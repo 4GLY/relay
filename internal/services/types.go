@@ -233,6 +233,8 @@ type PacketSnapshotReadResult struct {
 	OpenQuestionIDs      []string         `json:"open_question_ids"`
 	SourceArtifactIDs    []string         `json:"source_artifact_ids"`
 	MissingContext       []string         `json:"missing_context"`
+	PublicReadable       bool             `json:"public_readable"`
+	PublicToken          string           `json:"public_token,omitempty"`
 	CreatedAt            time.Time        `json:"created_at"`
 }
 

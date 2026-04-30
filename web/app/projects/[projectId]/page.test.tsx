@@ -121,6 +121,14 @@ describe("<ProjectExplorerPage>", () => {
       "href",
       "/projects/proj_1/graph",
     );
+    expect(screen.getByRole("link", { name: "Packet Builder" })).toHaveAttribute(
+      "href",
+      "/projects/proj_1/packet-builder",
+    );
+    expect(screen.getByRole("link", { name: "Open Packet Builder" })).toHaveAttribute(
+      "href",
+      "/projects/proj_1/packet-builder",
+    );
     expect(screen.getByRole("link", { name: "Open public snapshot" })).toHaveAttribute(
       "href",
       "/p/psnap_public_token",

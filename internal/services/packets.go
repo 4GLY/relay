@@ -458,6 +458,8 @@ func packetSnapshotReadResult(snapshot domain.PacketSnapshot) (PacketSnapshotRea
 		OpenQuestionIDs:      snapshot.OpenQuestionIDs,
 		SourceArtifactIDs:    snapshot.SourceArtifactIDs,
 		MissingContext:       snapshot.MissingContext,
+		PublicReadable:       snapshot.PublicReadable,
+		PublicToken:          publicSnapshotToken(snapshot),
 		CreatedAt:            snapshot.CreatedAt,
 	}, nil
 }

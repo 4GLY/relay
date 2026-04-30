@@ -56,6 +56,30 @@ const traces = {
       sourceRefs: ["qa:live:e2e"],
       createdAt: "2026-04-29T00:00:00Z",
     },
+    {
+      traceId: "trace_2",
+      projectId: "proj_1",
+      taskId: "task_2",
+      agentId: "codex",
+      workflow: "design_handoff",
+      artifactType: "design_doc",
+      decision: "Keep source panels collapsed by default.",
+      rationale: "The packet document should own first attention.",
+      sourceRefs: ["qa:second"],
+      createdAt: "2026-04-29T00:01:00Z",
+    },
+    {
+      traceId: "trace_3",
+      projectId: "proj_1",
+      taskId: "task_3",
+      agentId: "codex",
+      workflow: "packet_builder",
+      artifactType: "packet",
+      decision: "Read the latest packet snapshot without filters.",
+      rationale: "Packet Builder should open the newest packet regardless of kind.",
+      sourceRefs: ["qa:third"],
+      createdAt: "2026-04-29T00:02:00Z",
+    },
   ],
 };
 
@@ -81,7 +105,7 @@ describe("<TraceBrowserPage>", () => {
     );
     mocks.getProjectTraces.mockResolvedValueOnce(traces);
 
-    render(
+    const { container } = render(
       await TraceBrowserPage({
         params: Promise.resolve({ projectId: "proj_1" }),
         searchParams: Promise.resolve({ trace: "trace_1" }),
@@ -89,8 +113,13 @@ describe("<TraceBrowserPage>", () => {
     );
 
     expect(screen.getByRole("heading", { name: "Trace Browser" })).toBeVisible();
+    expect(screen.getByText("Featured trace")).toBeVisible();
     expect(screen.getByText("Prefer explicit recovery actions.")).toBeVisible();
+    const archiveSummary = screen.getByText("Browse 2 more traces");
+    expect(archiveSummary).toBeVisible();
+    expect(archiveSummary.closest("details")).not.toHaveAttribute("open");
     expect(screen.getByText("qa:live:e2e")).toBeVisible();
+    expect(container.querySelector("#trace_1")).toHaveTextContent("Prefer explicit recovery actions.");
     expect(screen.getByRole("link", { name: "Project Explorer" })).toHaveAttribute(
       "href",
       "/projects/proj_1",
@@ -99,6 +128,33 @@ describe("<TraceBrowserPage>", () => {
       headers: { cookie: "relay_session=test" },
       limit: 50,
     });
+  });
+
+  it("promotes a selected archived trace to the featured narrative", async () => {
+    mocks.relayFetch.mockResolvedValueOnce(
+      authResponse(200, {
+        ok: true,
+        command: "relay auth me",
+        data: {
+          user_id: "user_1",
+          display_name: "Hoon",
+          onboarding_complete: true,
+          default_project_id: "proj_1",
+        },
+        warnings: [],
+      }),
+    );
+    mocks.getProjectTraces.mockResolvedValueOnce(traces);
+
+    const { container } = render(
+      await TraceBrowserPage({
+        params: Promise.resolve({ projectId: "proj_1" }),
+        searchParams: Promise.resolve({ trace: "trace_2" }),
+      }),
+    );
+
+    expect(container.querySelector("#trace_2")).toHaveTextContent("Keep source panels collapsed by default.");
+    expect(screen.getByText("Browse 2 more traces")).toBeVisible();
   });
 
   it("shows sign-in when there is no session", async () => {

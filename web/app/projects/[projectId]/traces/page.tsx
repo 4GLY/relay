@@ -93,6 +93,12 @@ function TraceBrowser({
   selectedTraceId?: string;
   userDisplayName?: string;
 }) {
+  const selectedTrace =
+    traces.find((trace) => trace.traceId === selectedTraceId) ?? traces[0];
+  const remainingTraces = selectedTrace
+    ? traces.filter((trace) => trace.traceId !== selectedTrace.traceId)
+    : [];
+
   return (
     <main style={pageStyle}>
       <header style={topbarStyle}>
@@ -124,54 +130,28 @@ function TraceBrowser({
         </div>
       </section>
 
-      {traces.length > 0 ? (
-        <ol style={traceListStyle}>
-          {traces.map((trace) => (
-            <li
-              key={trace.traceId}
-              id={trace.traceId}
-              style={trace.traceId === selectedTraceId ? selectedTraceCardStyle : traceCardStyle}
-            >
-              <div style={traceHeaderStyle}>
-                <span style={traceBadgeStyle}>
-                  {firstNonEmpty(trace.workflow, "workflow")} · {firstNonEmpty(trace.artifactType, "artifact")}
-                </span>
-                <time dateTime={trace.createdAt} style={timeStyle}>
-                  {formatDate(trace.createdAt)}
-                </time>
-              </div>
-              <h2 style={traceDecisionStyle}>{trace.decision}</h2>
-              {trace.rationale ? <p style={traceRationaleStyle}>{trace.rationale}</p> : null}
-              <dl style={traceMetaStyle}>
-                <div>
-                  <dt style={metaLabelStyle}>Trace</dt>
-                  <dd style={metaValueStyle}>{trace.traceId}</dd>
-                </div>
-                {trace.taskId ? (
-                  <div>
-                    <dt style={metaLabelStyle}>Task</dt>
-                    <dd style={metaValueStyle}>{trace.taskId}</dd>
-                  </div>
-                ) : null}
-                {trace.agentId ? (
-                  <div>
-                    <dt style={metaLabelStyle}>Agent</dt>
-                    <dd style={metaValueStyle}>{trace.agentId}</dd>
-                  </div>
-                ) : null}
-              </dl>
-              {trace.sourceRefs.length > 0 ? (
-                <ul aria-label={`Source refs for ${trace.traceId}`} style={sourceRefListStyle}>
-                  {trace.sourceRefs.map((sourceRef) => (
-                    <li key={sourceRef} style={sourceRefStyle}>
-                      {sourceRef}
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-            </li>
-          ))}
-        </ol>
+      {selectedTrace ? (
+        <>
+          <section style={narrativeShellStyle} aria-labelledby="featured-trace-title">
+            <p style={narrativeKickerStyle}>Featured trace</p>
+            <TraceCard trace={selectedTrace} selected headingId="featured-trace-title" />
+          </section>
+
+          {remainingTraces.length > 0 ? (
+            <details style={traceArchiveStyle}>
+              <summary style={archiveSummaryStyle}>
+                Browse {remainingTraces.length} more trace{remainingTraces.length === 1 ? "" : "s"}
+              </summary>
+              <ol style={traceListStyle}>
+                {remainingTraces.map((trace) => (
+                  <li key={trace.traceId}>
+                    <TraceCard trace={trace} />
+                  </li>
+                ))}
+              </ol>
+            </details>
+          ) : null}
+        </>
       ) : (
         <section style={emptyPanelStyle}>
           <h2 style={emptyTitleStyle}>No traces captured yet.</h2>
@@ -179,6 +159,58 @@ function TraceBrowser({
         </section>
       )}
     </main>
+  );
+}
+
+function TraceCard({
+  trace,
+  selected = false,
+  headingId,
+}: {
+  trace: JudgmentTrace;
+  selected?: boolean;
+  headingId?: string;
+}) {
+  return (
+    <article id={trace.traceId} style={selected ? selectedTraceCardStyle : traceCardStyle}>
+      <div style={traceHeaderStyle}>
+        <span style={traceBadgeStyle}>
+          {firstNonEmpty(trace.workflow, "workflow")} · {firstNonEmpty(trace.artifactType, "artifact")}
+        </span>
+        <time dateTime={trace.createdAt} style={timeStyle}>
+          {formatDate(trace.createdAt)}
+        </time>
+      </div>
+      <h2 id={headingId} style={traceDecisionStyle}>{trace.decision}</h2>
+      {trace.rationale ? <p style={traceRationaleStyle}>{trace.rationale}</p> : null}
+      <dl style={traceMetaStyle}>
+        <div>
+          <dt style={metaLabelStyle}>Trace</dt>
+          <dd style={metaValueStyle}>{trace.traceId}</dd>
+        </div>
+        {trace.taskId ? (
+          <div>
+            <dt style={metaLabelStyle}>Task</dt>
+            <dd style={metaValueStyle}>{trace.taskId}</dd>
+          </div>
+        ) : null}
+        {trace.agentId ? (
+          <div>
+            <dt style={metaLabelStyle}>Agent</dt>
+            <dd style={metaValueStyle}>{trace.agentId}</dd>
+          </div>
+        ) : null}
+      </dl>
+      {trace.sourceRefs.length > 0 ? (
+        <ul aria-label={`Source refs for ${trace.traceId}`} style={sourceRefListStyle}>
+          {trace.sourceRefs.map((sourceRef) => (
+            <li key={sourceRef} style={sourceRefStyle}>
+              {sourceRef}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </article>
   );
 }
 
@@ -338,8 +370,22 @@ const traceListStyle: React.CSSProperties = {
   display: "grid",
   gap: "16px",
   margin: 0,
-  padding: 0,
+  padding: "0 16px 16px",
   listStyle: "none",
+};
+
+const narrativeShellStyle: React.CSSProperties = {
+  display: "grid",
+  gap: "12px",
+};
+
+const narrativeKickerStyle: React.CSSProperties = {
+  margin: 0,
+  color: "var(--muted)",
+  fontFamily: "var(--font-mono)",
+  fontSize: "12px",
+  letterSpacing: "0.14em",
+  textTransform: "uppercase",
 };
 
 const traceCardStyle: React.CSSProperties = {
@@ -353,6 +399,23 @@ const selectedTraceCardStyle: React.CSSProperties = {
   ...traceCardStyle,
   borderColor: "var(--magic-primary-strong)",
   boxShadow: "0 0 0 4px color-mix(in srgb, var(--magic-primary-strong) 18%, transparent)",
+};
+
+const traceArchiveStyle: React.CSSProperties = {
+  marginTop: "18px",
+  border: "1px solid var(--border)",
+  borderRadius: "8px",
+  background: "var(--canvas-raised)",
+};
+
+const archiveSummaryStyle: React.CSSProperties = {
+  cursor: "pointer",
+  padding: "16px",
+  color: "var(--ink)",
+  fontFamily: "var(--font-mono)",
+  fontSize: "12px",
+  letterSpacing: "0.14em",
+  textTransform: "uppercase",
 };
 
 const traceHeaderStyle: React.CSSProperties = {

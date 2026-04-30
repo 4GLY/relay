@@ -19,16 +19,17 @@ V2 scope 재정의 이후 범위: 최소 authenticated Style Memory UI + A(Shara
 
 ### V2.5 (load-bearing, V2 ship 이후 다음 제품 사이클)
 
-**1. DESIGN.md 남은 priority screen** — Decision Graph, Packet Builder WYSIWYG
-- Status: Project Explorer와 Trace Browser는 2026-04-30 V2.5 첫 slice로 ship했고 live E2E coverage까지 완료했다.
-- 남은 Effort: M/L UI + M backend read-model polish
-- 계속 추적하는 이유: Decision Graph는 Style Memory와 packet evidence까지 포함하는 canonical graph projection이 필요하고, Packet Builder는 latest snapshot read 이상으로 작성/검토 surface가 필요하다.
+**1. DESIGN.md 남은 priority screen** — Project Explorer, Trace Browser, Decision Graph, Packet Builder WYSIWYG ✅ V2.5 완료 2026-04-30
+- Status: 네 개 V2.5 workspace surface 모두 2026-04-30 ship했고 live E2E coverage까지 완료했다.
+- 완료 경계: Packet Builder는 latest snapshot WYSIWYG review surface이며 source evidence는 기본 collapsed다. rich editing, draft row, user-facing publish/revoke control, snapshot history browsing은 이후 product slice로 이월한다.
+- 더 이상 V2.5 작업으로 추적하지 않는 이유: Project Explorer는 authenticated workspace entry가 되었고, Trace Browser는 한 개 narrative trace를 기본으로 보여준 뒤 archive browsing을 제공하며, Decision Graph는 Style Memory + packet evidence를 포함하고, Packet Builder는 canonical latest snapshot을 읽는다.
 - Unblocks: DESIGN.md 전체 구현, dense workspace experience, signature ribbon
 - Depends on: V2 ship + 최소 한 사이클의 demand evidence
 - Source: CEO plan Rev 2 Scope Decision #4
 - V2.5 진입 slice: `docs/v2-5-project-explorer-scope.md`
 - Decision Graph slice: `docs/v2-5-decision-graph-scope.md`
-- 다음 Packet Builder slice: `docs/v2-5-packet-builder-wysiwyg-scope.md`
+- Packet Builder slice: `docs/v2-5-packet-builder-wysiwyg-scope.md`
+- 완료 기록: `docs/v2-5-closure.md`
 
 **2. B: Public Style Profile** — `/u/{username}/style`, engineering judgment용 LinkedIn surface
 - Effort: L/XL. cross-project aggregation, slug reservation, privacy state, publish UX 때문에 Rev 1의 M 추정은 크게 과소평가였다. User model은 V2 baseline에 들어갔으므로 일부 재사용 가능.
@@ -164,17 +165,17 @@ V2 scope 재정의 이후 범위: 최소 authenticated Style Memory UI + A(Shara
 - 첫 Decision Graph slice는 기본 edge를 neutral stroke로 두고, selected/yielded path에만 magic accent를 사용한다.
 - interactive filtering과 layout control을 추가할 때도 이 규칙을 유지한다.
 
-**D10. Packet Builder source panel default-closed**
+**D10. Packet Builder source panel default-closed** ✅ 완료 2026-04-30
 - source panel이 기본 open이면 packet document를 방해한다. 기본 collapsed로 두고 toggle로 승격한다.
-- Effort: trivial, 약 30분
+- Packet Builder는 source evidence와 publish controls를 collapsed `details` inspector로 두고, rendered packet document가 첫 viewport를 차지한다.
 
-**D11. Project Explorer ops stats demoted to inspector drawer**
+**D11. Project Explorer ops stats demoted to inspector drawer** ✅ 완료 2026-04-30
 - curator success 같은 pipe-level system detail은 main metric strip이 아니라 inspector drawer로 이동
-- Effort: S, 약 1시간
+- Project Explorer의 main metric strip은 notes, decisions, snapshots 중심으로 줄이고 상세/운영 count는 collapsed Workspace inspector로 이동했다.
 
-**D12. Judgment Traces first-run state**
+**D12. Judgment Traces first-run state** ✅ 완료 2026-04-30
 - filter surface가 처음부터 너무 dense하다. 기본은 one trace narrative, 이후 filters로 확장.
-- Effort: S, 약 1-2시간
+- Trace Browser는 한 개 narrative trace를 기본으로 보여주고 추가 trace는 collapsed archive browser로 이동했다.
 
 ### 누락된 first-run / empty / error / failure state
 
@@ -186,7 +187,7 @@ Cross-model design review는 7개 surface 전체에서 약 40개의 누락 state
 
 **Onboarding**: invalid Anthropic key, Relay URL unreachable, OAuth cancelled, secret-storage consent prompt, prior trace 없음, first packet build failure, Anthropic rate limit/quota, returning user short-circuit
 
-**V2.5 surfaces**: Decision Graph와 Packet Builder의 남은 state는 각 surface slice에서 spec한다. Project Explorer와 Judgment Traces는 첫 shipped state와 live E2E coverage가 생겼다.
+**V2.5 surfaces**: Project Explorer, Trace Browser, Decision Graph, Packet Builder는 첫 shipped state와 live E2E coverage를 갖췄다. 남은 advanced state는 V2.5 closure에 묶지 않고 이후 feature별로 scope한다.
 
 ## 운영 개선 (gstack 관련)
 

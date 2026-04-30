@@ -115,14 +115,23 @@ function Explorer({
         </div>
       </section>
 
-      <section style={metricsGridStyle} aria-label="Project counts">
+      <section style={metricsGridStyle} aria-label="Project summary">
         <Metric label="Notes" value={c.notes} />
-        <Metric label="Artifacts" value={c.artifacts} />
         <Metric label="Decisions" value={c.decisions} />
-        <Metric label="Questions" value={c.openQuestions} />
-        <Metric label="Traces" value={c.judgmentTraces} />
         <Metric label="Snapshots" value={c.packetSnapshots} />
       </section>
+
+      <details style={inspectorStyle}>
+        <summary style={inspectorSummaryStyle}>Workspace inspector — detailed counts</summary>
+        <dl style={inspectorGridStyle} aria-label="Workspace inspector counts">
+          <InspectorMetric label="Artifacts" value={c.artifacts} />
+          <InspectorMetric label="Questions" value={c.openQuestions} />
+          <InspectorMetric label="Traces" value={c.judgmentTraces} />
+          <InspectorMetric label="Pending proposals" value={c.pendingProposals} />
+          <InspectorMetric label="Approved heuristics" value={c.approvedHeuristics} />
+          <InspectorMetric label="Rejected proposals" value={c.rejectedProposals} />
+        </dl>
+      </details>
 
       <section style={workGridStyle}>
         <Panel title="Style Memory" kicker={`${c.pendingProposals} pending`}>
@@ -193,6 +202,15 @@ function Metric({ label, value }: { label: string; value: number }) {
     <div style={metricStyle}>
       <span style={metricValueStyle}>{value}</span>
       <span style={metricLabelStyle}>{label}</span>
+    </div>
+  );
+}
+
+function InspectorMetric({ label, value }: { label: string; value: number }) {
+  return (
+    <div style={inspectorMetricStyle}>
+      <dt style={metaLabelStyle}>{label}</dt>
+      <dd style={metaValueStyle}>{value}</dd>
     </div>
   );
 }
@@ -399,9 +417,9 @@ const secondaryLinkStyle: React.CSSProperties = {
 
 const metricsGridStyle: React.CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
   gap: "12px",
-  marginBottom: "28px",
+  marginBottom: "12px",
 };
 
 const metricStyle: React.CSSProperties = {
@@ -435,6 +453,39 @@ const workGridStyle: React.CSSProperties = {
   gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
   gap: "16px",
   alignItems: "stretch",
+  marginTop: "24px",
+};
+
+const inspectorStyle: React.CSSProperties = {
+  marginBottom: "28px",
+  border: "1px solid var(--border)",
+  borderRadius: "8px",
+  background: "var(--canvas-raised)",
+};
+
+const inspectorSummaryStyle: React.CSSProperties = {
+  cursor: "pointer",
+  padding: "14px 16px",
+  color: "var(--ink)",
+  fontFamily: "var(--font-mono)",
+  fontSize: "12px",
+  letterSpacing: "0.14em",
+  textTransform: "uppercase",
+};
+
+const inspectorGridStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+  gap: "12px",
+  margin: 0,
+  padding: "0 16px 16px",
+};
+
+const inspectorMetricStyle: React.CSSProperties = {
+  minWidth: 0,
+  padding: "12px",
+  border: "1px solid var(--border)",
+  borderRadius: "8px",
 };
 
 const panelStyle: React.CSSProperties = {

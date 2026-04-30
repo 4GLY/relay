@@ -3,13 +3,17 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+import type { Dictionary, Locale } from "@/lib/i18n";
+import { translateErrorMessage } from "@/lib/i18n";
 import { completeOnboarding } from "@/lib/onboarding";
 
 type Props = {
+  copy: Dictionary["onboarding"]["client"];
+  locale: Locale;
   userDisplayName?: string;
 };
 
-export function OnboardingClient({ userDisplayName }: Props) {
+export function OnboardingClient({ copy, locale, userDisplayName }: Props) {
   const router = useRouter();
   const [status, setStatus] = useState<"idle" | "submitting" | "error">("idle");
   const [error, setError] = useState<string>("");
@@ -23,7 +27,13 @@ export function OnboardingClient({ userDisplayName }: Props) {
       router.refresh();
     } catch (err) {
       setStatus("error");
-      setError(err instanceof Error ? err.message : "Could not finish onboarding.");
+      setError(
+        translateErrorMessage({
+          error: err,
+          fallback: copy.fallbackError,
+          locale,
+        }),
+      );
     }
   }
 
@@ -37,14 +47,13 @@ export function OnboardingClient({ userDisplayName }: Props) {
         <span style={dotStyle} />
       </div>
       <div>
-        <p style={eyebrowStyle}>Signed in · {userDisplayName ?? "Relay user"}</p>
-        <h1 id="onboarding-title" style={titleStyle}>
-          Create your Relay workspace
-        </h1>
-        <p style={copyStyle}>
-          Relay will create your Personal project and send you straight into Project Explorer.
-          Claude provider keys stay out of first-run setup.
+        <p style={eyebrowStyle}>
+          {copy.signedInEyebrowPrefix} · {userDisplayName ?? copy.fallbackUser}
         </p>
+        <h1 id="onboarding-title" style={titleStyle}>
+          {copy.title}
+        </h1>
+        <p style={copyStyle}>{copy.copy}</p>
         <div style={actionsStyle}>
           <button
             type="button"
@@ -57,13 +66,16 @@ export function OnboardingClient({ userDisplayName }: Props) {
             }}
             data-testid="complete-onboarding"
           >
-            {status === "submitting" ? "Creating workspace..." : "Start in Relay"}
+            {status === "submitting" ? copy.startingButton : copy.startButton}
           </button>
           <a href="/style-memory" style={secondaryLinkStyle}>
-            Skip to Style Memory
+            {copy.styleMemoryLink}
           </a>
           <a href="/settings/providers" style={secondaryLinkStyle}>
-            Provider settings
+            {copy.providerSettingsLink}
+          </a>
+          <a href="/settings/api-keys" style={secondaryLinkStyle}>
+            {copy.apiKeysLink}
           </a>
         </div>
         {status === "error" && (

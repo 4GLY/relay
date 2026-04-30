@@ -12,9 +12,11 @@ deployment with deterministic temporary QA state:
 - completed onboarding state
 - positive public snapshot token
 - provider settings store/list/delete flow
+- user-owned Relay API key issue/list/revoke flow
+- Korean locale smoke for first-run and settings surfaces
 
-The script removes the temporary user, project, provider credential, and public
-snapshot fixture after Playwright exits.
+The script removes the temporary user, project, provider credential, user-owned
+API keys, and public snapshot fixture after Playwright exits.
 
 ## Command
 
@@ -31,6 +33,21 @@ RELAY_DATABASE_URL=postgresql://... scripts/qa/run_live_e2e.sh
 
 If `RELAY_DATABASE_URL` is not set, the script reads
 `relay-secrets/database_url` from the `relay` namespace.
+
+## Branch Coverage Update
+
+The user API key and Korean locale checks were added after run
+`qa20260430014649fd5582`. They must be verified in the next live run after both
+`relay-api` and `relay-web` are deployed from this branch.
+
+New checks:
+
+- `/settings/api-keys` renders authenticated settings.
+- API key settings issues a user-owned Relay client key.
+- Refresh hides the raw one-time token and keeps only prefix metadata.
+- API key settings revokes the user-owned key.
+- Korean locale smoke covers `/`, `/onboarding`, `/settings/providers`, and
+  `/settings/api-keys`.
 
 ## Latest Result
 

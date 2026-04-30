@@ -2,6 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { getDictionary } from "@/lib/i18n";
 import {
   connectProviderCredential,
   disconnectProviderCredential,
@@ -21,6 +22,9 @@ vi.mock("@/lib/provider-credentials", () => ({
 }));
 
 describe("<ProviderSettingsClient>", () => {
+  const copy = getDictionary("en").providers.client;
+  const errorMap = getDictionary("en").providers.errorMap;
+
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -34,7 +38,9 @@ describe("<ProviderSettingsClient>", () => {
     });
 
     const user = userEvent.setup();
-    render(<ProviderSettingsClient />);
+    render(
+      <ProviderSettingsClient copy={copy} errorMap={errorMap} locale="en" />,
+    );
 
     await user.type(screen.getByLabelText(/anthropic api key/i), "sk-ant-settings-1234");
     await user.click(screen.getByTestId("connect-provider"));
@@ -52,12 +58,15 @@ describe("<ProviderSettingsClient>", () => {
     const user = userEvent.setup();
     render(
       <ProviderSettingsClient
+        copy={copy}
+        errorMap={errorMap}
         initialCredential={{
           provider: "anthropic",
           connected: true,
           key_prefix: "sk-ant-settings...",
           key_last4: "1234",
         }}
+        locale="en"
       />,
     );
 

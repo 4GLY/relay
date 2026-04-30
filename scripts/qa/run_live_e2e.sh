@@ -29,6 +29,7 @@ cleanup() {
 DELETE FROM idempotency_records WHERE scope_project_id = '${PROJECT_ID}';
 DELETE FROM projects WHERE id = '${PROJECT_ID}';
 DELETE FROM user_provider_credentials WHERE user_id = '${USER_ID}';
+DELETE FROM api_keys WHERE owner_user_id = '${USER_ID}';
 DELETE FROM user_sessions WHERE user_id = '${USER_ID}';
 DELETE FROM users WHERE id = '${USER_ID}';
 SQL

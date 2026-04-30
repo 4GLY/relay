@@ -1,7 +1,8 @@
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { RELAY_API_URL, relayFetch, type RelayEnvelope } from "@/lib/api";
+import { getDictionary, resolveLocale } from "@/lib/i18n";
 import type { AuthMe } from "@/lib/onboarding";
 
 export const dynamic = "force-dynamic";
@@ -27,7 +28,13 @@ function authStartURL() {
 
 export default async function HomePage() {
   const cookieStore = await cookies();
+  const headerStore = await headers();
   const me = await resolveSession(cookieStore.toString());
+  const locale = resolveLocale({
+    cookie: cookieStore.toString(),
+    acceptLanguage: headerStore.get("accept-language") ?? undefined,
+  });
+  const dictionary = getDictionary(locale);
 
   if (me?.onboarding_complete && me.default_project_id) {
     redirect(`/projects/${encodeURIComponent(me.default_project_id)}`);
@@ -39,19 +46,16 @@ export default async function HomePage() {
 
   return (
     <main style={pageStyle}>
-      <p style={eyebrowStyle}>4gly Labs · Relay</p>
-      <h1 style={titleStyle}>Relay</h1>
-      <p style={subtitleStyle}>A quiet engine that turns chaos into swans.</p>
+      <p style={eyebrowStyle}>{dictionary.root.eyebrow}</p>
+      <h1 style={titleStyle}>{dictionary.root.title}</h1>
+      <p style={subtitleStyle}>{dictionary.root.subtitle}</p>
       <section style={panelStyle} aria-labelledby="entry-title">
         <h2 id="entry-title" style={panelTitleStyle}>
-          Sign in to start
+          {dictionary.root.panelTitle}
         </h2>
-        <p style={panelCopyStyle}>
-          Relay creates a private workspace first. Provider keys stay in Settings,
-          not in first-run setup.
-        </p>
+        <p style={panelCopyStyle}>{dictionary.root.panelCopy}</p>
         <a href={authStartURL()} style={buttonStyle}>
-          Continue with GitHub
+          {dictionary.root.signInButton}
         </a>
       </section>
     </main>

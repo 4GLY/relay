@@ -618,9 +618,29 @@ func (s *fakeAPIKeyStore) ListAPIKeys(_ context.Context) ([]domain.APIKey, error
 	return s.created, nil
 }
 
+func (s *fakeAPIKeyStore) ListAPIKeysByOwner(_ context.Context, userID string) ([]domain.APIKey, error) {
+	var items []domain.APIKey
+	for _, key := range s.created {
+		if key.OwnerUserID == userID {
+			items = append(items, key)
+		}
+	}
+	return items, nil
+}
+
 func (s *fakeAPIKeyStore) RevokeAPIKey(_ context.Context, keyID string) (domain.APIKey, error) {
 	for i, key := range s.created {
 		if key.ID == keyID {
+			s.created[i].Revoked = true
+			return s.created[i], nil
+		}
+	}
+	return domain.APIKey{}, nil
+}
+
+func (s *fakeAPIKeyStore) RevokeAPIKeyByOwner(_ context.Context, userID string, keyID string) (domain.APIKey, error) {
+	for i, key := range s.created {
+		if key.ID == keyID && key.OwnerUserID == userID {
 			s.created[i].Revoked = true
 			return s.created[i], nil
 		}

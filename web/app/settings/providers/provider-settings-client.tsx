@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+import type { Dictionary, Locale } from "@/lib/i18n";
+import { translateErrorMessage } from "@/lib/i18n";
 import {
   connectProviderCredential,
   disconnectProviderCredential,
@@ -10,10 +12,13 @@ import {
 } from "@/lib/provider-credentials";
 
 type Props = {
+  copy: Dictionary["providers"]["client"];
+  errorMap: Record<string, string>;
   initialCredential?: ProviderCredentialStatus;
+  locale: Locale;
 };
 
-export function ProviderSettingsClient({ initialCredential }: Props) {
+export function ProviderSettingsClient({ copy, errorMap, initialCredential, locale }: Props) {
   const router = useRouter();
   const [credential, setCredential] = useState(initialCredential);
   const [apiKey, setAPIKey] = useState("");
@@ -31,7 +36,14 @@ export function ProviderSettingsClient({ initialCredential }: Props) {
       router.refresh();
     } catch (err) {
       setStatus("error");
-      setError(err instanceof Error ? err.message : "Could not connect provider.");
+      setError(
+        translateErrorMessage({
+          error: err,
+          fallback: copy.fallbackConnectError,
+          knownErrors: errorMap,
+          locale,
+        }),
+      );
     }
   }
 
@@ -45,7 +57,14 @@ export function ProviderSettingsClient({ initialCredential }: Props) {
       router.refresh();
     } catch (err) {
       setStatus("error");
-      setError(err instanceof Error ? err.message : "Could not disconnect provider.");
+      setError(
+        translateErrorMessage({
+          error: err,
+          fallback: copy.fallbackDisconnectError,
+          knownErrors: errorMap,
+          locale,
+        }),
+      );
     }
   }
 
@@ -53,57 +72,52 @@ export function ProviderSettingsClient({ initialCredential }: Props) {
   const canSave = apiKey.trim().length > 0 && !busy;
   const statusMessage =
     status === "saving"
-      ? "Encrypting and saving provider key."
+      ? copy.savingStatus
       : status === "disconnecting"
-        ? "Removing stored provider key."
+        ? copy.disconnectingStatus
         : credential?.connected
-          ? "Settings only. Your key is available to Claude-backed features but first-run onboarding stays keyless."
-          : "Settings only. Add a key later when Claude-backed features need one.";
+          ? copy.connectedHelp
+          : copy.disconnectedHelp;
 
   return (
     <section style={panelStyle} aria-labelledby="provider-title">
       <div>
-        <p style={eyebrowStyle}>Settings · provider credentials</p>
+        <p style={eyebrowStyle}>{copy.eyebrow}</p>
         <h1 id="provider-title" style={titleStyle}>
-          Claude provider
+          {copy.title}
         </h1>
-        <p style={copyStyle}>
-          Connect Anthropic only when Claude-backed features need it. This key is not
-          part of first-run onboarding.
-        </p>
-        <p style={settingsOnlyStyle}>Settings only · optional after onboarding</p>
+        <p style={copyStyle}>{copy.copy}</p>
+        <p style={settingsOnlyStyle}>{copy.settingsOnlyPill}</p>
       </div>
 
       <div style={statusRowStyle} aria-live="polite">
         <span style={credential?.connected ? connectedDotStyle : disconnectedDotStyle} />
         <div>
           <strong style={statusTitleStyle}>
-            {credential?.connected ? "Connected" : "Not connected"}
+            {credential?.connected ? copy.connected : copy.disconnected}
           </strong>
           <p style={statusCopyStyle}>
             {credential?.connected
-              ? `${credential.key_prefix ?? "sk-ant"} ending ${credential.key_last4 ?? "••••"}`
-              : "No provider key is stored for this user."}
+              ? `${credential.key_prefix ?? "sk-ant"} ${copy.maskedKeySeparator} ${credential.key_last4 ?? "••••"}`
+              : copy.noStoredKey}
           </p>
           <p style={statusHelpStyle}>{statusMessage}</p>
         </div>
       </div>
 
       <label style={labelStyle} htmlFor="anthropic-key">
-        Anthropic API key
+        {copy.apiKeyLabel}
       </label>
       <input
         id="anthropic-key"
         type="password"
         value={apiKey}
         onChange={(event) => setAPIKey(event.target.value)}
-        placeholder="sk-ant-..."
+        placeholder={copy.apiKeyPlaceholder}
         autoComplete="off"
         style={inputStyle}
       />
-      <p style={fieldHelpStyle}>
-        The raw key is encrypted before storage. Relay returns only masked metadata here.
-      </p>
+      <p style={fieldHelpStyle}>{copy.fieldHelp}</p>
 
       <div style={actionsStyle}>
         <button
@@ -117,7 +131,11 @@ export function ProviderSettingsClient({ initialCredential }: Props) {
           }}
           data-testid="connect-provider"
         >
-          {status === "saving" ? "Saving..." : credential?.connected ? "Replace key" : "Connect key"}
+          {status === "saving"
+            ? copy.savingButton
+            : credential?.connected
+              ? copy.replaceButton
+              : copy.connectButton}
         </button>
         {credential?.connected && (
           <button
@@ -127,7 +145,7 @@ export function ProviderSettingsClient({ initialCredential }: Props) {
             style={secondaryButtonStyle}
             data-testid="disconnect-provider"
           >
-            {status === "disconnecting" ? "Disconnecting..." : "Disconnect"}
+            {status === "disconnecting" ? copy.disconnectingButton : copy.disconnectButton}
           </button>
         )}
       </div>

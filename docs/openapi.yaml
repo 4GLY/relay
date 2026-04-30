@@ -944,6 +944,13 @@ components:
             anyOf:
               - required: [project]
               - required: [project_id]
+    IssueUserAPIKeyInput:
+      type: object
+      required: [name]
+      additionalProperties: false
+      properties:
+        name:
+          type: string
     IssueAPIKeyResult:
       type: object
       required: [key_id, name, token, token_prefix, scope]
@@ -1327,11 +1334,10 @@ paths:
   /v1/api-keys:
     get:
       tags: [memory]
-      summary: List issued API keys
+      summary: List all issued API keys as an operator
       operationId: listApiKeys
       security:
         - BearerAuth: []
-        - CookieAuth: []
       responses:
         '200':
           description: API key list
@@ -1348,7 +1354,7 @@ paths:
   /v1/api-keys/issue:
     post:
       tags: [memory]
-      summary: Issue a new reusable API key
+      summary: Issue a new reusable API key as an operator
       operationId: issueApiKey
       security:
         - BearerAuth: []
@@ -1386,7 +1392,7 @@ paths:
   /v1/api-keys/revoke:
     post:
       tags: [memory]
-      summary: Revoke a previously issued API key
+      summary: Revoke a previously issued API key as an operator
       operationId: revokeApiKey
       security:
         - BearerAuth: []
@@ -1417,6 +1423,107 @@ paths:
                 $ref: '#/components/schemas/ErrorEnvelope'
         '404':
           description: API key not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /v1/settings/api-keys:
+    get:
+      tags: [settings]
+      summary: List Relay API keys owned by the current user
+      description: |
+        Returns display-safe Relay API key metadata for the authenticated user.
+        Raw tokens are never returned from list responses. Auth: cookie session
+        only; admin bearer is rejected because this is a user-owned settings flow.
+      operationId: userApiKeysList
+      security:
+        - CookieAuth: []
+      responses:
+        '200':
+          description: User-owned API key list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListAPIKeysResponse'
+        '401':
+          description: Missing or invalid session cookie
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+    post:
+      tags: [settings]
+      summary: Issue a Relay API key for the current user
+      description: |
+        Issues a user-owned Relay API key for API and MCP consumers. The raw
+        token is returned exactly once in this create response, then only a
+        display-safe prefix is available through later list/revoke calls.
+        User-owned keys are global scope in this version.
+      operationId: userApiKeyIssue
+      security:
+        - CookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueUserAPIKeyInput'
+      responses:
+        '200':
+          description: User-owned API key issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueAPIKeyResponse'
+        '400':
+          description: Missing name or unsupported user API key field
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '401':
+          description: Missing or invalid session cookie
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /v1/settings/api-keys/revoke:
+    post:
+      tags: [settings]
+      summary: Revoke a Relay API key owned by the current user
+      description: |
+        Revokes a user-owned Relay API key. A user cannot revoke another user's
+        key; cross-owner ids are returned as not found.
+      operationId: userApiKeyRevoke
+      security:
+        - CookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RevokeAPIKeyInput'
+      responses:
+        '200':
+          description: User-owned API key revoked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RevokeAPIKeyResponse'
+        '400':
+          description: Missing or invalid key id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '401':
+          description: Missing or invalid session cookie
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: API key is missing or not owned by the current user
           content:
             application/json:
               schema:

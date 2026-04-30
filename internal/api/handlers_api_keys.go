@@ -41,3 +41,46 @@ func (h Handler) handleRevokeAPIKey(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, contracts.Success("relay api-key revoke", result))
 }
+
+func (h Handler) handleUserAPIKeys(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		result, err := h.services.ListUserAPIKeys(r.Context())
+		if err != nil {
+			writeServiceError(w, "relay user api-key list", err)
+			return
+		}
+		writeJSON(w, http.StatusOK, contracts.Success("relay user api-key list", result))
+	case http.MethodPost:
+		var input services.IssueAPIKeyInput
+		if !decodeStrictJSONBody(w, r, "relay user api-key issue", &input) {
+			return
+		}
+		result, err := h.services.IssueUserAPIKey(r.Context(), input)
+		if err != nil {
+			writeServiceError(w, "relay user api-key issue", err)
+			return
+		}
+		writeJSON(w, http.StatusOK, contracts.Success("relay user api-key issue", result))
+	default:
+		writeJSON(w, http.StatusMethodNotAllowed, contracts.Failure("relay user api-keys", "METHOD_NOT_ALLOWED", "method not allowed", false))
+	}
+}
+
+func (h Handler) handleRevokeUserAPIKey(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, contracts.Failure("relay user api-key revoke", "METHOD_NOT_ALLOWED", "method not allowed", false))
+		return
+	}
+
+	var input services.RevokeAPIKeyInput
+	if !decodeStrictJSONBody(w, r, "relay user api-key revoke", &input) {
+		return
+	}
+	result, err := h.services.RevokeUserAPIKey(r.Context(), input)
+	if err != nil {
+		writeServiceError(w, "relay user api-key revoke", err)
+		return
+	}
+	writeJSON(w, http.StatusOK, contracts.Success("relay user api-key revoke", result))
+}

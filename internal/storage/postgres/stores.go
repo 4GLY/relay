@@ -308,6 +308,29 @@ func (s Stores) ListAPIKeys(ctx context.Context) ([]domain.APIKey, error) {
 	return items, rows.Err()
 }
 
+func (s Stores) ListAPIKeysByOwner(ctx context.Context, userID string) ([]domain.APIKey, error) {
+	rows, err := s.db.Query(ctx, `
+		SELECT id, name, token_hash, token_prefix, scope, COALESCE(project_id, ''), COALESCE(owner_user_id, ''), revoked_at IS NOT NULL
+		FROM api_keys
+		WHERE owner_user_id = $1
+		ORDER BY created_at DESC
+	`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []domain.APIKey
+	for rows.Next() {
+		var item domain.APIKey
+		if err := rows.Scan(&item.ID, &item.Name, &item.TokenHash, &item.TokenPrefix, &item.Scope, &item.ProjectID, &item.OwnerUserID, &item.Revoked); err != nil {
+			return nil, err
+		}
+		items = append(items, item)
+	}
+	return items, rows.Err()
+}
+
 func (s Stores) RevokeAPIKey(ctx context.Context, keyID string) (domain.APIKey, error) {
 	var key domain.APIKey
 	err := s.db.QueryRow(ctx, `
@@ -316,6 +339,21 @@ func (s Stores) RevokeAPIKey(ctx context.Context, keyID string) (domain.APIKey, 
 		WHERE id = $1
 		RETURNING id, name, token_hash, token_prefix, scope, COALESCE(project_id, ''), COALESCE(owner_user_id, ''), revoked_at IS NOT NULL
 	`, keyID).Scan(&key.ID, &key.Name, &key.TokenHash, &key.TokenPrefix, &key.Scope, &key.ProjectID, &key.OwnerUserID, &key.Revoked)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return domain.APIKey{}, lib.NotFound("API_KEY_NOT_FOUND_BY_ID", "api key not found")
+	}
+	return key, err
+}
+
+func (s Stores) RevokeAPIKeyByOwner(ctx context.Context, userID string, keyID string) (domain.APIKey, error) {
+	var key domain.APIKey
+	err := s.db.QueryRow(ctx, `
+		UPDATE api_keys
+		SET revoked_at = COALESCE(revoked_at, NOW())
+		WHERE id = $1
+		  AND owner_user_id = $2
+		RETURNING id, name, token_hash, token_prefix, scope, COALESCE(project_id, ''), COALESCE(owner_user_id, ''), revoked_at IS NOT NULL
+	`, keyID, userID).Scan(&key.ID, &key.Name, &key.TokenHash, &key.TokenPrefix, &key.Scope, &key.ProjectID, &key.OwnerUserID, &key.Revoked)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return domain.APIKey{}, lib.NotFound("API_KEY_NOT_FOUND_BY_ID", "api key not found")
 	}

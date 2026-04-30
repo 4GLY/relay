@@ -1,20 +1,25 @@
 import { cookies, headers } from "next/headers";
+import Link from "next/link";
 
 import { RELAY_API_URL } from "@/lib/api";
-import { getDictionary, resolveLocale } from "@/lib/i18n";
-import { listProviderCredentials } from "@/lib/provider-credentials";
+import { getDictionary, resolveLocale, translateErrorMessage } from "@/lib/i18n";
+import {
+  listUserAPIKeys,
+  RelayAPIError,
+  type UserAPIKeySummary,
+} from "@/lib/user-api-keys";
 
-import { ProviderSettingsClient } from "./provider-settings-client";
+import { APIKeySettingsClient } from "./api-key-settings-client";
 
 export const dynamic = "force-dynamic";
 
 function signInURL() {
   const url = new URL("/v1/auth/github/start", RELAY_API_URL);
-  url.searchParams.set("redirect_to", "/settings/providers");
+  url.searchParams.set("redirect_to", "/settings/api-keys");
   return url.toString();
 }
 
-export default async function ProviderSettingsPage() {
+export default async function APIKeySettingsPage() {
   const cookieStore = await cookies();
   const headerStore = await headers();
   const cookieHeader = cookieStore.toString();
@@ -23,14 +28,25 @@ export default async function ProviderSettingsPage() {
     acceptLanguage: headerStore.get("accept-language") ?? undefined,
   });
   const dictionary = getDictionary(locale);
-  let initialCredential;
+
   let authenticated = true;
+  let initialKeys: UserAPIKeySummary[] = [];
+  let loadError = "";
 
   try {
-    const result = await listProviderCredentials({ cookie: cookieHeader });
-    initialCredential = result.credentials.find((item) => item.provider === "anthropic");
-  } catch {
-    authenticated = false;
+    const result = await listUserAPIKeys({ cookie: cookieHeader });
+    initialKeys = result.items;
+  } catch (error) {
+    if (error instanceof RelayAPIError && error.code === "UNAUTHENTICATED") {
+      authenticated = false;
+    } else {
+      loadError = translateErrorMessage({
+        error,
+        fallback: dictionary.apiKeys.page.loadErrorCopy,
+        knownErrors: dictionary.apiKeys.errorMap,
+        locale,
+      });
+    }
   }
 
   return (
@@ -42,25 +58,33 @@ export default async function ProviderSettingsPage() {
       }}
     >
       <nav style={navStyle} aria-label="Settings navigation">
-        <a href="/onboarding" style={backLinkStyle}>
-          {dictionary.common.links.backToOnboarding}
-        </a>
-        <a href="/settings/api-keys" style={backLinkStyle}>
-          {dictionary.common.links.apiKeys}
+        <Link href="/" style={backLinkStyle}>
+          {dictionary.common.links.projectExplorer}
+        </Link>
+        <a href="/settings/providers" style={backLinkStyle}>
+          {dictionary.common.links.providerSettings}
         </a>
       </nav>
       {authenticated ? (
-        <ProviderSettingsClient
-          copy={dictionary.providers.client}
-          errorMap={dictionary.providers.errorMap}
-          initialCredential={initialCredential}
-          locale={locale}
-        />
+        loadError ? (
+          <section style={panelStyle}>
+            <p style={eyebrowStyle}>{dictionary.apiKeys.page.eyebrow}</p>
+            <h1 style={titleStyle}>{dictionary.apiKeys.page.loadErrorTitle}</h1>
+            <p style={copyStyle}>{loadError}</p>
+          </section>
+        ) : (
+          <APIKeySettingsClient
+            copy={dictionary.apiKeys.client}
+            errorMap={dictionary.apiKeys.errorMap}
+            initialKeys={initialKeys}
+            locale={locale}
+          />
+        )
       ) : (
         <section style={panelStyle}>
-          <p style={eyebrowStyle}>{dictionary.providers.page.eyebrow}</p>
-          <h1 style={titleStyle}>{dictionary.providers.page.signInTitle}</h1>
-          <p style={copyStyle}>{dictionary.providers.page.signInCopy}</p>
+          <p style={eyebrowStyle}>{dictionary.apiKeys.page.eyebrow}</p>
+          <h1 style={titleStyle}>{dictionary.apiKeys.page.signInTitle}</h1>
+          <p style={copyStyle}>{dictionary.apiKeys.page.signInCopy}</p>
           <a href={signInURL()} style={buttonStyle}>
             {dictionary.common.continueWithGitHub}
           </a>
@@ -86,7 +110,7 @@ const backLinkStyle: React.CSSProperties = {
 };
 
 const panelStyle: React.CSSProperties = {
-  maxWidth: "620px",
+  maxWidth: "720px",
   padding: "30px",
   border: "1px solid var(--border)",
   borderRadius: "8px",
@@ -112,6 +136,7 @@ const titleStyle: React.CSSProperties = {
 const copyStyle: React.CSSProperties = {
   margin: "0 0 22px",
   color: "var(--ink-muted)",
+  lineHeight: 1.6,
 };
 
 const buttonStyle: React.CSSProperties = {

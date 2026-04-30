@@ -155,6 +155,14 @@ func (s apiKeyStore) ListAPIKeys(ctx context.Context) ([]domain.APIKey, error) {
 	return s.Stores.ListAPIKeys(ctx)
 }
 
+func (s apiKeyStore) ListAPIKeysByOwner(ctx context.Context, userID string) ([]domain.APIKey, error) {
+	return s.Stores.ListAPIKeysByOwner(ctx, userID)
+}
+
 func (s apiKeyStore) RevokeAPIKey(ctx context.Context, keyID string) (domain.APIKey, error) {
 	return s.Stores.RevokeAPIKey(ctx, keyID)
+}
+
+func (s apiKeyStore) RevokeAPIKeyByOwner(ctx context.Context, userID string, keyID string) (domain.APIKey, error) {
+	return s.Stores.RevokeAPIKeyByOwner(ctx, userID, keyID)
 }

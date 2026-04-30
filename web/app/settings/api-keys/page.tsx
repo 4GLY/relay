@@ -8,6 +8,7 @@ import {
   RelayAPIError,
   type UserAPIKeySummary,
 } from "@/lib/user-api-keys";
+import { RelayTopRail } from "@/components/relay-app-shell";
 
 import { APIKeySettingsClient } from "./api-key-settings-client";
 
@@ -50,47 +51,50 @@ export default async function APIKeySettingsPage() {
   }
 
   return (
-    <main
-      style={{
-        maxWidth: "960px",
-        margin: "0 auto",
-        padding: "72px 32px 96px",
-      }}
-    >
-      <nav style={navStyle} aria-label="Settings navigation">
-        <Link href="/" style={backLinkStyle}>
-          {dictionary.common.links.projectExplorer}
-        </Link>
-        <a href="/settings/providers" style={backLinkStyle}>
-          {dictionary.common.links.providerSettings}
-        </a>
-      </nav>
-      {authenticated ? (
-        loadError ? (
+    <>
+      <RelayTopRail activeStep="Transform" />
+      <main
+        style={{
+          maxWidth: "960px",
+          margin: "0 auto",
+          padding: "48px 32px 96px",
+        }}
+      >
+        <nav style={navStyle} aria-label="Settings navigation">
+          <Link href="/" style={backLinkStyle}>
+            {dictionary.common.links.projectExplorer}
+          </Link>
+          <a href="/settings/providers" style={backLinkStyle}>
+            {dictionary.common.links.providerSettings}
+          </a>
+        </nav>
+        {authenticated ? (
+          loadError ? (
+            <section style={panelStyle}>
+              <p style={eyebrowStyle}>{dictionary.apiKeys.page.eyebrow}</p>
+              <h1 style={titleStyle}>{dictionary.apiKeys.page.loadErrorTitle}</h1>
+              <p style={copyStyle}>{loadError}</p>
+            </section>
+          ) : (
+            <APIKeySettingsClient
+              copy={dictionary.apiKeys.client}
+              errorMap={dictionary.apiKeys.errorMap}
+              initialKeys={initialKeys}
+              locale={locale}
+            />
+          )
+        ) : (
           <section style={panelStyle}>
             <p style={eyebrowStyle}>{dictionary.apiKeys.page.eyebrow}</p>
-            <h1 style={titleStyle}>{dictionary.apiKeys.page.loadErrorTitle}</h1>
-            <p style={copyStyle}>{loadError}</p>
+            <h1 style={titleStyle}>{dictionary.apiKeys.page.signInTitle}</h1>
+            <p style={copyStyle}>{dictionary.apiKeys.page.signInCopy}</p>
+            <a href={signInURL()} style={buttonStyle}>
+              {dictionary.common.continueWithGitHub}
+            </a>
           </section>
-        ) : (
-          <APIKeySettingsClient
-            copy={dictionary.apiKeys.client}
-            errorMap={dictionary.apiKeys.errorMap}
-            initialKeys={initialKeys}
-            locale={locale}
-          />
-        )
-      ) : (
-        <section style={panelStyle}>
-          <p style={eyebrowStyle}>{dictionary.apiKeys.page.eyebrow}</p>
-          <h1 style={titleStyle}>{dictionary.apiKeys.page.signInTitle}</h1>
-          <p style={copyStyle}>{dictionary.apiKeys.page.signInCopy}</p>
-          <a href={signInURL()} style={buttonStyle}>
-            {dictionary.common.continueWithGitHub}
-          </a>
-        </section>
-      )}
-    </main>
+        )}
+      </main>
+    </>
   );
 }
 

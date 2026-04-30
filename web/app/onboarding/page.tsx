@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { RELAY_API_URL, relayFetch, type RelayEnvelope } from "@/lib/api";
 import { getDictionary, resolveLocale } from "@/lib/i18n";
 import type { AuthMe } from "@/lib/onboarding";
+import { RelayTopRail } from "@/components/relay-app-shell";
 
 import { OnboardingClient } from "./onboarding-client";
 
@@ -43,80 +44,91 @@ export default async function OnboardingPage() {
   }
 
   return (
-    <main
-      style={{
-        maxWidth: "1040px",
-        margin: "0 auto",
-        padding: "72px 32px 96px",
-      }}
-    >
-      <p
-        style={{
-          fontFamily: "var(--font-mono)",
-          fontSize: "11px",
-          letterSpacing: "0.18em",
-          textTransform: "uppercase",
-          color: "var(--muted)",
-          marginBottom: "16px",
-        }}
-      >
-        {dictionary.onboarding.page.eyebrow}
-      </p>
-      <h1
-        style={{
-          fontFamily: "var(--font-display)",
-          fontWeight: 500,
-          fontSize: "clamp(40px, 6.5vw, 64px)",
-          lineHeight: 1.05,
-          letterSpacing: "-0.025em",
-          color: "var(--ink)",
-          marginBottom: "20px",
-          fontVariationSettings: '"opsz" 144, "SOFT" 50',
-        }}
-      >
-        {dictionary.onboarding.page.title}
-      </h1>
-      <p
-        style={{
-          fontFamily: "var(--font-sans)",
-          fontSize: "17px",
-          lineHeight: 1.6,
-          color: "var(--ink-muted)",
-          maxWidth: "620px",
-          marginBottom: "36px",
-        }}
-      >
-        {dictionary.onboarding.page.subtitle}
-      </p>
-      {me ? (
-        <OnboardingClient
-          copy={dictionary.onboarding.client}
-          locale={locale}
-          userDisplayName={me.display_name ?? me.email}
-        />
-      ) : (
-        <section style={signInPanelStyle} aria-labelledby="signin-title">
-          <h2 id="signin-title" style={signInTitleStyle}>
-            {dictionary.onboarding.page.signInTitle}
-          </h2>
-          <p style={signInCopyStyle}>{dictionary.onboarding.page.signInCopy}</p>
-          <div style={signInActionsStyle}>
-            <a href={authStartURL("github")} style={authButtonStyle}>
-              {dictionary.common.continueWithGitHub}
-            </a>
-          </div>
-        </section>
-      )}
-    </main>
+    <>
+      <RelayTopRail activeStep="Face" userLabel={me?.display_name ?? me?.email ?? "signed out"} />
+      <main style={pageStyle}>
+        <p style={eyebrowStyle}>{dictionary.onboarding.page.eyebrow}</p>
+        <h1 style={pageTitleStyle}>{dictionary.onboarding.page.title}</h1>
+        <p style={pageCopyStyle}>{dictionary.onboarding.page.subtitle}</p>
+        {me ? (
+          <OnboardingClient
+            copy={dictionary.onboarding.client}
+            locale={locale}
+            userDisplayName={me.display_name ?? me.email}
+          />
+        ) : (
+          <section style={signInPanelStyle} aria-labelledby="signin-title">
+            <span style={glyphStyle} aria-hidden="true">
+              ●
+            </span>
+            <div>
+              <h2 id="signin-title" style={signInTitleStyle}>
+                {dictionary.onboarding.page.signInTitle}
+              </h2>
+              <p style={signInCopyStyle}>{dictionary.onboarding.page.signInCopy}</p>
+              <div style={signInActionsStyle}>
+                <a href={authStartURL("github")} style={authButtonStyle}>
+                  {dictionary.common.continueWithGitHub}
+                </a>
+              </div>
+            </div>
+          </section>
+        )}
+      </main>
+    </>
   );
 }
 
+const pageStyle: React.CSSProperties = {
+  maxWidth: "720px",
+  margin: "40px auto",
+  padding: "0 28px 96px",
+};
+
+const eyebrowStyle: React.CSSProperties = {
+  margin: "0 0 8px",
+  fontFamily: "var(--font-mono)",
+  fontSize: "11px",
+  letterSpacing: "0.16em",
+  textTransform: "uppercase",
+  color: "var(--muted)",
+};
+
+const pageTitleStyle: React.CSSProperties = {
+  margin: "0 0 14px",
+  color: "var(--ink)",
+  fontFamily: "var(--font-display)",
+  fontWeight: 500,
+  fontSize: "clamp(44px, 7vw, 64px)",
+  lineHeight: 1,
+  fontVariationSettings: '"opsz" 144, "SOFT" 50',
+};
+
+const pageCopyStyle: React.CSSProperties = {
+  margin: "0 0 28px",
+  color: "var(--ink-muted)",
+  fontFamily: "var(--font-display)",
+  fontSize: "19px",
+  fontStyle: "italic",
+  lineHeight: 1.5,
+  fontVariationSettings: '"opsz" 48',
+};
+
 const signInPanelStyle: React.CSSProperties = {
-  maxWidth: "620px",
+  display: "flex",
+  gap: "14px",
+  alignItems: "flex-start",
   padding: "28px",
   border: "1px solid var(--border)",
-  borderRadius: "8px",
+  borderRadius: "12px",
   background: "var(--canvas-raised)",
+};
+
+const glyphStyle: React.CSSProperties = {
+  color: "var(--success)",
+  fontFamily: "var(--font-mono)",
+  fontSize: "22px",
+  lineHeight: 1,
 };
 
 const signInTitleStyle: React.CSSProperties = {

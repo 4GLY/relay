@@ -17,6 +17,7 @@ export function OnboardingClient({ copy, locale, userDisplayName }: Props) {
   const router = useRouter();
   const [status, setStatus] = useState<"idle" | "submitting" | "error">("idle");
   const [error, setError] = useState<string>("");
+  const localCopy = onboardingLocalCopy(locale);
 
   async function startOnboarding() {
     setStatus("submitting");
@@ -39,14 +40,26 @@ export function OnboardingClient({ copy, locale, userDisplayName }: Props) {
 
   return (
     <section style={panelStyle} aria-labelledby="onboarding-title">
-      <div style={stepRailStyle} aria-hidden="true">
-        <span style={activeDotStyle} />
-        <span style={lineStyle} />
-        <span style={dotStyle} />
-        <span style={lineStyle} />
-        <span style={dotStyle} />
+      <div style={workspaceGridStyle}>
+        <div style={workspaceCardStyle}>
+          <span style={workspaceGlyphStyle}>●</span>
+          <div>
+            <h2 style={workspaceTitleStyle}>Personal</h2>
+            <p style={workspaceCopyStyle}>{localCopy.personal}</p>
+          </div>
+        </div>
+        <div style={workspaceCardStyle}>
+          <span style={{ ...workspaceGlyphStyle, color: "var(--magic-primary-strong)" }}>◈</span>
+          <div>
+            <h2 style={workspaceTitleStyle}>Project Explorer</h2>
+            <p style={workspaceCopyStyle}>{localCopy.projectExplorer}</p>
+          </div>
+        </div>
       </div>
-      <div>
+      <div style={emptyCalloutStyle}>
+        {localCopy.providerCallout}
+      </div>
+      <div style={contentStyle}>
         <p style={eyebrowStyle}>
           {copy.signedInEyebrowPrefix} · {userDisplayName ?? copy.fallbackUser}
         </p>
@@ -68,15 +81,9 @@ export function OnboardingClient({ copy, locale, userDisplayName }: Props) {
           >
             {status === "submitting" ? copy.startingButton : copy.startButton}
           </button>
-          <a href="/style-memory" style={secondaryLinkStyle}>
-            {copy.styleMemoryLink}
-          </a>
-          <a href="/settings/providers" style={secondaryLinkStyle}>
-            {copy.providerSettingsLink}
-          </a>
-          <a href="/settings/api-keys" style={secondaryLinkStyle}>
-            {copy.apiKeysLink}
-          </a>
+          <span style={secondaryNoteStyle}>
+            {copy.providerSettingsLink} · {localCopy.afterWorkspace}
+          </span>
         </div>
         {status === "error" && (
           <p role="alert" style={errorStyle}>
@@ -88,47 +95,89 @@ export function OnboardingClient({ copy, locale, userDisplayName }: Props) {
   );
 }
 
+function onboardingLocalCopy(locale: Locale) {
+  if (locale === "ko") {
+    return {
+      personal: "항상 켜져 있는 개인 작업공간입니다.",
+      projectExplorer: "provider 키 없이 먼저 작업공간을 만듭니다.",
+      providerCallout:
+        "Provider 키는 Settings에 남겨둡니다. 먼저 작업공간을 만들고, Claude 기반 기능이 필요할 때만 연결하세요.",
+      afterWorkspace: "작업공간 생성 후",
+    };
+  }
+
+  return {
+    personal: "Always-on. Notes that are not yet a project.",
+    projectExplorer: "Relay creates this workspace before any provider keys.",
+    providerCallout:
+      "Provider keys stay in Settings. Create the workspace first, then connect providers only when Claude-backed features need them.",
+    afterWorkspace: "after workspace creation",
+  };
+}
+
 const panelStyle: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "32px minmax(0, 1fr)",
+  display: "flex",
+  flexDirection: "column",
   gap: "24px",
-  maxWidth: "760px",
-  padding: "32px",
+  padding: "28px",
   border: "1px solid var(--border)",
-  borderRadius: "8px",
+  borderRadius: "12px",
   background: "var(--canvas-raised)",
 };
 
-const stepRailStyle: React.CSSProperties = {
+const workspaceGridStyle: React.CSSProperties = {
   display: "grid",
-  gridTemplateRows: "18px 1fr 18px 1fr 18px",
-  justifyItems: "center",
-  minHeight: "168px",
-  paddingTop: "6px",
+  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+  gap: "14px",
 };
 
-const dotBaseStyle: React.CSSProperties = {
-  width: "14px",
-  height: "14px",
-  borderRadius: "50%",
-  border: "1px solid var(--border-strong)",
-};
-
-const activeDotStyle: React.CSSProperties = {
-  ...dotBaseStyle,
-  background: "var(--success)",
-  boxShadow: "0 0 0 5px color-mix(in oklab, var(--success) 18%, transparent)",
-};
-
-const dotStyle: React.CSSProperties = {
-  ...dotBaseStyle,
+const workspaceCardStyle: React.CSSProperties = {
+  display: "flex",
+  gap: "14px",
+  alignItems: "flex-start",
+  padding: "18px",
+  border: "1px solid var(--border)",
+  borderRadius: "12px",
   background: "var(--canvas)",
 };
 
-const lineStyle: React.CSSProperties = {
-  width: "1px",
-  height: "100%",
-  background: "var(--border)",
+const workspaceGlyphStyle: React.CSSProperties = {
+  color: "var(--success)",
+  fontFamily: "var(--font-mono)",
+  fontSize: "22px",
+  lineHeight: 1,
+};
+
+const workspaceTitleStyle: React.CSSProperties = {
+  margin: 0,
+  color: "var(--ink)",
+  fontFamily: "var(--font-sans)",
+  fontSize: "16px",
+  fontWeight: 800,
+};
+
+const workspaceCopyStyle: React.CSSProperties = {
+  margin: "4px 0 0",
+  color: "var(--ink-muted)",
+  fontSize: "13px",
+  lineHeight: 1.5,
+};
+
+const emptyCalloutStyle: React.CSSProperties = {
+  padding: "18px",
+  border: "1px dashed var(--border-strong)",
+  borderRadius: "12px",
+  background: "color-mix(in srgb, var(--magic-primary) 8%, var(--canvas))",
+  color: "var(--ink-muted)",
+  fontFamily: "var(--font-display)",
+  fontSize: "17px",
+  fontStyle: "italic",
+  lineHeight: 1.45,
+  textAlign: "center",
+};
+
+const contentStyle: React.CSSProperties = {
+  paddingTop: "2px",
 };
 
 const eyebrowStyle: React.CSSProperties = {
@@ -177,12 +226,12 @@ const primaryButtonStyle: React.CSSProperties = {
   fontWeight: 800,
 };
 
-const secondaryLinkStyle: React.CSSProperties = {
+const secondaryNoteStyle: React.CSSProperties = {
   color: "var(--ink-muted)",
-  fontFamily: "var(--font-sans)",
-  fontSize: "14px",
-  fontWeight: 700,
-  textDecoration: "none",
+  fontFamily: "var(--font-mono)",
+  fontSize: "11px",
+  letterSpacing: "0.08em",
+  textTransform: "uppercase",
 };
 
 const errorStyle: React.CSSProperties = {

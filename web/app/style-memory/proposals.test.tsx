@@ -192,7 +192,7 @@ function serverRejected(overrides: Record<string, unknown> = {}) {
 describe("<Proposals> hero + queue render", () => {
   it("renders the highest-confidence card as hero and the rest as queued", () => {
     renderProposals();
-    expect(screen.getByRole("heading", { name: "Style Memory" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /proposals waiting for your judgment/i })).toBeInTheDocument();
     expect(screen.getByText(/queued · resolve hero first/i)).toBeInTheDocument();
     expect(screen.getByTestId("approve-p-1")).toBeInTheDocument();
     expect(screen.queryByTestId("approve-p-2")).toBeNull();

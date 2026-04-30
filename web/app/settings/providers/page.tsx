@@ -3,6 +3,7 @@ import { cookies, headers } from "next/headers";
 import { RELAY_API_URL } from "@/lib/api";
 import { getDictionary, resolveLocale } from "@/lib/i18n";
 import { listProviderCredentials } from "@/lib/provider-credentials";
+import { RelayTopRail } from "@/components/relay-app-shell";
 
 import { ProviderSettingsClient } from "./provider-settings-client";
 
@@ -34,39 +35,42 @@ export default async function ProviderSettingsPage() {
   }
 
   return (
-    <main
-      style={{
-        maxWidth: "960px",
-        margin: "0 auto",
-        padding: "72px 32px 96px",
-      }}
-    >
-      <nav style={navStyle} aria-label="Settings navigation">
-        <a href="/onboarding" style={backLinkStyle}>
-          {dictionary.common.links.backToOnboarding}
-        </a>
-        <a href="/settings/api-keys" style={backLinkStyle}>
-          {dictionary.common.links.apiKeys}
-        </a>
-      </nav>
-      {authenticated ? (
-        <ProviderSettingsClient
-          copy={dictionary.providers.client}
-          errorMap={dictionary.providers.errorMap}
-          initialCredential={initialCredential}
-          locale={locale}
-        />
-      ) : (
-        <section style={panelStyle}>
-          <p style={eyebrowStyle}>{dictionary.providers.page.eyebrow}</p>
-          <h1 style={titleStyle}>{dictionary.providers.page.signInTitle}</h1>
-          <p style={copyStyle}>{dictionary.providers.page.signInCopy}</p>
-          <a href={signInURL()} style={buttonStyle}>
-            {dictionary.common.continueWithGitHub}
+    <>
+      <RelayTopRail activeStep="Transform" />
+      <main
+        style={{
+          maxWidth: "960px",
+          margin: "0 auto",
+          padding: "48px 32px 96px",
+        }}
+      >
+        <nav style={navStyle} aria-label="Settings navigation">
+          <a href="/onboarding" style={backLinkStyle}>
+            {dictionary.common.links.backToOnboarding}
           </a>
-        </section>
-      )}
-    </main>
+          <a href="/settings/api-keys" style={backLinkStyle}>
+            {dictionary.common.links.apiKeys}
+          </a>
+        </nav>
+        {authenticated ? (
+          <ProviderSettingsClient
+            copy={dictionary.providers.client}
+            errorMap={dictionary.providers.errorMap}
+            initialCredential={initialCredential}
+            locale={locale}
+          />
+        ) : (
+          <section style={panelStyle}>
+            <p style={eyebrowStyle}>{dictionary.providers.page.eyebrow}</p>
+            <h1 style={titleStyle}>{dictionary.providers.page.signInTitle}</h1>
+            <p style={copyStyle}>{dictionary.providers.page.signInCopy}</p>
+            <a href={signInURL()} style={buttonStyle}>
+              {dictionary.common.continueWithGitHub}
+            </a>
+          </section>
+        )}
+      </main>
+    </>
   );
 }
 

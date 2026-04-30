@@ -143,7 +143,7 @@ test.describe("Relay authenticated live smoke", () => {
     await page.goto("/onboarding");
     await expect(page).toHaveURL(new RegExp(`/projects/${authenticatedProjectID}$`));
     await expect(page.getByText(/Project Explorer/i).first()).toBeVisible();
-    await expect(page.getByRole("link", { name: "Style Memory" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Style Memory", exact: true })).toBeVisible();
     await page.screenshot({
       path: `${screenshotDir}/s10-auth-onboarding-redirect.png`,
       fullPage: true,
@@ -155,15 +155,15 @@ test.describe("Relay authenticated live smoke", () => {
     await expect(page).toHaveURL(new RegExp(`/projects/${authenticatedProjectID}$`));
     await expect(page.getByText(/Project Explorer/i).first()).toBeVisible();
     await expect(page.getByText(/Snapshots/i).first()).toBeVisible();
-    await expect(page.getByRole("link", { name: "Style Memory" })).toHaveAttribute(
+    await expect(page.getByRole("link", { name: "Style Memory", exact: true })).toHaveAttribute(
       "href",
       `/style-memory?project=${authenticatedProjectID}`,
     );
-    await expect(page.getByRole("link", { name: "Trace Browser" })).toHaveAttribute(
+    await expect(page.getByRole("link", { name: "Trace Browser", exact: true })).toHaveAttribute(
       "href",
       `/projects/${authenticatedProjectID}/traces`,
     );
-    await expect(page.getByRole("link", { name: "Decision Graph" })).toHaveAttribute(
+    await expect(page.getByRole("link", { name: "Decision Graph", exact: true })).toHaveAttribute(
       "href",
       `/projects/${authenticatedProjectID}/graph`,
     );
@@ -185,10 +185,11 @@ test.describe("Relay authenticated live smoke", () => {
 
   test("trace browser renders authenticated judgment traces", async ({ page }) => {
     await page.goto(`/projects/${authenticatedProjectID}/traces`);
-    await expect(page.getByRole("heading", { name: "Trace Browser" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /traces? captured/i })).toBeVisible();
+    await expect(page.getByText(/Judgment Traces/i).first()).toBeVisible();
     await expect(page.getByText(/Prefer explicit recovery actions over generic error states/i)).toBeVisible();
     await expect(page.getByText(/qa:live:e2e/i)).toBeVisible();
-    await expect(page.getByRole("link", { name: "Project Explorer" })).toHaveAttribute(
+    await expect(page.getByRole("link", { name: "Relay." })).toHaveAttribute(
       "href",
       `/projects/${authenticatedProjectID}`,
     );
@@ -203,7 +204,7 @@ test.describe("Relay authenticated live smoke", () => {
     await expect(page.getByRole("heading", { name: "Decision Graph" })).toBeVisible();
     await expect(page.getByText(/Prefer explicit recovery actions over generic error states/i)).toBeVisible();
     await expect(page.getByText(/packet snapshot|judgment trace/i).first()).toBeVisible();
-    await expect(page.getByRole("link", { name: "Project Explorer" })).toHaveAttribute(
+    await expect(page.getByRole("link", { name: "Relay." })).toHaveAttribute(
       "href",
       `/projects/${authenticatedProjectID}`,
     );
@@ -215,10 +216,11 @@ test.describe("Relay authenticated live smoke", () => {
 
   test("packet builder renders the latest snapshot document", async ({ page }) => {
     await page.goto(`/projects/${authenticatedProjectID}/packet-builder`);
-    await expect(page.getByRole("heading", { name: "Packet Builder" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Compose a handoff." })).toBeVisible();
+    await expect(page.getByText(/Packet Builder/i).first()).toBeVisible();
     await expect(page.getByText(/verify public snapshot positive route automation/i)).toBeVisible();
     await expect(page.getByText("Source evidence")).toBeVisible();
-    await expect(page.getByRole("link", { name: "Project Explorer" })).toHaveAttribute(
+    await expect(page.getByRole("link", { name: "Relay." })).toHaveAttribute(
       "href",
       `/projects/${authenticatedProjectID}`,
     );
@@ -234,7 +236,10 @@ test.describe("Relay authenticated live smoke", () => {
 
   test("style memory renders the authenticated project queue", async ({ page }) => {
     await page.goto(`/style-memory?project=${authenticatedProjectID}`);
-    await expect(page.getByRole("heading", { name: /Style Memory/i })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: /proposal[s]? waiting for your judgment|All quiet on the swan front/i }),
+    ).toBeVisible();
+    await expect(page.getByText(/Style Memory/i).first()).toBeVisible();
     await expect(page.getByText(/Proposals/i).first()).toBeVisible();
     await expect(page.getByText(/qa_live\s+×\s+style_memory/i).first()).toBeVisible();
     await page.screenshot({

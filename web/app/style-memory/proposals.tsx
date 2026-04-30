@@ -11,6 +11,7 @@ import {
 } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 
+import { RelayTopRail } from "@/components/relay-app-shell";
 import {
   ProposalAlreadyResolvedError,
   REJECT_REASON_CODES,
@@ -392,26 +393,28 @@ export function Proposals({
 
   const subTitle = useMemo(() => {
     if (pending.length === 0) return "All quiet on the swan front.";
-    if (view === "batch") return `${pending.length} in queue · batch view`;
-    if (pending.length === 1) return "One hero in focus.";
-    return `One hero in focus. ${pending.length - 1} queued behind.`;
-  }, [pending.length, view]);
+    if (pending.length === 1) return "One proposal waiting for your judgment.";
+    return `${pending.length} proposals waiting for your judgment.`;
+  }, [pending.length]);
 
   return (
     <div style={layoutStyle}>
-      <header style={railStyle}>
-        <div style={wordmarkStyle}>
-          Relay<span style={{ color: "var(--magic-primary-strong)" }}>.</span>
-        </div>
-        <div style={{ justifySelf: "end", display: "flex", gap: "10px", alignItems: "center" }}>
-          <span style={muteMonoStyle}>{userDisplayName ?? "signed in"}</span>
-        </div>
-      </header>
+      <RelayTopRail
+        activeStep="Refine"
+        userLabel={userDisplayName}
+        projectHref={`/style-memory?project=${encodeURIComponent(projectId)}`}
+      />
 
       <main style={workspaceStyle} aria-label="Style Memory workspace">
         <div style={wsHeadStyle}>
-          <h2 style={wsTitleStyle}>Style Memory</h2>
-          <div style={wsSubStyle}>{subTitle}</div>
+          <div>
+            <p style={pageEyebrowStyle}>{projectId} · Style Memory</p>
+            <h2 style={wsTitleStyle}>{subTitle}</h2>
+          </div>
+          <div style={wsActionsStyle}>
+            <a href={`/projects/${encodeURIComponent(projectId)}/packet-builder`} style={ghostActionStyle}>
+              Compose handoff
+            </a>
           <button
             type="button"
             onClick={() => setView((v) => (v === "single" ? "batch" : "single"))}
@@ -421,6 +424,7 @@ export function Proposals({
           >
             {view === "batch" ? "Single hero" : "View all queue"}
           </button>
+          </div>
         </div>
 
         <nav style={tabsStyle} role="tablist" aria-label="Style Memory views">
@@ -704,7 +708,7 @@ function ProposalCard({
 
       {!isQueued && (
         <>
-          <div style={diffStyle}>
+          <div className="relay-style-memory-diff" style={diffStyle}>
             {proposal.normalizedText ? (
               <div style={diffSideStyle("before")}>
                 <span style={diffMetaStyle("before")}>Current heuristic</span>
@@ -730,12 +734,14 @@ function ProposalCard({
             <div style={provenanceStyle}>
               {proposal.sourceTraceIds.map((tid) => (
                 <span key={tid} style={sourceChipStyle("trace")}>
-                  trace #{tid.slice(0, 6)}
+                  <span style={sourceDotStyle("trace")} />
+                  trace · {tid.slice(0, 10)}
                 </span>
               ))}
               {proposal.sourceRefs.map((ref) => (
                 <span key={ref} style={sourceChipStyle("note")}>
-                  ref #{ref.slice(0, 6)}
+                  <span style={sourceDotStyle("note")} />
+                  ref · {ref.slice(0, 10)}
                 </span>
               ))}
             </div>
@@ -1075,27 +1081,6 @@ const layoutStyle: CSSProperties = {
   flexDirection: "column",
 };
 
-const railStyle: CSSProperties = {
-  height: "56px",
-  display: "grid",
-  gridTemplateColumns: "1fr auto",
-  alignItems: "center",
-  padding: "0 24px",
-  borderBottom: "1px solid var(--border)",
-  background: "color-mix(in oklab, var(--canvas) 88%, transparent)",
-  position: "sticky",
-  top: 0,
-  zIndex: 30,
-};
-
-const wordmarkStyle: CSSProperties = {
-  fontFamily: "var(--font-display)",
-  fontWeight: 600,
-  fontSize: "22px",
-  letterSpacing: "-0.02em",
-  fontVariationSettings: '"opsz" 48, "SOFT" 30',
-};
-
 const muteMonoStyle: CSSProperties = {
   fontFamily: "var(--font-mono)",
   fontSize: "11px",
@@ -1105,37 +1090,61 @@ const muteMonoStyle: CSSProperties = {
 
 const workspaceStyle: CSSProperties = {
   width: "100%",
-  maxWidth: "960px",
+  maxWidth: "1120px",
   margin: "0 auto",
-  padding: "28px 32px 80px",
+  padding: "32px 40px 80px",
   flex: 1,
 };
 
 const wsHeadStyle: CSSProperties = {
   display: "flex",
-  alignItems: "baseline",
-  gap: "20px",
-  paddingBottom: "18px",
+  alignItems: "flex-end",
+  justifyContent: "space-between",
+  gap: "24px",
+  paddingBottom: "24px",
   borderBottom: "1px solid var(--border)",
-  marginBottom: "22px",
+  marginBottom: "28px",
   flexWrap: "wrap",
+};
+
+const pageEyebrowStyle: CSSProperties = {
+  margin: "0 0 8px",
+  color: "var(--muted)",
+  fontFamily: "var(--font-mono)",
+  fontSize: "11px",
+  letterSpacing: "0.14em",
+  textTransform: "uppercase",
 };
 
 const wsTitleStyle: CSSProperties = {
   fontFamily: "var(--font-display)",
   fontWeight: 500,
-  fontSize: "30px",
-  letterSpacing: "-0.022em",
-  fontVariationSettings: '"opsz" 48, "SOFT" 40',
+  fontSize: "40px",
+  lineHeight: 1.1,
+  letterSpacing: "-0.02em",
+  fontVariationSettings: '"opsz" 96, "SOFT" 40',
   margin: 0,
 };
 
-const wsSubStyle: CSSProperties = {
-  fontFamily: "var(--font-display)",
-  fontStyle: "italic",
-  fontSize: "14px",
-  color: "var(--ink-muted)",
-  flex: 1,
+const wsActionsStyle: CSSProperties = {
+  display: "flex",
+  gap: "8px",
+  flexWrap: "wrap",
+  alignItems: "center",
+};
+
+const ghostActionStyle: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  minHeight: "34px",
+  padding: "0 13px",
+  border: "1px solid var(--border-strong)",
+  borderRadius: "8px",
+  color: "var(--ink)",
+  fontFamily: "var(--font-sans)",
+  fontSize: "12.5px",
+  fontWeight: 700,
+  textDecoration: "none",
 };
 
 function viewToggleStyle(active: boolean): CSSProperties {
@@ -1155,21 +1164,23 @@ function viewToggleStyle(active: boolean): CSSProperties {
 
 const tabsStyle: CSSProperties = {
   display: "flex",
-  gap: "4px",
-  marginBottom: "18px",
+  gap: "24px",
+  borderBottom: "1px solid var(--border)",
+  marginBottom: "28px",
 };
 
 function tabBtnStyle(active: boolean): CSSProperties {
   return {
-    fontFamily: "var(--font-sans)",
-    fontSize: "12px",
-    fontWeight: 600,
-    padding: "7px 14px",
-    borderRadius: "999px",
-    color: active ? "var(--canvas)" : "var(--muted)",
-    background: active ? "var(--ink)" : "transparent",
-    border: "1px solid transparent",
-    letterSpacing: "0.02em",
+    fontFamily: "var(--font-mono)",
+    fontSize: "11px",
+    padding: "0 0 12px",
+    marginBottom: "-1px",
+    color: active ? "var(--ink)" : "var(--muted)",
+    background: "transparent",
+    border: "0",
+    borderBottom: `1px solid ${active ? "var(--magic-primary-strong)" : "transparent"}`,
+    letterSpacing: "0.16em",
+    textTransform: "uppercase",
     cursor: "pointer",
     display: "inline-flex",
     alignItems: "center",
@@ -1201,7 +1212,7 @@ function computeCardStyle(
     border: "1px solid var(--border)",
     borderRadius: "12px",
     background: "var(--canvas-raised)",
-    padding: "20px 22px",
+    padding: "24px",
     position: "relative",
     overflow: "hidden",
   };
@@ -1215,11 +1226,8 @@ function computeCardStyle(
   if (mode === "hero" || animating) {
     return {
       ...base,
-      borderLeft: "3px solid var(--magic-accent-strong)",
-      paddingLeft: "25px",
       borderColor: "var(--magic-primary-strong)",
-      boxShadow:
-        "0 0 0 4px var(--halo), 0 24px 40px -24px color-mix(in oklab, var(--magic-accent-strong) 40%, transparent)",
+      boxShadow: "0 0 0 4px color-mix(in srgb, var(--magic-primary-strong) 18%, transparent)",
     };
   }
   if (mode === "batch") {
@@ -1291,10 +1299,10 @@ const confBoldStyle: CSSProperties = {
 const diffStyle: CSSProperties = {
   display: "grid",
   gridTemplateColumns: "1fr 1fr",
-  gap: "8px",
+  gap: "16px",
   fontFamily: "var(--font-mono)",
-  fontSize: "11.5px",
-  marginBottom: "16px",
+  fontSize: "15px",
+  marginBottom: "22px",
 };
 
 function diffSideStyle(side: "before" | "after"): CSSProperties {
@@ -1310,8 +1318,8 @@ function diffSideStyle(side: "before" | "after"): CSSProperties {
     };
   }
   return {
-    padding: "11px 13px",
-    borderRadius: "8px",
+      padding: "11px 13px",
+      borderRadius: "8px",
     lineHeight: 1.55,
     whiteSpace: "pre-wrap",
     wordBreak: "break-word",
@@ -1339,11 +1347,10 @@ const rationaleStyle: CSSProperties = {
   fontFamily: "var(--font-display)",
   fontStyle: "italic",
   fontWeight: 400,
-  fontSize: "15px",
+  fontSize: "17px",
+  lineHeight: 1.5,
   color: "var(--ink-muted)",
-  padding: "4px 0 0 14px",
-  marginBottom: "14px",
-  borderLeft: "2px solid color-mix(in oklab, var(--magic-accent) 50%, transparent)",
+  margin: "0 0 22px",
   fontVariationSettings: '"opsz" 48',
 };
 
@@ -1360,12 +1367,22 @@ function sourceChipStyle(_kind: "trace" | "note"): CSSProperties {
     alignItems: "center",
     gap: "6px",
     fontFamily: "var(--font-mono)",
-    fontSize: "10.5px",
-    padding: "3px 9px",
+    fontSize: "11px",
+    padding: "5px 10px",
     borderRadius: "999px",
-    border: "1px solid var(--border-strong)",
+    border: "1px solid var(--border)",
     color: "var(--ink-muted)",
     letterSpacing: "0.03em",
+    background: "var(--canvas-raised)",
+  };
+}
+
+function sourceDotStyle(kind: "trace" | "note"): CSSProperties {
+  return {
+    width: "6px",
+    height: "6px",
+    borderRadius: "999px",
+    background: kind === "trace" ? "var(--magic-accent-strong)" : "var(--success)",
   };
 }
 

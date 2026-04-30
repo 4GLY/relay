@@ -122,189 +122,258 @@ export function APIKeySettingsClient({ copy, errorMap, initialKeys, locale }: Pr
   const canIssue = name.trim().length > 0 && !isIssuing && !revokingKeyID;
 
   return (
-    <section style={panelStyle} aria-labelledby="api-key-settings-title">
-      <div>
+    <section style={surfaceStyle} aria-labelledby="api-key-settings-title">
+      <header style={pageHeadStyle}>
         <p style={eyebrowStyle}>{copy.eyebrow}</p>
-        <h1 id="api-key-settings-title" style={titleStyle}>
-          {copy.title}
-        </h1>
-        <p style={copyStyle}>{copy.copy}</p>
-        <p style={settingsOnlyStyle}>{copy.settingsOnlyPill}</p>
-      </div>
-
-      <label style={labelStyle} htmlFor="api-key-name">
-        {copy.nameLabel}
-      </label>
-      <input
-        id="api-key-name"
-        type="text"
-        value={name}
-        onChange={(event) => setName(event.target.value)}
-        placeholder={copy.namePlaceholder}
-        autoComplete="off"
-        style={inputStyle}
-      />
-      <p style={fieldHelpStyle}>{copy.fieldHelp}</p>
-
-      <div style={actionsStyle}>
-        <button
-          type="button"
-          disabled={!canIssue}
-          onClick={issueKey}
-          style={{
-            ...primaryButtonStyle,
-            opacity: canIssue ? 1 : 0.55,
-            cursor: canIssue ? "pointer" : "not-allowed",
-          }}
-          data-testid="issue-api-key"
-        >
-          {isIssuing ? copy.issuingButton : copy.issueButton}
-        </button>
-      </div>
-
-      {issuedToken && (
-        <section style={tokenPanelStyle} aria-live="polite">
+        <div style={pageHeadRowStyle}>
           <div>
-            <strong style={tokenTitleStyle}>{copy.tokenPanelTitle}</strong>
-            <p style={tokenCopyStyle}>
-              {copy.tokenPanelCopy} {issuedToken.name} · {issuedToken.tokenPrefix}
-            </p>
+            <h1 id="api-key-settings-title" style={titleStyle}>
+              {copy.title}
+            </h1>
+            <p style={copyStyle}>{copy.copy}</p>
           </div>
-          <label style={labelStyle} htmlFor="issued-api-key-token">
-            {copy.tokenLabel}
+          <p style={settingsOnlyStyle}>{copy.settingsOnlyPill}</p>
+        </div>
+      </header>
+
+      <div style={settingsGridStyle}>
+        <section style={cardStyle} aria-labelledby="issue-api-key-title">
+          <div style={cardHeadStyle}>
+            <p style={cardKickerStyle}>{copy.settingsOnlyPill}</p>
+            <h2 id="issue-api-key-title" style={cardTitleStyle}>
+              {copy.issueButton}
+            </h2>
+          </div>
+
+          <label style={labelStyle} htmlFor="api-key-name">
+            {copy.nameLabel}
           </label>
-          <div style={tokenRowStyle}>
-            <input
-              id="issued-api-key-token"
-              type="text"
-              readOnly
-              value={issuedToken.token}
-              autoComplete="off"
-              spellCheck={false}
-              style={tokenInputStyle}
-            />
+          <input
+            id="api-key-name"
+            type="text"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder={copy.namePlaceholder}
+            autoComplete="off"
+            style={inputStyle}
+          />
+          <p style={fieldHelpStyle}>{copy.fieldHelp}</p>
+
+          <div style={actionsStyle}>
             <button
               type="button"
-              onClick={copyIssuedToken}
-              style={secondaryButtonStyle}
-              data-testid="copy-issued-api-key"
+              disabled={!canIssue}
+              onClick={issueKey}
+              style={{
+                ...primaryButtonStyle,
+                opacity: canIssue ? 1 : 0.55,
+                cursor: canIssue ? "pointer" : "not-allowed",
+              }}
+              data-testid="issue-api-key"
             >
-              {copyStatus === "copied" ? copy.copiedButton : copy.copyButton}
+              {isIssuing ? copy.issuingButton : copy.issueButton}
             </button>
           </div>
-          {copyStatus === "error" && (
-            <p role="alert" style={errorStyle}>
-              {copy.copyError}
+
+          {issuedToken && (
+            <section style={tokenPanelStyle} aria-live="polite">
+              <div>
+                <strong style={tokenTitleStyle}>{copy.tokenPanelTitle}</strong>
+                <p style={tokenCopyStyle}>
+                  {copy.tokenPanelCopy} {issuedToken.name} · {issuedToken.tokenPrefix}
+                </p>
+              </div>
+              <label style={labelStyle} htmlFor="issued-api-key-token">
+                {copy.tokenLabel}
+              </label>
+              <div style={tokenRowStyle}>
+                <input
+                  id="issued-api-key-token"
+                  type="text"
+                  readOnly
+                  value={issuedToken.token}
+                  autoComplete="off"
+                  spellCheck={false}
+                  style={tokenInputStyle}
+                />
+                <button
+                  type="button"
+                  onClick={copyIssuedToken}
+                  style={secondaryButtonStyle}
+                  data-testid="copy-issued-api-key"
+                >
+                  {copyStatus === "copied" ? copy.copiedButton : copy.copyButton}
+                </button>
+              </div>
+              {copyStatus === "error" && (
+                <p role="alert" style={errorStyle}>
+                  {copy.copyError}
+                </p>
+              )}
+            </section>
+          )}
+
+          {feedback.message && (
+            <p
+              aria-live="polite"
+              role={feedback.kind === "error" ? "alert" : "status"}
+              style={feedback.kind === "error" ? errorStyle : successStyle}
+            >
+              {feedback.message}
             </p>
           )}
         </section>
-      )}
 
-      {feedback.message && (
-        <p
-          aria-live="polite"
-          role={feedback.kind === "error" ? "alert" : "status"}
-          style={feedback.kind === "error" ? errorStyle : successStyle}
-        >
-          {feedback.message}
-        </p>
-      )}
+        <section style={cardStyle} aria-labelledby="issued-keys-title">
+          <div style={listHeaderStyle}>
+            <div>
+              <p style={cardKickerStyle}>{copy.scopeLabel}</p>
+              <h2 id="issued-keys-title" style={listTitleStyle}>
+                {copy.listTitle}
+              </h2>
+            </div>
+            <span style={countBadgeStyle}>{keys.length}</span>
+          </div>
 
-      <section style={listSectionStyle} aria-labelledby="issued-keys-title">
-        <div style={listHeaderStyle}>
-          <h2 id="issued-keys-title" style={listTitleStyle}>
-            {copy.listTitle}
-          </h2>
-        </div>
+          {keys.length === 0 ? (
+            <div style={emptyStateStyle}>
+              <span style={emptyGlyphStyle}>○</span>
+              <p style={emptyCopyStyle}>{copy.emptyState}</p>
+            </div>
+          ) : (
+            <ul style={listStyle}>
+              {keys.map((item) => {
+                const isRevoking = revokingKeyID === item.key_id;
+                const isConfirming = confirmingKeyID === item.key_id;
+                const scopeLabel =
+                  item.scope === "project" ? copy.scopeProject : copy.scopeGlobal;
 
-        {keys.length === 0 ? (
-          <p style={emptyStateStyle}>{copy.emptyState}</p>
-        ) : (
-          <ul style={listStyle}>
-            {keys.map((item) => {
-              const isRevoking = revokingKeyID === item.key_id;
-              const isConfirming = confirmingKeyID === item.key_id;
-              const scopeLabel =
-                item.scope === "project" ? copy.scopeProject : copy.scopeGlobal;
-
-              return (
-                <li key={item.key_id} style={rowStyle}>
-                  <div style={rowTopStyle}>
-                    <div>
-                      <strong style={rowTitleStyle}>{item.name}</strong>
-                      <p style={rowMetaStyle}>{item.token_prefix}</p>
-                    </div>
-                    <span style={item.revoked ? revokedBadgeStyle : activeBadgeStyle}>
-                      {item.revoked ? copy.revokedStatus : copy.activeStatus}
-                    </span>
-                  </div>
-
-                  <dl style={metaGridStyle}>
-                    <div>
-                      <dt style={metaLabelStyle}>{copy.scopeLabel}</dt>
-                      <dd style={metaValueStyle}>{scopeLabel}</dd>
-                    </div>
-                    {item.project_id ? (
+                return (
+                  <li key={item.key_id} style={rowStyle}>
+                    <div style={rowTopStyle}>
                       <div>
-                        <dt style={metaLabelStyle}>{copy.projectLabel}</dt>
-                        <dd style={metaValueStyle}>{item.project_id}</dd>
+                        <strong style={rowTitleStyle}>{item.name}</strong>
+                        <p style={rowMetaStyle}>{item.token_prefix}</p>
                       </div>
-                    ) : null}
-                  </dl>
-
-                  {!item.revoked && (
-                    <div style={rowActionsStyle}>
-                      {isConfirming ? (
-                        <>
-                          <p style={confirmCopyStyle}>{copy.revokeConfirmCopy}</p>
-                          <div style={confirmActionsStyle}>
-                            <button
-                              type="button"
-                              onClick={() => revokeKey(item.key_id)}
-                              disabled={Boolean(revokingKeyID)}
-                              style={dangerButtonStyle}
-                              data-testid={`confirm-revoke-${item.key_id}`}
-                            >
-                              {isRevoking ? copy.revokingButton : copy.confirmRevokeButton}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setConfirmingKeyID(null)}
-                              disabled={Boolean(revokingKeyID)}
-                              style={secondaryButtonStyle}
-                            >
-                              {copy.cancelRevokeButton}
-                            </button>
-                          </div>
-                        </>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => setConfirmingKeyID(item.key_id)}
-                          style={secondaryButtonStyle}
-                          data-testid={`revoke-api-key-${item.key_id}`}
-                        >
-                          {copy.revokeButton}
-                        </button>
-                      )}
+                      <span style={item.revoked ? revokedBadgeStyle : activeBadgeStyle}>
+                        {item.revoked ? copy.revokedStatus : copy.activeStatus}
+                      </span>
                     </div>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </section>
+
+                    <dl style={metaGridStyle}>
+                      <div>
+                        <dt style={metaLabelStyle}>{copy.scopeLabel}</dt>
+                        <dd style={metaValueStyle}>{scopeLabel}</dd>
+                      </div>
+                      {item.project_id ? (
+                        <div>
+                          <dt style={metaLabelStyle}>{copy.projectLabel}</dt>
+                          <dd style={metaValueStyle}>{item.project_id}</dd>
+                        </div>
+                      ) : null}
+                    </dl>
+
+                    {!item.revoked && (
+                      <div style={rowActionsStyle}>
+                        {isConfirming ? (
+                          <>
+                            <p style={confirmCopyStyle}>{copy.revokeConfirmCopy}</p>
+                            <div style={confirmActionsStyle}>
+                              <button
+                                type="button"
+                                onClick={() => revokeKey(item.key_id)}
+                                disabled={Boolean(revokingKeyID)}
+                                style={dangerButtonStyle}
+                                data-testid={`confirm-revoke-${item.key_id}`}
+                              >
+                                {isRevoking ? copy.revokingButton : copy.confirmRevokeButton}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setConfirmingKeyID(null)}
+                                disabled={Boolean(revokingKeyID)}
+                                style={secondaryButtonStyle}
+                              >
+                                {copy.cancelRevokeButton}
+                              </button>
+                            </div>
+                          </>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setConfirmingKeyID(item.key_id)}
+                            style={secondaryButtonStyle}
+                            data-testid={`revoke-api-key-${item.key_id}`}
+                          >
+                            {copy.revokeButton}
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+      </div>
     </section>
   );
 }
 
-const panelStyle: React.CSSProperties = {
-  maxWidth: "720px",
-  padding: "30px",
+const surfaceStyle: React.CSSProperties = {
+  width: "100%",
+  maxWidth: "1120px",
+};
+
+const pageHeadStyle: React.CSSProperties = {
+  marginBottom: "24px",
+  paddingBottom: "22px",
+  borderBottom: "1px solid var(--border)",
+};
+
+const pageHeadRowStyle: React.CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  justifyContent: "space-between",
+  gap: "18px",
+  alignItems: "end",
+};
+
+const settingsGridStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "minmax(300px, 0.9fr) minmax(340px, 1.1fr)",
+  gap: "18px",
+  alignItems: "start",
+};
+
+const cardStyle: React.CSSProperties = {
+  minWidth: 0,
+  padding: "22px",
   border: "1px solid var(--border)",
-  borderRadius: "8px",
+  borderRadius: "12px",
   background: "var(--canvas-raised)",
+  boxShadow: "0 18px 48px var(--halo)",
+};
+
+const cardHeadStyle: React.CSSProperties = {
+  marginBottom: "20px",
+};
+
+const cardKickerStyle: React.CSSProperties = {
+  margin: "0 0 8px",
+  color: "var(--magic-primary-strong)",
+  fontFamily: "var(--font-mono)",
+  fontSize: "10px",
+  letterSpacing: "0.16em",
+  textTransform: "uppercase",
+};
+
+const cardTitleStyle: React.CSSProperties = {
+  margin: 0,
+  fontFamily: "var(--font-display)",
+  fontSize: "28px",
+  fontWeight: 600,
 };
 
 const eyebrowStyle: React.CSSProperties = {
@@ -317,40 +386,46 @@ const eyebrowStyle: React.CSSProperties = {
 };
 
 const titleStyle: React.CSSProperties = {
-  margin: "0 0 14px",
+  margin: "0 0 10px",
   fontFamily: "var(--font-display)",
-  fontSize: "42px",
-  fontWeight: 500,
-  letterSpacing: "-0.02em",
+  fontSize: "clamp(38px, 5vw, 64px)",
+  fontWeight: 600,
+  letterSpacing: "0",
+  lineHeight: 0.95,
 };
 
 const copyStyle: React.CSSProperties = {
-  maxWidth: "560px",
-  margin: "0 0 24px",
+  maxWidth: "620px",
+  margin: 0,
   color: "var(--ink-muted)",
   lineHeight: 1.6,
 };
 
 const settingsOnlyStyle: React.CSSProperties = {
   display: "inline-flex",
-  minHeight: "28px",
+  minHeight: "32px",
   alignItems: "center",
-  border: "1px solid var(--border)",
-  borderRadius: "999px",
-  padding: "0 10px",
-  margin: "0 0 24px",
+  border: "1px solid var(--border-strong)",
+  borderRadius: "6px",
+  padding: "0 11px",
+  margin: 0,
   color: "var(--ink-muted)",
   fontFamily: "var(--font-mono)",
   fontSize: "11px",
   letterSpacing: "0.08em",
   textTransform: "uppercase",
+  background: "var(--canvas)",
 };
 
 const labelStyle: React.CSSProperties = {
   display: "block",
   marginBottom: "8px",
-  fontSize: "13px",
-  fontWeight: 800,
+  color: "var(--ink)",
+  fontFamily: "var(--font-mono)",
+  fontSize: "11px",
+  fontWeight: 700,
+  letterSpacing: "0.12em",
+  textTransform: "uppercase",
 };
 
 const inputStyle: React.CSSProperties = {
@@ -408,9 +483,9 @@ const dangerButtonStyle: React.CSSProperties = {
 const tokenPanelStyle: React.CSSProperties = {
   marginTop: "20px",
   padding: "18px",
-  border: "1px solid var(--border-strong)",
-  borderRadius: "8px",
-  background: "var(--canvas)",
+  border: "1px solid var(--magic-primary-strong)",
+  borderRadius: "12px",
+  background: "color-mix(in srgb, var(--magic-primary) 14%, var(--canvas-raised))",
 };
 
 const tokenTitleStyle: React.CSSProperties = {
@@ -457,24 +532,51 @@ const errorStyle: React.CSSProperties = {
   fontSize: "13px",
 };
 
-const listSectionStyle: React.CSSProperties = {
-  marginTop: "28px",
-  paddingTop: "24px",
-  borderTop: "1px solid var(--border)",
-};
-
 const listHeaderStyle: React.CSSProperties = {
-  marginBottom: "14px",
+  display: "flex",
+  justifyContent: "space-between",
+  gap: "12px",
+  alignItems: "start",
+  marginBottom: "16px",
 };
 
 const listTitleStyle: React.CSSProperties = {
   margin: 0,
   fontFamily: "var(--font-display)",
-  fontWeight: 500,
+  fontWeight: 600,
   fontSize: "28px",
 };
 
+const countBadgeStyle: React.CSSProperties = {
+  display: "inline-flex",
+  minWidth: "30px",
+  minHeight: "30px",
+  alignItems: "center",
+  justifyContent: "center",
+  border: "1px solid var(--border-strong)",
+  borderRadius: "999px",
+  color: "var(--ink-muted)",
+  fontFamily: "var(--font-mono)",
+  fontSize: "12px",
+};
+
 const emptyStateStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "20px minmax(0, 1fr)",
+  gap: "12px",
+  alignItems: "start",
+  padding: "18px",
+  border: "1px dashed var(--border-strong)",
+  borderRadius: "12px",
+  background: "var(--canvas)",
+};
+
+const emptyGlyphStyle: React.CSSProperties = {
+  color: "var(--muted)",
+  fontFamily: "var(--font-mono)",
+};
+
+const emptyCopyStyle: React.CSSProperties = {
   margin: 0,
   color: "var(--ink-muted)",
   lineHeight: 1.6,
@@ -485,13 +587,13 @@ const listStyle: React.CSSProperties = {
   padding: 0,
   margin: 0,
   display: "grid",
-  gap: "14px",
+  gap: "12px",
 };
 
 const rowStyle: React.CSSProperties = {
-  padding: "18px",
+  padding: "16px",
   border: "1px solid var(--border)",
-  borderRadius: "8px",
+  borderRadius: "12px",
   background: "var(--canvas)",
 };
 
@@ -520,9 +622,10 @@ const badgeBaseStyle: React.CSSProperties = {
   alignItems: "center",
   minHeight: "26px",
   padding: "0 10px",
-  borderRadius: "999px",
+  borderRadius: "6px",
+  fontFamily: "var(--font-mono)",
   fontSize: "11px",
-  fontWeight: 800,
+  fontWeight: 700,
   letterSpacing: "0.08em",
   textTransform: "uppercase",
 };
@@ -548,6 +651,7 @@ const metaGridStyle: React.CSSProperties = {
 
 const metaLabelStyle: React.CSSProperties = {
   color: "var(--muted)",
+  fontFamily: "var(--font-mono)",
   fontSize: "11px",
   letterSpacing: "0.08em",
   textTransform: "uppercase",

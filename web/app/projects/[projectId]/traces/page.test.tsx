@@ -112,15 +112,16 @@ describe("<TraceBrowserPage>", () => {
       }),
     );
 
-    expect(screen.getByRole("heading", { name: "Trace Browser" })).toBeVisible();
-    expect(screen.getByText("Featured trace")).toBeVisible();
+    expect(screen.getByRole("heading", { name: "3 traces captured." })).toBeVisible();
+    expect(screen.getByRole("navigation", { name: "Trace filters" })).toBeVisible();
     expect(screen.getByText("Prefer explicit recovery actions.")).toBeVisible();
-    const archiveSummary = screen.getByText("Browse 2 more traces");
-    expect(archiveSummary).toBeVisible();
-    expect(archiveSummary.closest("details")).not.toHaveAttribute("open");
+    expect(screen.getAllByText("Swan").length).toBeGreaterThan(0);
     expect(screen.getByText("qa:live:e2e")).toBeVisible();
     expect(container.querySelector("#trace_1")).toHaveTextContent("Prefer explicit recovery actions.");
-    expect(screen.getByRole("link", { name: "Project Explorer" })).toHaveAttribute(
+    const projectExplorerLink = screen
+      .getAllByRole("link", { name: /Project Explorer/ })
+      .find((link) => link.getAttribute("href") === "/projects/proj_1");
+    expect(projectExplorerLink).toHaveAttribute(
       "href",
       "/projects/proj_1",
     );
@@ -154,7 +155,11 @@ describe("<TraceBrowserPage>", () => {
     );
 
     expect(container.querySelector("#trace_2")).toHaveTextContent("Keep source panels collapsed by default.");
-    expect(screen.getByText("Browse 2 more traces")).toBeVisible();
+    expect(screen.getByRole("link", { name: "trace_2" })).toHaveAttribute(
+      "href",
+      "/projects/proj_1/traces?trace=trace_2",
+    );
+    expect(container.querySelector("#trace_2")).toHaveAttribute("data-selected", "true");
   });
 
   it("shows sign-in when there is no session", async () => {

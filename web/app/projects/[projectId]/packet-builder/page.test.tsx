@@ -98,9 +98,9 @@ describe("<PacketBuilderPage>", () => {
 
     render(await PacketBuilderPage({ params: Promise.resolve({ projectId: "proj_1" }) }));
 
-    expect(screen.getByRole("heading", { name: "Packet Builder" })).toBeVisible();
+    expect(screen.getByRole("heading", { name: "Compose a handoff." })).toBeVisible();
     expect(screen.getByText(/Use specific recovery paths/i)).toBeVisible();
-    expect(screen.getByRole("link", { name: "Open public snapshot" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /Open public snapshot/i })).toHaveAttribute(
       "href",
       "/p/psnap_public",
     );

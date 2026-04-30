@@ -1,7 +1,9 @@
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import type { CSSProperties } from "react";
 
+import { RelayAppShell } from "@/components/relay-app-shell";
 import { RELAY_API_URL, relayFetch, type RelayEnvelope } from "@/lib/api";
 import type { AuthMe } from "@/lib/onboarding";
 import {
@@ -95,123 +97,169 @@ function TraceBrowser({
 }) {
   const selectedTrace =
     traces.find((trace) => trace.traceId === selectedTraceId) ?? traces[0];
-  const remainingTraces = selectedTrace
-    ? traces.filter((trace) => trace.traceId !== selectedTrace.traceId)
-    : [];
+  const tabs = [
+    { label: "All", count: traces.length, active: true },
+    { label: "Decisions", count: countByArtifact(traces, ["decision", "style_memory", "heuristic"]) },
+    { label: "Open questions", count: countByArtifact(traces, ["question", "open_question"]) },
+    { label: "Notes", count: countByArtifact(traces, ["note", "design_doc", "doc"]) },
+  ];
 
   return (
-    <main style={pageStyle}>
-      <header style={topbarStyle}>
-        <Link href="/" style={brandStyle}>
-          Relay<span style={{ color: "var(--magic-primary-strong)" }}>.</span>
-        </Link>
-        <span style={userStyle}>{userDisplayName ?? "signed in"}</span>
-      </header>
-
-      <section style={heroStyle} aria-labelledby="trace-title">
-        <p style={eyebrowStyle}>Project Explorer · Judgment Traces</p>
-        <div style={heroRowStyle}>
-          <div>
-            <h1 id="trace-title" style={titleStyle}>
-              Trace Browser
-            </h1>
-            <p style={subtitleStyle}>
-              {traces.length} trace{traces.length === 1 ? "" : "s"} captured for this project.
-            </p>
-          </div>
-          <nav aria-label="Trace actions" style={actionsStyle}>
-            <a href={`/projects/${encodeURIComponent(projectId)}`} style={secondaryLinkStyle}>
-              Project Explorer
-            </a>
-            <a href={`/style-memory?project=${encodeURIComponent(projectId)}`} style={primaryLinkStyle}>
-              Style Memory
-            </a>
-          </nav>
+    <RelayAppShell
+      activeStep="Dissect"
+      userLabel={userDisplayName}
+      projectHref={`/projects/${encodeURIComponent(projectId)}`}
+      railItems={projectRailItems(projectId, "traces", traces.length)}
+    >
+      <section style={pageHeadStyle} aria-labelledby="trace-title">
+        <div>
+          <p style={eyebrowStyle}>{projectId} · Judgment Traces</p>
+          <h1 id="trace-title" style={titleStyle}>
+            {traces.length} trace{traces.length === 1 ? "" : "s"} captured.
+          </h1>
         </div>
+        <nav aria-label="Trace actions" style={actionsStyle}>
+          <Link href={`/projects/${encodeURIComponent(projectId)}`} style={secondaryLinkStyle}>
+            Project Explorer
+          </Link>
+          <Link href={`/style-memory?project=${encodeURIComponent(projectId)}`} style={primaryLinkStyle}>
+            Style Memory
+          </Link>
+        </nav>
       </section>
 
-      {selectedTrace ? (
-        <>
-          <section style={narrativeShellStyle} aria-labelledby="featured-trace-title">
-            <p style={narrativeKickerStyle}>Featured trace</p>
-            <TraceCard trace={selectedTrace} selected headingId="featured-trace-title" />
-          </section>
+      <nav aria-label="Trace filters" style={tabsStyle}>
+        {tabs.map((tab) => (
+          <span
+            key={tab.label}
+            aria-current={tab.active ? "page" : undefined}
+            style={tab.active ? activeTabStyle : tabStyle}
+          >
+            {tab.label} · {tab.count}
+          </span>
+        ))}
+      </nav>
 
-          {remainingTraces.length > 0 ? (
-            <details style={traceArchiveStyle}>
-              <summary style={archiveSummaryStyle}>
-                Browse {remainingTraces.length} more trace{remainingTraces.length === 1 ? "" : "s"}
-              </summary>
-              <ol style={traceListStyle}>
-                {remainingTraces.map((trace) => (
-                  <li key={trace.traceId}>
-                    <TraceCard trace={trace} />
-                  </li>
-                ))}
-              </ol>
-            </details>
-          ) : null}
-        </>
+      {selectedTrace ? (
+        <section className="relay-card relay-trace-table" style={traceTableStyle} aria-label="Judgment trace list">
+          <div className="relay-trace-header-row" style={traceHeaderRowStyle} aria-hidden="true">
+            <span>Trace</span>
+            <span>Decision</span>
+            <span>State</span>
+            <span>Captured</span>
+            <span>Refs</span>
+          </div>
+          {traces.map((trace) => {
+            const selected = trace.traceId === selectedTrace.traceId;
+            return (
+              <article
+                key={trace.traceId}
+                id={trace.traceId}
+                className="relay-trace-row"
+                data-selected={selected || undefined}
+                style={selected ? selectedTraceRowStyle : traceRowStyle}
+              >
+                <Link
+                  href={`/projects/${encodeURIComponent(projectId)}/traces?trace=${encodeURIComponent(trace.traceId)}`}
+                  style={traceIdStyle}
+                >
+                  {truncateId(trace.traceId)}
+                </Link>
+                <div style={traceDecisionCellStyle}>
+                  <h2 style={traceDecisionStyle}>{trace.decision}</h2>
+                  {trace.rationale ? <p style={traceRationaleStyle}>{trace.rationale}</p> : null}
+                  <div style={traceMetaLineStyle}>
+                    <span>{firstNonEmpty(trace.workflow, "workflow")}</span>
+                    <span>·</span>
+                    <span>{firstNonEmpty(trace.artifactType, "artifact")}</span>
+                    {trace.taskId ? (
+                      <>
+                        <span>·</span>
+                        <span>{trace.taskId}</span>
+                      </>
+                    ) : null}
+                    {trace.agentId ? (
+                      <>
+                        <span>·</span>
+                        <span>{trace.agentId}</span>
+                      </>
+                    ) : null}
+                  </div>
+                  {trace.sourceRefs.length > 0 ? (
+                    <ul aria-label={`Source refs for ${trace.traceId}`} style={sourceRefListStyle}>
+                      {trace.sourceRefs.slice(0, 3).map((sourceRef) => (
+                        <li key={sourceRef} style={sourceRefStyle}>
+                          <span style={sourceDotStyle} aria-hidden="true" />
+                          {sourceRef}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </div>
+                <span style={stateBadgeStyle(traceState(trace))}>{traceState(trace)}</span>
+                <time dateTime={trace.createdAt} style={timeStyle}>
+                  {formatDate(trace.createdAt)}
+                </time>
+                <span style={refsStyle}>
+                  {trace.sourceRefs.length} ref{trace.sourceRefs.length === 1 ? "" : "s"}
+                </span>
+              </article>
+            );
+          })}
+        </section>
       ) : (
         <section style={emptyPanelStyle}>
           <h2 style={emptyTitleStyle}>No traces captured yet.</h2>
           <p style={quietCopyStyle}>Capture judgment traces to give Style Memory reviewable evidence.</p>
         </section>
       )}
-    </main>
+    </RelayAppShell>
   );
 }
 
-function TraceCard({
-  trace,
-  selected = false,
-  headingId,
-}: {
-  trace: JudgmentTrace;
-  selected?: boolean;
-  headingId?: string;
-}) {
-  return (
-    <article id={trace.traceId} style={selected ? selectedTraceCardStyle : traceCardStyle}>
-      <div style={traceHeaderStyle}>
-        <span style={traceBadgeStyle}>
-          {firstNonEmpty(trace.workflow, "workflow")} · {firstNonEmpty(trace.artifactType, "artifact")}
-        </span>
-        <time dateTime={trace.createdAt} style={timeStyle}>
-          {formatDate(trace.createdAt)}
-        </time>
-      </div>
-      <h2 id={headingId} style={traceDecisionStyle}>{trace.decision}</h2>
-      {trace.rationale ? <p style={traceRationaleStyle}>{trace.rationale}</p> : null}
-      <dl style={traceMetaStyle}>
-        <div>
-          <dt style={metaLabelStyle}>Trace</dt>
-          <dd style={metaValueStyle}>{trace.traceId}</dd>
-        </div>
-        {trace.taskId ? (
-          <div>
-            <dt style={metaLabelStyle}>Task</dt>
-            <dd style={metaValueStyle}>{trace.taskId}</dd>
-          </div>
-        ) : null}
-        {trace.agentId ? (
-          <div>
-            <dt style={metaLabelStyle}>Agent</dt>
-            <dd style={metaValueStyle}>{trace.agentId}</dd>
-          </div>
-        ) : null}
-      </dl>
-      {trace.sourceRefs.length > 0 ? (
-        <ul aria-label={`Source refs for ${trace.traceId}`} style={sourceRefListStyle}>
-          {trace.sourceRefs.map((sourceRef) => (
-            <li key={sourceRef} style={sourceRefStyle}>
-              {sourceRef}
-            </li>
-          ))}
-        </ul>
-      ) : null}
-    </article>
-  );
+function projectRailItems(projectId: string, active: "traces" | "graph", traceCount = 0) {
+  const encoded = encodeURIComponent(projectId);
+  return [
+    { href: `/projects/${encoded}`, label: "Project Explorer", glyph: "empty" as const },
+    {
+      href: `/projects/${encoded}/traces`,
+      label: "Trace Browser",
+      glyph: "active" as const,
+      active: active === "traces",
+      ducklings: active === "traces" ? traceCount : undefined,
+    },
+    {
+      href: `/projects/${encoded}/graph`,
+      label: "Decision Graph",
+      glyph: "snapshot" as const,
+      active: active === "graph",
+    },
+    { href: `/style-memory?project=${encoded}`, label: "Style Memory", glyph: "pending" as const },
+    { href: `/projects/${encoded}/packet-builder`, label: "Packet Builder", glyph: "snapshot" as const },
+    { href: "/settings/providers", label: "Settings", glyph: "empty" as const },
+  ];
+}
+
+function countByArtifact(traces: JudgmentTrace[], needles: string[]) {
+  return traces.filter((trace) => {
+    const haystack = `${trace.artifactType ?? ""} ${trace.workflow ?? ""}`.toLowerCase();
+    return needles.some((needle) => haystack.includes(needle));
+  }).length;
+}
+
+function traceState(trace: JudgmentTrace) {
+  if (`${trace.decision} ${trace.rationale ?? ""}`.toLowerCase().includes("reject")) {
+    return "Rejected";
+  }
+  if (trace.rationale && trace.sourceRefs.length > 0) {
+    return "Swan";
+  }
+  return "Duckling";
+}
+
+function truncateId(value: string) {
+  if (value.length <= 16) return value;
+  return `${value.slice(0, 14)}…`;
 }
 
 function SignInRequired({ projectId }: { projectId: string }) {
@@ -270,49 +318,16 @@ function formatDate(value: string) {
   }).format(date);
 }
 
-const pageStyle: React.CSSProperties = {
-  maxWidth: "1180px",
-  margin: "0 auto",
-  padding: "0 28px 96px",
-};
-
-const topbarStyle: React.CSSProperties = {
-  minHeight: "74px",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  borderBottom: "1px solid var(--border)",
-};
-
-const brandStyle: React.CSSProperties = {
-  color: "var(--ink)",
-  fontFamily: "var(--font-display)",
-  fontSize: "30px",
-  fontWeight: 700,
-  textDecoration: "none",
-  fontVariationSettings: '"opsz" 96',
-};
-
-const userStyle: React.CSSProperties = {
-  color: "var(--muted)",
-  fontFamily: "var(--font-mono)",
-  fontSize: "13px",
-  letterSpacing: "0.16em",
-};
-
-const heroStyle: React.CSSProperties = {
-  padding: "72px 0 36px",
-};
-
-const heroRowStyle: React.CSSProperties = {
+const pageHeadStyle: CSSProperties = {
   display: "flex",
   gap: "28px",
   alignItems: "flex-end",
   justifyContent: "space-between",
   flexWrap: "wrap",
+  marginBottom: "24px",
 };
 
-const eyebrowStyle: React.CSSProperties = {
+const eyebrowStyle: CSSProperties = {
   margin: "0 0 14px",
   color: "var(--muted)",
   fontFamily: "var(--font-mono)",
@@ -321,32 +336,23 @@ const eyebrowStyle: React.CSSProperties = {
   textTransform: "uppercase",
 };
 
-const titleStyle: React.CSSProperties = {
+const titleStyle: CSSProperties = {
   margin: 0,
   color: "var(--ink)",
   fontFamily: "var(--font-display)",
-  fontSize: "clamp(48px, 7vw, 84px)",
+  fontSize: "clamp(40px, 5vw, 68px)",
   fontWeight: 500,
-  lineHeight: 1,
+  lineHeight: 1.04,
   fontVariationSettings: '"opsz" 144, "SOFT" 50',
 };
 
-const subtitleStyle: React.CSSProperties = {
-  margin: "14px 0 0",
-  color: "var(--ink-muted)",
-  fontFamily: "var(--font-display)",
-  fontSize: "24px",
-  fontStyle: "italic",
-  fontVariationSettings: '"opsz" 48',
-};
-
-const actionsStyle: React.CSSProperties = {
+const actionsStyle: CSSProperties = {
   display: "flex",
   gap: "12px",
   flexWrap: "wrap",
 };
 
-const primaryLinkStyle: React.CSSProperties = {
+const primaryLinkStyle: CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
@@ -355,114 +361,32 @@ const primaryLinkStyle: React.CSSProperties = {
   borderRadius: "8px",
   background: "var(--ink)",
   color: "var(--canvas)",
+  fontFamily: "var(--font-sans)",
   fontWeight: 800,
   textDecoration: "none",
 };
 
-const secondaryLinkStyle: React.CSSProperties = {
+const secondaryLinkStyle: CSSProperties = {
   ...primaryLinkStyle,
   background: "transparent",
   color: "var(--ink)",
   border: "1px solid var(--border-strong)",
 };
 
-const traceListStyle: React.CSSProperties = {
-  display: "grid",
-  gap: "16px",
-  margin: 0,
-  padding: "0 16px 16px",
-  listStyle: "none",
-};
-
-const narrativeShellStyle: React.CSSProperties = {
-  display: "grid",
-  gap: "12px",
-};
-
-const narrativeKickerStyle: React.CSSProperties = {
-  margin: 0,
-  color: "var(--muted)",
-  fontFamily: "var(--font-mono)",
-  fontSize: "12px",
-  letterSpacing: "0.14em",
-  textTransform: "uppercase",
-};
-
-const traceCardStyle: React.CSSProperties = {
-  padding: "26px",
-  border: "1px solid var(--border)",
-  borderRadius: "8px",
-  background: "var(--canvas-raised)",
-};
-
-const selectedTraceCardStyle: React.CSSProperties = {
-  ...traceCardStyle,
-  borderColor: "var(--magic-primary-strong)",
-  boxShadow: "0 0 0 4px color-mix(in srgb, var(--magic-primary-strong) 18%, transparent)",
-};
-
-const traceArchiveStyle: React.CSSProperties = {
-  marginTop: "18px",
-  border: "1px solid var(--border)",
-  borderRadius: "8px",
-  background: "var(--canvas-raised)",
-};
-
-const archiveSummaryStyle: React.CSSProperties = {
-  cursor: "pointer",
-  padding: "16px",
-  color: "var(--ink)",
-  fontFamily: "var(--font-mono)",
-  fontSize: "12px",
-  letterSpacing: "0.14em",
-  textTransform: "uppercase",
-};
-
-const traceHeaderStyle: React.CSSProperties = {
+const tabsStyle: CSSProperties = {
   display: "flex",
-  justifyContent: "space-between",
-  gap: "16px",
+  gap: "8px",
   flexWrap: "wrap",
-  marginBottom: "16px",
+  marginBottom: "18px",
 };
 
-const traceBadgeStyle: React.CSSProperties = {
-  color: "var(--magic-primary-strong)",
-  fontFamily: "var(--font-mono)",
-  fontSize: "12px",
-  letterSpacing: "0.14em",
-  textTransform: "uppercase",
-};
-
-const timeStyle: React.CSSProperties = {
-  color: "var(--muted)",
-  fontSize: "13px",
-};
-
-const traceDecisionStyle: React.CSSProperties = {
-  margin: "0 0 14px",
-  color: "var(--ink)",
-  fontFamily: "var(--font-display)",
-  fontSize: "32px",
-  fontWeight: 500,
-  lineHeight: 1.2,
-};
-
-const traceRationaleStyle: React.CSSProperties = {
-  margin: "0 0 20px",
-  color: "var(--ink-muted)",
-  fontSize: "17px",
-  lineHeight: 1.6,
-};
-
-const traceMetaStyle: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-  gap: "14px",
-  margin: "0 0 20px",
-};
-
-const metaLabelStyle: React.CSSProperties = {
+const tabStyle: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  minHeight: "38px",
+  padding: "0 14px",
+  border: "1px solid transparent",
+  borderRadius: "999px",
   color: "var(--muted)",
   fontFamily: "var(--font-mono)",
   fontSize: "11px",
@@ -470,60 +394,175 @@ const metaLabelStyle: React.CSSProperties = {
   textTransform: "uppercase",
 };
 
-const metaValueStyle: React.CSSProperties = {
-  margin: "3px 0 0",
-  color: "var(--ink)",
+const activeTabStyle: CSSProperties = {
+  ...tabStyle,
+  borderColor: "var(--border-strong)",
+  background: "var(--ink)",
+  color: "var(--canvas)",
+};
+
+const traceTableStyle: CSSProperties = {
+  overflow: "hidden",
+};
+
+const traceHeaderRowStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "132px minmax(240px, 1fr) 104px 132px 72px",
+  gap: "18px",
+  padding: "14px 20px",
+  borderBottom: "1px solid var(--border)",
+  color: "var(--muted)",
   fontFamily: "var(--font-mono)",
-  fontSize: "13px",
+  fontSize: "10px",
+  letterSpacing: "0.14em",
+  textTransform: "uppercase",
+};
+
+const traceRowStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "132px minmax(240px, 1fr) 104px 132px 72px",
+  gap: "18px",
+  alignItems: "start",
+  padding: "18px 20px",
+  borderTop: "1px solid var(--border)",
+  background: "var(--canvas-raised)",
+};
+
+const selectedTraceRowStyle: CSSProperties = {
+  ...traceRowStyle,
+  borderColor: "var(--magic-primary-strong)",
+  boxShadow:
+    "inset 4px 0 0 var(--magic-primary-strong), 0 0 0 4px color-mix(in srgb, var(--magic-primary-strong) 18%, transparent)",
+};
+
+const traceIdStyle: CSSProperties = {
+  color: "var(--muted)",
+  fontFamily: "var(--font-mono)",
+  fontSize: "11px",
+  textDecoration: "none",
   overflowWrap: "anywhere",
 };
 
-const sourceRefListStyle: React.CSSProperties = {
+const traceDecisionCellStyle: CSSProperties = {
+  minWidth: 0,
+};
+
+const traceDecisionStyle: CSSProperties = {
+  margin: 0,
+  color: "var(--ink)",
+  fontFamily: "var(--font-sans)",
+  fontSize: "15px",
+  fontWeight: 800,
+  lineHeight: 1.35,
+};
+
+const traceRationaleStyle: CSSProperties = {
+  margin: "6px 0 0",
+  color: "var(--ink-muted)",
+  fontSize: "13px",
+  lineHeight: 1.5,
+};
+
+const traceMetaLineStyle: CSSProperties = {
+  display: "flex",
+  gap: "8px",
+  flexWrap: "wrap",
+  marginTop: "10px",
+  color: "var(--muted)",
+  fontFamily: "var(--font-mono)",
+  fontSize: "10px",
+  letterSpacing: "0.08em",
+};
+
+function stateBadgeStyle(state: string): CSSProperties {
+  const swan = state === "Swan";
+  const rejected = state === "Rejected";
+  return {
+    justifySelf: "start",
+    padding: "4px 10px",
+    borderRadius: "6px",
+    background: swan
+      ? "color-mix(in srgb, var(--magic-primary) 25%, var(--canvas-raised))"
+      : rejected
+        ? "color-mix(in srgb, var(--danger) 12%, var(--canvas-raised))"
+        : "var(--problem)",
+    color: swan ? "var(--magic-primary-strong)" : rejected ? "var(--danger)" : "var(--canvas)",
+    fontFamily: "var(--font-mono)",
+    fontSize: "10px",
+    fontWeight: 700,
+    letterSpacing: "0.04em",
+  };
+}
+
+const timeStyle: CSSProperties = {
+  color: "var(--muted)",
+  fontFamily: "var(--font-mono)",
+  fontSize: "11px",
+};
+
+const refsStyle: CSSProperties = {
+  color: "var(--muted)",
+  fontFamily: "var(--font-mono)",
+  fontSize: "11px",
+  textAlign: "right",
+};
+
+const sourceRefListStyle: CSSProperties = {
   display: "flex",
   flexWrap: "wrap",
   gap: "8px",
-  margin: 0,
+  margin: "12px 0 0",
   padding: 0,
   listStyle: "none",
 };
 
-const sourceRefStyle: React.CSSProperties = {
-  padding: "6px 10px",
+const sourceRefStyle: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: "6px",
+  padding: "5px 9px",
   border: "1px solid var(--border)",
   borderRadius: "999px",
   color: "var(--ink-muted)",
   fontFamily: "var(--font-mono)",
-  fontSize: "12px",
+  fontSize: "10px",
 };
 
-const quietCopyStyle: React.CSSProperties = {
+const sourceDotStyle: CSSProperties = {
+  width: "6px",
+  height: "6px",
+  borderRadius: "999px",
+  background: "var(--magic-primary-strong)",
+};
+
+const quietCopyStyle: CSSProperties = {
   margin: 0,
   color: "var(--ink-muted)",
   fontSize: "16px",
   lineHeight: 1.6,
 };
 
-const emptyPanelStyle: React.CSSProperties = {
+const emptyPanelStyle: CSSProperties = {
   padding: "48px",
   border: "1px dashed var(--border-strong)",
   borderRadius: "8px",
   textAlign: "center",
 };
 
-const emptyPageStyle: React.CSSProperties = {
+const emptyPageStyle: CSSProperties = {
   maxWidth: "620px",
   margin: "0 auto",
   padding: "120px 32px",
 };
 
-const emptyTitleStyle: React.CSSProperties = {
+const emptyTitleStyle: CSSProperties = {
   margin: "0 0 18px",
   fontFamily: "var(--font-display)",
   fontSize: "46px",
   fontWeight: 500,
 };
 
-const errorBoxStyle: React.CSSProperties = {
+const errorBoxStyle: CSSProperties = {
   margin: "0 0 22px",
   padding: "14px",
   border: "1px solid var(--danger)",

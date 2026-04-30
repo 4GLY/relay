@@ -106,9 +106,21 @@ describe("<ProjectExplorerPage>", () => {
     );
     mocks.getProjectExplorer.mockResolvedValueOnce(explorer);
 
-    render(await ProjectExplorerPage({ params: Promise.resolve({ projectId: "proj_1" }) }));
+    const { container } = render(await ProjectExplorerPage({ params: Promise.resolve({ projectId: "proj_1" }) }));
 
     expect(screen.getByRole("heading", { name: "Personal" })).toBeVisible();
+    const summary = screen.getByText("Workspace inspector — detailed counts");
+    expect(summary).toBeVisible();
+    expect(summary.closest("details")).not.toHaveAttribute("open");
+    const mainSummary = container.querySelector('[aria-label="Project summary"]');
+    expect(mainSummary).toHaveTextContent("Notes");
+    expect(mainSummary).toHaveTextContent("Decisions");
+    expect(mainSummary).toHaveTextContent("Snapshots");
+    expect(mainSummary).not.toHaveTextContent("Artifacts");
+    const inspector = container.querySelector('[aria-label="Workspace inspector counts"]');
+    expect(inspector).toHaveTextContent("Pending proposals");
+    expect(inspector).toHaveTextContent("Approved heuristics");
+    expect(inspector).toHaveTextContent("Rejected proposals");
     expect(screen.getByRole("link", { name: "Style Memory" })).toHaveAttribute(
       "href",
       "/style-memory?project=proj_1",

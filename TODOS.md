@@ -19,16 +19,17 @@ Items below are **NOT in V2** but tracked for V2.5 / V3.
 
 ### V2.5 (load-bearing — slated for the next product cycle after V2 ships)
 
-**1. DESIGN.md remaining priority screens** — Decision Graph, Packet Builder WYSIWYG
-- Status: Project Explorer and Trace Browser shipped in V2.5 on 2026-04-30 with live E2E coverage.
-- Effort remaining: M/L UI + M backend read-model polish.
-- Why still tracked: Decision Graph needs the canonical graph projection to include Style Memory and packet evidence, and Packet Builder still needs an authoring/review surface rather than latest-snapshot reading only.
+**1. DESIGN.md remaining priority screens** — Project Explorer, Trace Browser, Decision Graph, Packet Builder WYSIWYG ✅ V2.5 CLOSED 2026-04-30
+- Status: all four V2.5 workspace surfaces shipped on 2026-04-30 with live E2E coverage.
+- Closure boundary: Packet Builder is a latest-snapshot WYSIWYG review surface with source evidence collapsed by default. Rich editing, draft rows, publish/revoke user controls, and snapshot history browsing stay deferred.
+- Why no longer tracked as V2.5 work: Project Explorer is the authenticated workspace entry, Trace Browser defaults to one narrative trace with archive browsing, Decision Graph includes Style Memory + packet evidence, and Packet Builder reads the canonical latest snapshot.
 - Unblocks: full DESIGN.md realization, dense workspace experience, signature ribbon
 - Depends on: V2 ship + at least one cycle of demand evidence
 - Source: CEO plan Rev 2 Scope Decision #4
 - V2.5 entry slice: `docs/v2-5-project-explorer-scope.md`
 - Decision Graph slice: `docs/v2-5-decision-graph-scope.md`
-- Next Packet Builder slice: `docs/v2-5-packet-builder-wysiwyg-scope.md`
+- Packet Builder slice: `docs/v2-5-packet-builder-wysiwyg-scope.md`
+- Closure record: `docs/v2-5-closure.md`
 
 **2. B: Public Style Profile** — `/u/{username}/style` (the LinkedIn-for-engineering-judgment surface)
 - Effort: L/XL (full effort estimate revised after Codex finding #1: cross-project aggregation, slug reservation, privacy state, publish UX. User model lands in V2 baseline so partial reuse.)
@@ -168,19 +169,17 @@ Source: `~/.gstack/projects/relay/ceo-plans/2026-04-25-v2-end-user-surface.md` R
 - Action: first Decision Graph slice uses neutral edge strokes by default and reserves the magic accent for the active route / transform path.
 - Follow-up: keep this rule when adding interactive filtering and graph layout controls.
 
-**D10. Packet Builder source panel default-closed** (V2.5)
+**D10. Packet Builder source panel default-closed** (V2.5) ✅ DONE 2026-04-30
 - Codex finding: "Source panel open by default fights the packet document"
-- Action: default sources panel to collapsed; toggle button promotes them
-- Effort: trivial (~30min CC). To address before V2.5
+- Action: Packet Builder uses collapsed `details` inspectors for source evidence and publish controls; the rendered packet document owns the first viewport.
 
-**D11. Project Explorer ops stats demoted to inspector drawer** (V2.5)
+**D11. Project Explorer ops stats demoted to inspector drawer** (V2.5) ✅ DONE 2026-04-30
 - Codex finding: "Curator success exposes pipe-level system detail too early"
-- Action: move ops/curator stats from main metric strip into inspector drawer
-- Effort: S (~1h CC). To address before V2.5
+- Action: Project Explorer keeps the main metric strip focused on notes, decisions, and snapshots; operational/detail counts move into a collapsed Workspace inspector.
 
-**D12. Judgment Traces first-run state** (V2.5)
+**D12. Judgment Traces first-run state** (V2.5) ✅ DONE 2026-04-30
 - Codex finding: "Filter surface is dense before user intent is clear. Default to one trace narrative, then filters."
-- Effort: S (~1-2h CC). To address before V2.5
+- Action: Trace Browser now features one narrative trace by default and moves additional traces into a collapsed archive browser.
 
 ### Missing first-run / empty / error / failure states (consolidated, ~40 items)
 
@@ -192,7 +191,7 @@ Across all 7 surfaces, the cross-model design review inventoried ~40 distinct mi
 
 **Onboarding**: invalid Anthropic key, Relay URL unreachable, OAuth cancelled, secret-storage consent prompt, no prior traces (curator empty), first packet build failure, Anthropic rate limit / quota, "user already has an account" (returning user short-circuit)
 
-**V2.5 surfaces** (Decision Graph, Packet Builder): remaining states should be inventoried during each surface slice. Project Explorer and Judgment Traces now have first shipped states plus live E2E coverage.
+**V2.5 surfaces**: Project Explorer, Trace Browser, Decision Graph, and Packet Builder have first shipped states plus live E2E coverage. Remaining advanced states are post-V2.5 product work and should be scoped per feature rather than held in V2.5 closure.
 
 Each state needs: visual spec (DESIGN.md token map), backend trigger (which API state produces this), keyboard/accessibility behavior. Track per-state during V2 eng review.
 

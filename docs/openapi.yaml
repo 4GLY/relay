@@ -1903,7 +1903,6 @@ paths:
           required: false
           schema:
             type: string
-            default: codex
       responses:
         '200':
           description: Latest packet snapshot

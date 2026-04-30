@@ -72,7 +72,7 @@ describe("getLatestPacketSnapshot", () => {
     expect(result.styleCues[0]).toMatchObject({ heuristicId: "heur_1", sourceRefs: ["trace_1"] });
     expect(result.supportingArtifacts[0].sourcePath).toBe("docs/scope.md");
     expect(result.publicToken).toBe("psnap_public");
-    expect(fetchMock.mock.calls[0][0]).toContain("/v1/projects/proj_1/packet-snapshots/latest?target=codex");
+    expect(fetchMock.mock.calls[0][0]).toContain("/v1/projects/proj_1/packet-snapshots/latest");
   });
 
   it("throws PacketBuilderError on API failures", async () => {

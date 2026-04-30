@@ -165,7 +165,7 @@ export async function getLatestPacketSnapshot(
   opts?: PacketBuilderOptions,
 ): Promise<PacketBuilderSnapshot> {
   const res = await relayFetch(
-    `/v1/projects/${encodeURIComponent(projectId)}/packet-snapshots/latest?target=codex`,
+    `/v1/projects/${encodeURIComponent(projectId)}/packet-snapshots/latest`,
     {
       method: "GET",
       headers: opts?.headers,

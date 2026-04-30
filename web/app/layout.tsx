@@ -1,30 +1,60 @@
 import type { Metadata } from "next";
 import { cookies, headers } from "next/headers";
-import { Fraunces, Nunito, JetBrains_Mono } from "next/font/google";
+import localFont from "next/font/local";
 
 import { resolveLocale } from "@/lib/i18n";
 
 import "./globals.css";
 
-const fraunces = Fraunces({
-  subsets: ["latin"],
+const fraunces = localFont({
+  src: [
+    {
+      path: "./fonts/Fraunces-VariableFont_SOFT_WONK_opsz_wght.ttf",
+      style: "normal",
+      weight: "100 900",
+    },
+    {
+      path: "./fonts/Fraunces-Italic-VariableFont_SOFT_WONK_opsz_wght.ttf",
+      style: "italic",
+      weight: "100 900",
+    },
+  ],
   display: "swap",
   variable: "--font-fraunces",
-  style: ["normal", "italic"],
-  axes: ["opsz", "SOFT", "WONK"],
 });
 
-const nunito = Nunito({
-  subsets: ["latin"],
+const nunito = localFont({
+  src: [
+    {
+      path: "./fonts/Nunito-VariableFont_wght.ttf",
+      style: "normal",
+      weight: "200 1000",
+    },
+    {
+      path: "./fonts/Nunito-Italic-VariableFont_wght.ttf",
+      style: "italic",
+      weight: "200 1000",
+    },
+  ],
   display: "swap",
   variable: "--font-nunito",
 });
 
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ["latin"],
+const jetbrainsMono = localFont({
+  src: [
+    {
+      path: "./fonts/JetBrainsMono-VariableFont_wght.ttf",
+      style: "normal",
+      weight: "100 800",
+    },
+    {
+      path: "./fonts/JetBrainsMono-Italic-VariableFont_wght.ttf",
+      style: "italic",
+      weight: "100 800",
+    },
+  ],
   display: "swap",
   variable: "--font-jetbrains-mono",
-  weight: ["400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {

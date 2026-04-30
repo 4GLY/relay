@@ -15,7 +15,7 @@ This package only ships the scaffold (S5). The real screens land in:
 - Tailwind CSS v4 (CSS-first via `@import "tailwindcss"` + `@theme`)
 - shadcn/ui (New York preset)
 - Framer Motion
-- `next/font` for Fraunces, Nunito, JetBrains Mono (stand-in for Commit Mono until licensed)
+- `next/font/local` for self-hosted Fraunces, Nunito, JetBrains Mono (stand-in for Commit Mono until licensed)
 
 All visual tokens come from `DESIGN.md §6`. Do not introduce additional fonts or colors.
 

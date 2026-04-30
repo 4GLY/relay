@@ -1,5 +1,4 @@
 import { cookies } from "next/headers";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { RELAY_API_URL, relayFetch, type RelayEnvelope } from "@/lib/api";
@@ -9,6 +8,7 @@ import {
   ProjectExplorerError,
   type ProjectExplorer,
 } from "@/lib/project-explorer";
+import { RelayAppShell, RelayTopRail } from "@/components/relay-app-shell";
 
 export const dynamic = "force-dynamic";
 
@@ -76,16 +76,16 @@ function Explorer({
   const memoryReady = c.pendingProposals > 0
     ? `${c.pendingProposals} proposal${c.pendingProposals === 1 ? "" : "s"} waiting`
     : `${c.approvedHeuristics} swan${c.approvedHeuristics === 1 ? "" : "s"} minted`;
+  const projectHref = `/projects/${encodeURIComponent(explorer.project.projectId)}`;
 
   return (
-    <main style={pageStyle}>
-      <header style={topbarStyle}>
-        <Link href="/" style={brandStyle}>
-          Relay<span style={{ color: "var(--magic-primary-strong)" }}>.</span>
-        </Link>
-        <span style={userStyle}>{userDisplayName ?? "signed in"}</span>
-      </header>
-
+    <RelayAppShell
+      activeStep="Face"
+      userLabel={userDisplayName}
+      projectHref={projectHref}
+      railItems={projectRailItems(explorer)}
+      inspector={<ProjectInspector explorer={explorer} />}
+    >
       <section style={heroStyle} aria-labelledby="project-title">
         <p style={eyebrowStyle}>Project Explorer · {explorer.project.status}</p>
         <div style={heroRowStyle}>
@@ -196,7 +196,85 @@ function Explorer({
           )}
         </Panel>
       </section>
-    </main>
+    </RelayAppShell>
+  );
+}
+
+function projectRailItems(explorer: ProjectExplorer) {
+  const projectId = encodeURIComponent(explorer.project.projectId);
+  const c = explorer.counts;
+  return [
+    {
+      href: `/projects/${projectId}`,
+      label: explorer.project.name,
+      glyph: "active" as const,
+      active: true,
+      ducklings: c.pendingProposals,
+      swans: c.approvedHeuristics,
+    },
+    {
+      href: `/style-memory?project=${projectId}`,
+      label: "Style Memory",
+      glyph: c.pendingProposals > 0 ? ("pending" as const) : ("snapshot" as const),
+      ducklings: c.pendingProposals,
+      swans: c.approvedHeuristics,
+    },
+    {
+      href: `/projects/${projectId}/traces`,
+      label: "Judgment Traces",
+      glyph: c.judgmentTraces > 0 ? ("snapshot" as const) : ("empty" as const),
+      swans: c.judgmentTraces,
+    },
+    {
+      href: `/projects/${projectId}/graph`,
+      label: "Decision Graph",
+      glyph: c.decisions > 0 ? ("snapshot" as const) : ("empty" as const),
+      swans: c.decisions,
+    },
+    {
+      href: `/projects/${projectId}/packet-builder`,
+      label: "Packet Builder",
+      glyph: c.packetSnapshots > 0 ? ("snapshot" as const) : ("empty" as const),
+      swans: c.packetSnapshots,
+    },
+    {
+      href: "/settings/providers",
+      label: "Provider settings",
+      glyph: "empty" as const,
+    },
+    {
+      href: "/settings/api-keys",
+      label: "API key settings",
+      glyph: "empty" as const,
+    },
+  ];
+}
+
+function ProjectInspector({ explorer }: { explorer: ProjectExplorer }) {
+  const c = explorer.counts;
+  return (
+    <div>
+      <p style={eyebrowStyle}>Current Transform</p>
+      <h2 style={inspectorTitleStyle}>Face → Project workspace</h2>
+      <section className="relay-card" style={{ padding: "16px", marginBottom: "22px" }}>
+        <p style={{ ...metaLabelStyle, margin: "0 0 12px" }}>Scope Matrix</p>
+        <dl style={inspectorRowsStyle}>
+          <InspectorMetric label="Status" value={explorer.project.status} />
+          <InspectorMetric label="Artifacts" value={c.artifacts} />
+          <InspectorMetric label="Questions" value={c.openQuestions} />
+          <InspectorMetric label="Traces" value={c.judgmentTraces} />
+          <InspectorMetric label="Pending proposals" value={c.pendingProposals} />
+          <InspectorMetric label="Approved heuristics" value={c.approvedHeuristics} />
+          <InspectorMetric label="Rejected proposals" value={c.rejectedProposals} />
+        </dl>
+      </section>
+      <section style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+        <Metric label="Notes" value={c.notes} />
+        <Metric label="Decisions" value={c.decisions} />
+        <Metric label="Snapshots" value={c.packetSnapshots} />
+        <Metric label="Traces" value={c.judgmentTraces} />
+      </section>
+    </div>
   );
 }
 
@@ -209,7 +287,7 @@ function Metric({ label, value }: { label: string; value: number }) {
   );
 }
 
-function InspectorMetric({ label, value }: { label: string; value: number }) {
+function InspectorMetric({ label, value }: { label: string; value: number | string }) {
   return (
     <div style={inspectorMetricStyle}>
       <dt style={metaLabelStyle}>{label}</dt>
@@ -267,14 +345,17 @@ function Snapshot({ snapshot }: { snapshot: NonNullable<ProjectExplorer["latestS
 
 function SignInRequired({ projectId }: { projectId: string }) {
   return (
-    <main style={emptyPageStyle}>
-      <p style={eyebrowStyle}>Project Explorer</p>
-      <h1 style={emptyTitleStyle}>Sign in first</h1>
-      <p style={quietCopyStyle}>Project workspaces are private.</p>
-      <a href={signInURL(projectId)} style={primaryLinkStyle}>
-        Continue with GitHub
-      </a>
-    </main>
+    <>
+      <RelayTopRail activeStep="Face" userLabel="signed out" />
+      <main style={emptyPageStyle}>
+        <p style={eyebrowStyle}>Project Explorer</p>
+        <h1 style={emptyTitleStyle}>Sign in first</h1>
+        <p style={quietCopyStyle}>Project workspaces are private.</p>
+        <a href={signInURL(projectId)} style={primaryLinkStyle}>
+          Continue with GitHub
+        </a>
+      </main>
+    </>
   );
 }
 
@@ -290,16 +371,19 @@ function ExplorerError({
   const code = error instanceof ProjectExplorerError ? error.code : "UNKNOWN";
   const message = error instanceof Error ? error.message : "Project Explorer failed to load.";
   return (
-    <main style={emptyPageStyle}>
-      <p style={eyebrowStyle}>Project Explorer · {userDisplayName ?? "signed in"}</p>
-      <h1 style={emptyTitleStyle}>Couldn’t open this project</h1>
-      <p style={errorBoxStyle}>
-        {code}: {message}
-      </p>
-      <a href={`/projects/${encodeURIComponent(projectId)}`} style={primaryLinkStyle}>
-        Retry
-      </a>
-    </main>
+    <>
+      <RelayTopRail activeStep="Face" userLabel={userDisplayName} />
+      <main style={emptyPageStyle}>
+        <p style={eyebrowStyle}>Project Explorer · {userDisplayName ?? "signed in"}</p>
+        <h1 style={emptyTitleStyle}>Couldn’t open this project</h1>
+        <p style={errorBoxStyle}>
+          {code}: {message}
+        </p>
+        <a href={`/projects/${encodeURIComponent(projectId)}`} style={primaryLinkStyle}>
+          Retry
+        </a>
+      </main>
+    </>
   );
 }
 
@@ -322,38 +406,8 @@ function traceURL(projectId: string, traceId: string) {
   return `/projects/${encodeURIComponent(projectId)}/traces?trace=${encodeURIComponent(traceId)}`;
 }
 
-const pageStyle: React.CSSProperties = {
-  maxWidth: "1180px",
-  margin: "0 auto",
-  padding: "0 28px 96px",
-};
-
-const topbarStyle: React.CSSProperties = {
-  minHeight: "74px",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  borderBottom: "1px solid var(--border)",
-};
-
-const brandStyle: React.CSSProperties = {
-  color: "var(--ink)",
-  fontFamily: "var(--font-display)",
-  fontSize: "30px",
-  fontWeight: 700,
-  textDecoration: "none",
-  fontVariationSettings: '"opsz" 96',
-};
-
-const userStyle: React.CSSProperties = {
-  color: "var(--muted)",
-  fontFamily: "var(--font-mono)",
-  fontSize: "13px",
-  letterSpacing: "0.16em",
-};
-
 const heroStyle: React.CSSProperties = {
-  padding: "72px 0 36px",
+  padding: "24px 0 36px",
 };
 
 const heroRowStyle: React.CSSProperties = {
@@ -380,6 +434,8 @@ const titleStyle: React.CSSProperties = {
   fontSize: "clamp(48px, 7vw, 84px)",
   fontWeight: 500,
   lineHeight: 1,
+  overflowWrap: "anywhere",
+  wordBreak: "break-word",
   fontVariationSettings: '"opsz" 144, "SOFT" 50',
 };
 
@@ -489,6 +545,20 @@ const inspectorMetricStyle: React.CSSProperties = {
   padding: "12px",
   border: "1px solid var(--border)",
   borderRadius: "8px",
+};
+
+const inspectorRowsStyle: React.CSSProperties = {
+  display: "grid",
+  gap: "10px",
+  margin: 0,
+};
+
+const inspectorTitleStyle: React.CSSProperties = {
+  margin: "0 0 18px",
+  fontFamily: "var(--font-display)",
+  fontSize: "22px",
+  fontWeight: 500,
+  lineHeight: 1.15,
 };
 
 const panelStyle: React.CSSProperties = {

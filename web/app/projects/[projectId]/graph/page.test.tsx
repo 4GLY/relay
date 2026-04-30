@@ -85,7 +85,10 @@ describe("<DecisionGraphPage>", () => {
 
     expect(screen.getByRole("heading", { name: "Decision Graph" })).toBeVisible();
     expect(screen.getByText("Prefer explicit recovery.")).toBeVisible();
-    expect(screen.getByRole("link", { name: "Project Explorer" })).toHaveAttribute(
+    const projectExplorerLink = screen
+      .getAllByRole("link", { name: /Project Explorer/ })
+      .find((link) => link.getAttribute("href") === "/projects/proj_1");
+    expect(projectExplorerLink).toHaveAttribute(
       "href",
       "/projects/proj_1",
     );

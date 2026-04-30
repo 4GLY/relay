@@ -256,7 +256,7 @@ test.describe("Relay authenticated live smoke", () => {
     test.skip(isLocalWebBase, "Provider credential mutation requires same-origin live routing");
 
     await page.goto("/settings/providers");
-    await expect(page.getByRole("heading", { name: /Claude provider/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Claude provider/i, level: 1 })).toBeVisible();
     await expect(page.getByText(/not part of first-run onboarding/i)).toBeVisible();
 
     await page.getByLabel(/Anthropic API key/i).fill("not-anthropic");

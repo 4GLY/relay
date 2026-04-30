@@ -102,6 +102,9 @@ function Explorer({
             <a href={`/projects/${encodeURIComponent(explorer.project.projectId)}/traces`} style={secondaryLinkStyle}>
               Trace Browser
             </a>
+            <a href={`/projects/${encodeURIComponent(explorer.project.projectId)}/graph`} style={secondaryLinkStyle}>
+              Decision Graph
+            </a>
             <a href="/settings/providers" style={secondaryLinkStyle}>
               Provider Settings
             </a>

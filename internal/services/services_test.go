@@ -1334,6 +1334,108 @@ func TestProjectGraphIncludesInferredCandidateEdges(t *testing.T) {
 	}
 }
 
+func TestProjectGraphIncludesStyleMemoryAndSnapshotEvidence(t *testing.T) {
+	projectID := lib.ProjectID("relay")
+	service := New(Dependencies{
+		Projects: &fakeProjectStore{
+			projects: map[string]domain.Project{
+				"relay": {ID: projectID, Name: "relay"},
+			},
+		},
+		Notes: &fakeNoteStore{},
+		Artifacts: &fakeArtifactStore{
+			items: []domain.Artifact{
+				{ID: "art_1", ProjectID: projectID, Type: "design_doc", SourcePath: "docs/design.md"},
+			},
+		},
+		Decisions: &fakeDecisionStore{
+			items: []domain.Decision{
+				{ID: "dec_1", ProjectID: projectID, Summary: "Prefer graph evidence maps."},
+			},
+		},
+		OpenQuestions: &fakeOpenQuestionStore{},
+		JudgmentTraces: &fakeJudgmentTraceStore{items: map[string]domain.JudgmentTrace{
+			"trace_1": {ID: "trace_1", ProjectID: projectID, Workflow: "qa_live", ArtifactType: "style_memory", Decision: "Show specific recovery actions."},
+		}},
+		HeuristicProposals: &fakeHeuristicProposalStore{items: map[string]domain.HeuristicProposal{
+			"hprop_1": {
+				ID:             "hprop_1",
+				ProjectID:      projectID,
+				OriginTraceID:  "trace_1",
+				Workflow:       "qa_live",
+				ArtifactType:   "style_memory",
+				CanonicalText:  "Show specific recovery actions.",
+				State:          "pending",
+				SourceTraceIDs: []string{"trace_1"},
+			},
+		}},
+		ApprovedHeuristics: &fakeApprovedHeuristicStore{items: map[string]domain.ApprovedHeuristic{
+			"heur_1": {
+				ID:               "heur_1",
+				ProjectID:        projectID,
+				OriginProposalID: "hprop_1",
+				Workflow:         "qa_live",
+				ArtifactType:     "style_memory",
+				CanonicalText:    "Show specific recovery actions.",
+				State:            "approved",
+				SourceTraceIDs:   []string{"trace_1"},
+			},
+		}},
+		PacketSnapshots: &fakePacketSnapshotStore{items: map[string]domain.PacketSnapshot{
+			"psnap_1": {
+				ID:                   "psnap_1",
+				ProjectID:            projectID,
+				PacketKind:           "handoff",
+				Target:               "codex",
+				TaskSummary:          "Decision Graph QA snapshot",
+				ApprovedHeuristicIDs: []string{"heur_1"},
+				DecisionIDs:          []string{"dec_1"},
+				SourceArtifactIDs:    []string{"art_1"},
+				PublicReadable:       true,
+			},
+		}},
+		Packets: &fakePacketStore{},
+		APIKeys: &fakeAPIKeyStore{},
+	})
+
+	result, err := service.ProjectGraph(context.Background(), ProjectGraphInput{ProjectID: projectID})
+	if err != nil {
+		t.Fatalf("ProjectGraph returned error: %v", err)
+	}
+
+	kinds := map[string]bool{}
+	for _, node := range result.Nodes {
+		kinds[node.Kind] = true
+	}
+	for _, kind := range []string{"judgment_trace", "heuristic_proposal", "approved_heuristic", "packet_snapshot"} {
+		if !kinds[kind] {
+			t.Fatalf("expected %s node, got %#v", kind, result.Nodes)
+		}
+	}
+
+	expectedEdges := map[string]bool{
+		"hprop_1->trace_1": false,
+		"heur_1->hprop_1":  false,
+		"psnap_1->heur_1":  false,
+		"psnap_1->dec_1":   false,
+		"psnap_1->art_1":   false,
+	}
+	for _, edge := range result.Edges {
+		if edge.Type != projectGraphEdgeDerivedFrom {
+			continue
+		}
+		key := edge.From + "->" + edge.To
+		if _, ok := expectedEdges[key]; ok {
+			expectedEdges[key] = true
+		}
+	}
+	for key, saw := range expectedEdges {
+		if !saw {
+			t.Fatalf("expected derived edge %s, got %#v", key, result.Edges)
+		}
+	}
+}
+
 func TestShowAllowsBoundProjectForProjectScopedKey(t *testing.T) {
 	projectID := lib.ProjectID("relay")
 	service := New(Dependencies{

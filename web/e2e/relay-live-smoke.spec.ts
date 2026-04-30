@@ -125,6 +125,10 @@ test.describe("Relay authenticated live smoke", () => {
       "href",
       `/projects/${authenticatedProjectID}/traces`,
     );
+    await expect(page.getByRole("link", { name: "Decision Graph" })).toHaveAttribute(
+      "href",
+      `/projects/${authenticatedProjectID}/graph`,
+    );
     if (publicSnapshotToken && !isLocalWebBase) {
       await expect(page.getByRole("link", { name: "Open public snapshot" })).toHaveAttribute(
         "href",
@@ -148,6 +152,21 @@ test.describe("Relay authenticated live smoke", () => {
     );
     await page.screenshot({
       path: `${screenshotDir}/s10-auth-trace-browser.png`,
+      fullPage: true,
+    });
+  });
+
+  test("decision graph renders authenticated evidence map", async ({ page }) => {
+    await page.goto(`/projects/${authenticatedProjectID}/graph`);
+    await expect(page.getByRole("heading", { name: "Decision Graph" })).toBeVisible();
+    await expect(page.getByText(/Prefer explicit recovery actions over generic error states/i)).toBeVisible();
+    await expect(page.getByText(/packet snapshot|judgment trace/i).first()).toBeVisible();
+    await expect(page.getByRole("link", { name: "Project Explorer" })).toHaveAttribute(
+      "href",
+      `/projects/${authenticatedProjectID}`,
+    );
+    await page.screenshot({
+      path: `${screenshotDir}/s10-auth-decision-graph.png`,
       fullPage: true,
     });
   });

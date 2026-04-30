@@ -436,12 +436,13 @@ Response fields:
 
 Contract notes:
 - this is a read-only projection over the existing relational stores; no separate graph database is involved
-- current node kinds are `project`, `note`, `artifact`, `decision`, `open_question`
+- current node kinds are `project`, `note`, `artifact`, `decision`, `open_question`, `judgment_trace`, `heuristic_proposal`, `approved_heuristic`, and latest `packet_snapshot`
 - current canonical edge types are `includes` and `derived_from`
 - inferred candidate edge types are `possible_support` and `possible_answer`
 - project containment is emitted as `includes`
+- Style Memory and packet evidence edges use `derived_from` to point back to traces, proposals, heuristics, decisions, questions, and artifacts when those source nodes are present in the projection
 - inferred edges carry `status=candidate`, `score`, and `why_included`
-- packet nodes and packet `includes` edges are not part of this first slice yet because packet history is not listed independently
+- full packet history listing is still outside this graph slice; the graph includes only the latest packet snapshot evidence node
 
 ### `GET /v1/projects/{project_id}/explorer`
 

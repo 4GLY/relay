@@ -117,6 +117,10 @@ describe("<ProjectExplorerPage>", () => {
       "href",
       "/projects/proj_1/traces",
     );
+    expect(screen.getByRole("link", { name: "Decision Graph" })).toHaveAttribute(
+      "href",
+      "/projects/proj_1/graph",
+    );
     expect(screen.getByRole("link", { name: "Open public snapshot" })).toHaveAttribute(
       "href",
       "/p/psnap_public_token",

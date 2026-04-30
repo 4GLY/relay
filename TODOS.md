@@ -19,13 +19,15 @@ Items below are **NOT in V2** but tracked for V2.5 / V3.
 
 ### V2.5 (load-bearing — slated for the next product cycle after V2 ships)
 
-**1. DESIGN.md remaining 4 priority screens** — Project Explorer, Trace browser, Decision Graph, Packet Builder WYSIWYG
-- Effort: L (~5d UI) + L (~5d backend read-model APIs)
-- Why deferred: Codex finding #3 — these screens hide significant backend read-model work (no list endpoints exist for `judgment_traces`, pending proposals, approved heuristics; project graph excludes traces and heuristics). V2 ships 1 screen.
+**1. DESIGN.md remaining priority screens** — Decision Graph, Packet Builder WYSIWYG
+- Status: Project Explorer and Trace Browser shipped in V2.5 on 2026-04-30 with live E2E coverage.
+- Effort remaining: M/L UI + M backend read-model polish.
+- Why still tracked: Decision Graph needs the canonical graph projection to include Style Memory and packet evidence, and Packet Builder still needs an authoring/review surface rather than latest-snapshot reading only.
 - Unblocks: full DESIGN.md realization, dense workspace experience, signature ribbon
 - Depends on: V2 ship + at least one cycle of demand evidence
 - Source: CEO plan Rev 2 Scope Decision #4
 - V2.5 entry slice: `docs/v2-5-project-explorer-scope.md`
+- Decision Graph slice: `docs/v2-5-decision-graph-scope.md`
 
 **2. B: Public Style Profile** — `/u/{username}/style` (the LinkedIn-for-engineering-judgment surface)
 - Effort: L/XL (full effort estimate revised after Codex finding #1: cross-project aggregation, slug reservation, privacy state, publish UX. User model lands in V2 baseline so partial reuse.)
@@ -159,11 +161,11 @@ Source: `~/.gstack/projects/relay/ceo-plans/2026-04-25-v2-end-user-surface.md` R
 
 ### MEDIUM — V2.5 territory (deferred surface design issues)
 
-**D9. Decision Graph magic-color misuse fix** (V2.5)
+**D9. Decision Graph magic-color misuse fix** (V2.5) ✅ ADDRESSED IN FIRST SLICE 2026-04-30
 - Codex finding: "Magic colors used as graph vocabulary, not transformation moments. Reserve magic for selected/yielded transform path."
 - DESIGN.md §6 rule 1 violation
-- Action: replace magic-primary edge type with charcoal/mist; reserve magic for selected/yielded
-- Effort: S (~1-2h CC). To address before V2.5 surface enters review
+- Action: first Decision Graph slice uses neutral edge strokes by default and reserves the magic accent for the active route / transform path.
+- Follow-up: keep this rule when adding interactive filtering and graph layout controls.
 
 **D10. Packet Builder source panel default-closed** (V2.5)
 - Codex finding: "Source panel open by default fights the packet document"
@@ -189,7 +191,7 @@ Across all 7 surfaces, the cross-model design review inventoried ~40 distinct mi
 
 **Onboarding**: invalid Anthropic key, Relay URL unreachable, OAuth cancelled, secret-storage consent prompt, no prior traces (curator empty), first packet build failure, Anthropic rate limit / quota, "user already has an account" (returning user short-circuit)
 
-**V2.5 surfaces** (Project Explorer, Judgment Traces, Decision Graph, Packet Builder): inventoried, deferred to V2.5 design review. Total ~16 additional states to spec at V2.5 entry.
+**V2.5 surfaces** (Decision Graph, Packet Builder): remaining states should be inventoried during each surface slice. Project Explorer and Judgment Traces now have first shipped states plus live E2E coverage.
 
 Each state needs: visual spec (DESIGN.md token map), backend trigger (which API state produces this), keyboard/accessibility behavior. Track per-state during V2 eng review.
 

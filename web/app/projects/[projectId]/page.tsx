@@ -99,6 +99,9 @@ function Explorer({
             <a href={`/style-memory?project=${encodeURIComponent(explorer.project.projectId)}`} style={primaryLinkStyle}>
               Style Memory
             </a>
+            <a href={`/projects/${encodeURIComponent(explorer.project.projectId)}/traces`} style={secondaryLinkStyle}>
+              Trace Browser
+            </a>
             <a href="/settings/providers" style={secondaryLinkStyle}>
               Provider Settings
             </a>
@@ -146,7 +149,16 @@ function Explorer({
               {explorer.recentActivity.map((item) => (
                 <li key={`${item.kind}:${item.id}`} style={activityItemStyle}>
                   <span style={activityKindStyle}>{formatKind(item.kind)}</span>
-                  <span style={activityTitleStyle}>{item.title}</span>
+                  {item.kind === "judgment_trace" ? (
+                    <a
+                      href={traceURL(explorer.project.projectId, item.id)}
+                      style={activityLinkStyle}
+                    >
+                      {item.title}
+                    </a>
+                  ) : (
+                    <span style={activityTitleStyle}>{item.title}</span>
+                  )}
                   <time dateTime={item.createdAt} style={activityTimeStyle}>
                     {formatDate(item.createdAt)}
                   </time>
@@ -209,6 +221,11 @@ function Snapshot({ snapshot }: { snapshot: NonNullable<ProjectExplorer["latestS
           <dd style={metaValueStyle}>{formatDate(snapshot.createdAt)}</dd>
         </div>
       </dl>
+      {snapshot.publicReadable && snapshot.publicToken ? (
+        <a href={`/p/${encodeURIComponent(snapshot.publicToken)}`} style={inlineActionStyle}>
+          Open public snapshot
+        </a>
+      ) : null}
     </div>
   );
 }
@@ -264,6 +281,10 @@ function formatDate(value: string) {
 
 function formatKind(kind: string) {
   return kind.replaceAll("_", " ");
+}
+
+function traceURL(projectId: string, traceId: string) {
+  return `/projects/${encodeURIComponent(projectId)}/traces?trace=${encodeURIComponent(traceId)}`;
 }
 
 const pageStyle: React.CSSProperties = {
@@ -511,6 +532,11 @@ const activityTitleStyle: React.CSSProperties = {
   color: "var(--ink)",
   fontSize: "15px",
   fontWeight: 800,
+};
+
+const activityLinkStyle: React.CSSProperties = {
+  ...activityTitleStyle,
+  textDecoration: "none",
 };
 
 const activityTimeStyle: React.CSSProperties = {

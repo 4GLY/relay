@@ -64,6 +64,7 @@ func TestProjectExplorerSummarizesOwnedProject(t *testing.T) {
 				Target:         "design_doc",
 				TaskSummary:    "Prepare design handoff",
 				PublicReadable: true,
+				PublicToken:    "psnap_public_token",
 				CreatedAt:      time.Date(2026, 4, 29, 2, 3, 0, 0, time.UTC),
 			},
 		}},
@@ -82,6 +83,9 @@ func TestProjectExplorerSummarizesOwnedProject(t *testing.T) {
 	}
 	if result.LatestSnapshot == nil || result.LatestSnapshot.SnapshotID != "psnap_1" || !result.LatestSnapshot.PublicReadable {
 		t.Fatalf("unexpected latest snapshot: %#v", result.LatestSnapshot)
+	}
+	if result.LatestSnapshot.PublicToken != "psnap_public_token" {
+		t.Fatalf("expected public snapshot token, got %#v", result.LatestSnapshot)
 	}
 	if result.StyleMemory.NextProposalID != "prop_pending" {
 		t.Fatalf("unexpected style memory preview: %#v", result.StyleMemory)

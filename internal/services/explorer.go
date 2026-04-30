@@ -249,7 +249,15 @@ func (s Service) latestExplorerSnapshot(ctx context.Context, projectID string) (
 		TaskSummary:    snapshot.TaskSummary,
 		CreatedAt:      snapshot.CreatedAt,
 		PublicReadable: snapshot.PublicReadable,
+		PublicToken:    publicSnapshotToken(snapshot),
 	}, nil
+}
+
+func publicSnapshotToken(snapshot domain.PacketSnapshot) string {
+	if !snapshot.PublicReadable {
+		return ""
+	}
+	return snapshot.PublicToken
 }
 
 func recentExplorerActivity(traces []domain.JudgmentTrace, approved []domain.ApprovedHeuristic) []ProjectExplorerActivity {

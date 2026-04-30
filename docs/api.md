@@ -459,7 +459,7 @@ Path params:
 Response fields:
 - `project`: `project_id`, `name`, `status`
 - `counts`: notes, artifacts, decisions, open questions, judgment traces, pending proposals, approved heuristics, rejected proposals, packet snapshots
-- `latest_snapshot`: latest packet snapshot summary when present
+- `latest_snapshot`: latest packet snapshot summary when present; includes `public_token` only when the snapshot is public-readable
 - `style_memory`: preview of the next pending proposal when present
 - `recent_activity`: compact recent judgment trace / approved heuristic activity
 

@@ -62,3 +62,50 @@ Cleanup verification:
 - temporary project rows: `0`
 - temporary user rows: `0`
 - temporary public snapshot rows: `0`
+
+## Manual Project Explorer QA
+
+Date: 2026-04-30
+
+Target: `https://relay.4gly.dev`
+
+Deployment evidence:
+
+- Source commit under test: `4ec13cd25406682cccc9208d8dc3d35958421bd0`
+- Deploy commit under test: `126e9e4a07e08362c174fbd1bc95166702b948d0`
+- Argo status: `Synced / Healthy`
+- `relay-web`: `ghcr.io/4gly/relay-web:sha-4ec13cd25406682cccc9208d8dc3d35958421bd0`
+- `relay-api`: `ghcr.io/4gly/relay-api:sha-01a088020570ea3de8a22dbbd40cba80f5b0bff6`
+
+Authenticated project:
+
+- User: `hoon_ch`
+- Project: `proj_28cc65685c63`
+- Project owner: `usr_460ac62a4904`
+
+Checks:
+
+- `/` with a valid `relay_session` redirected to `/projects/proj_28cc65685c63`.
+- Project Explorer rendered the `Personal` project, counts, Style Memory preview,
+  latest snapshot, and recent activity.
+- Explorer API returned `200 OK` for
+  `/v1/projects/proj_28cc65685c63/explorer`.
+- Explorer Style Memory link resolved to
+  `/style-memory?project=proj_28cc65685c63`.
+- Style Memory rendered authenticated tab counts:
+  `Proposals 0`, `Approved 5`, `Rejected 2`.
+- Desktop Project Explorer screenshot showed no visible overlap.
+- Mobile Project Explorer screenshot at `390x844` showed no visible overlap.
+- gstack browser console checks reported no console errors on Project Explorer
+  and Style Memory.
+
+Artifacts:
+
+- `.gstack/qa-reports/screenshots/v2-5-project-explorer-desktop.png`
+- `.gstack/qa-reports/screenshots/v2-5-project-explorer-mobile.png`
+- `.gstack/qa-reports/screenshots/v2-5-style-memory-from-explorer.png`
+
+Cleanup verification:
+
+- QA browser sessions created for this run: `3`
+- QA browser sessions revoked after the run: `3`

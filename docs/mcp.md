@@ -5,6 +5,9 @@ Relay exposes a narrow MCP surface for agents that need shared memory tools.
 This page is for MCP consumers.
 Use it when you want to connect an agent to Relay over `stdio` or remote `HTTP`.
 
+For the practical agent operating loop, see
+[`docs/mcp-first-dogfood.md`](mcp-first-dogfood.md).
+
 ## Base Endpoint
 
 - production: `https://relay.4gly.dev/mcp`

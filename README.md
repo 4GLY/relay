@@ -62,8 +62,10 @@ Notes:
   - `relay_build_packet`
   - `relay_latest_packet_snapshot`
   - `relay_show_project`
+  - `relay_retrieve_project`
 - API key issue/list/revoke stays on the HTTP API and local skill, not the public MCP surface.
 - Local `cmd/relay-mcp` can still expose admin tools for operator/debug workflows.
+- For the MCP-first agent operating loop, see [docs/mcp-first-dogfood.md](docs/mcp-first-dogfood.md).
 
 ## Status
 
@@ -82,6 +84,7 @@ Start here:
 
 - Contract guide: [docs/api.md](docs/api.md)
 - MCP guide: [docs/mcp.md](docs/mcp.md)
+- MCP-first dogfood workflow: [docs/mcp-first-dogfood.md](docs/mcp-first-dogfood.md)
 - MCP examples:
   - [examples/mcp/http/tools-list.sh](examples/mcp/http/tools-list.sh)
   - [examples/mcp/http/call-tool.sh](examples/mcp/http/call-tool.sh)

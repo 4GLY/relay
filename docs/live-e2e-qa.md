@@ -1,6 +1,6 @@
 # Relay Live E2E QA
 
-Date: 2026-04-29
+Date: 2026-04-30
 
 ## Purpose
 
@@ -34,13 +34,9 @@ RELAY_DATABASE_URL=postgresql://... scripts/qa/run_live_e2e.sh
 If `RELAY_DATABASE_URL` is not set, the script reads
 `relay-secrets/database_url` from the `relay` namespace.
 
-## Branch Coverage Update
+## Current Coverage
 
-The user API key and Korean locale checks were added after run
-`qa20260430014649fd5582`. They must be verified in the next live run after both
-`relay-api` and `relay-web` are deployed from this branch.
-
-New checks:
+The live suite covers:
 
 - `/settings/api-keys` renders authenticated settings.
 - API key settings issues a user-owned Relay client key.
@@ -51,29 +47,29 @@ New checks:
 
 ## Latest Result
 
-Run ID: `qa20260430014649fd5582`
+Run ID: `qa20260430110812ba79d2`
 
 Target: `https://relay.4gly.dev`
 
 Deployment evidence:
 
-- Source commit under test: `f7b338ad53df2e99e14ed8b8d98c5d97639a53e3`
-- Deploy commit under test: `db274b18599e672a5686c666711e23d66b8cea14`
-- Argo revision: `db274b18599e672a5686c666711e23d66b8cea14`
+- Source commit under test: `b9628d51fd6788951be304fd74271bccd4bbee0c`
+- Deploy commit under test: `52d7dbb1ac11c11988d55ed3479b88c0410da491`
+- Argo revision: `52d7dbb1ac11c11988d55ed3479b88c0410da491`
 - Argo status: `Synced / Healthy`
-- `relay-web`: `ghcr.io/4gly/relay-web:sha-f7b338ad53df2e99e14ed8b8d98c5d97639a53e3`
-- `relay-api`: `ghcr.io/4gly/relay-api:sha-f7b338ad53df2e99e14ed8b8d98c5d97639a53e3`
-- `relay-curator-worker`: `ghcr.io/4gly/relay-api:sha-f7b338ad53df2e99e14ed8b8d98c5d97639a53e3`
+- `relay-web`: `ghcr.io/4gly/relay-web:sha-b9628d51fd6788951be304fd74271bccd4bbee0c`
+- `relay-api`: `ghcr.io/4gly/relay-api:sha-b9628d51fd6788951be304fd74271bccd4bbee0c`
+- `relay-curator-worker`: `ghcr.io/4gly/relay-api:sha-b9628d51fd6788951be304fd74271bccd4bbee0c`
 
 Observed result:
 
-- `21 passed`
-- `1 skipped`
-- public snapshot fixture: `/p/psnap_qa20260430014649fd5582_token`
+- `30 passed`
+- `2 skipped`
+- public snapshot fixture: `/p/psnap_qa20260430110812ba79d2_token`
 
-The skipped test is the mobile project for the provider credential mutation.
-That mutation intentionally runs once on desktop Chromium to avoid two browser
-projects racing on the same user-owned credential row.
+The skipped tests are the mobile projects for provider credential and API key
+mutations. Those mutations intentionally run once on desktop Chromium to avoid
+two browser projects racing on the same user-owned rows.
 
 Additional authenticated coverage:
 
@@ -83,11 +79,18 @@ Additional authenticated coverage:
   `latest_snapshot.public_token` is present.
 - Trace Browser renders seeded judgment traces on desktop Chromium and mobile
   Chrome.
+- Provider settings stores masked metadata and disconnects.
+- API key settings issues a one-time `relay_live_` token and revokes the
+  user-owned key.
+- Korean locale renders first-run and settings copy.
 
 Cleanup verification:
 
 - temporary project rows: `0`
 - temporary user rows: `0`
+- temporary session rows: `0`
+- temporary provider credential rows: `0`
+- temporary API key rows: `0`
 - temporary public snapshot rows: `0`
 
 ## Manual Project Explorer QA

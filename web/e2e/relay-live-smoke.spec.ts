@@ -286,10 +286,10 @@ test.describe("Relay authenticated live smoke", () => {
     await page.getByTestId("issue-api-key").click();
     await expect(page.getByText(/Copy this token now/i)).toBeVisible();
     await expect(page.getByLabel(/Raw token/i)).toHaveValue(/relay_live_/i);
-    await expect(page.getByText(keyName)).toBeVisible();
+    await expect(page.getByText(keyName, { exact: true })).toBeVisible();
 
     await page.reload();
-    await expect(page.getByText(keyName)).toBeVisible();
+    await expect(page.getByText(keyName, { exact: true })).toBeVisible();
     await expect(page.getByText(/Copy this token now/i)).toHaveCount(0);
     await expect(page.getByLabel(/Raw token/i)).toHaveCount(0);
 

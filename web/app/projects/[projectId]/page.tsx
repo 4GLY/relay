@@ -105,6 +105,9 @@ function Explorer({
             <a href={`/projects/${encodeURIComponent(explorer.project.projectId)}/graph`} style={secondaryLinkStyle}>
               Decision Graph
             </a>
+            <a href={`/projects/${encodeURIComponent(explorer.project.projectId)}/packet-builder`} style={secondaryLinkStyle}>
+              Packet Builder
+            </a>
             <a href="/settings/providers" style={secondaryLinkStyle}>
               Provider Settings
             </a>
@@ -140,7 +143,15 @@ function Explorer({
 
         <Panel title="Latest Snapshot" kicker={`${c.packetSnapshots} total`}>
           {explorer.latestSnapshot ? (
-            <Snapshot snapshot={explorer.latestSnapshot} />
+            <>
+              <Snapshot snapshot={explorer.latestSnapshot} />
+              <a
+                href={`/projects/${encodeURIComponent(explorer.project.projectId)}/packet-builder`}
+                style={inlineActionStyle}
+              >
+                Open Packet Builder
+              </a>
+            </>
           ) : (
             <p style={quietCopyStyle}>No packet snapshots yet.</p>
           )}

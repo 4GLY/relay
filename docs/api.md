@@ -405,6 +405,21 @@ Contract notes:
 - `persist_snapshot` writes an immutable packet snapshot and returns `snapshot_id`
 - packet output includes `schema_version`, `rendered_body`, `approved_heuristic_ids`, `missing_context`, and `retrieval_mode`
 
+### `GET /v1/projects/{project_id}/packet-snapshots/latest`
+
+Purpose:
+- read the latest immutable packet snapshot for the project workspace
+- power the Packet Builder WYSIWYG first slice without exposing packet source panels by default
+
+Query params:
+- `type`: optional packet kind; defaults to `resume`
+- `target`: optional packet target; defaults to `codex`
+
+Contract notes:
+- requires project access through a session cookie or bearer auth
+- response includes the rendered packet body, supporting evidence arrays, missing context, and immutable snapshot ids
+- `public_readable` and `public_token` are included so UI can link to an already published snapshot without calling admin-only publish/revoke routes
+
 ### `GET /v1/projects/{project_id}`
 
 Purpose:

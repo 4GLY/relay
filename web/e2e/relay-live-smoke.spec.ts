@@ -129,6 +129,10 @@ test.describe("Relay authenticated live smoke", () => {
       "href",
       `/projects/${authenticatedProjectID}/graph`,
     );
+    await expect(page.getByRole("link", { name: "Packet Builder" })).toHaveAttribute(
+      "href",
+      `/projects/${authenticatedProjectID}/packet-builder`,
+    );
     if (publicSnapshotToken && !isLocalWebBase) {
       await expect(page.getByRole("link", { name: "Open public snapshot" })).toHaveAttribute(
         "href",
@@ -167,6 +171,25 @@ test.describe("Relay authenticated live smoke", () => {
     );
     await page.screenshot({
       path: `${screenshotDir}/s10-auth-decision-graph.png`,
+      fullPage: true,
+    });
+  });
+
+  test("packet builder renders the latest snapshot document", async ({ page }) => {
+    await page.goto(`/projects/${authenticatedProjectID}/packet-builder`);
+    await expect(page.getByRole("heading", { name: "Packet Builder" })).toBeVisible();
+    await expect(page.getByText(/Prefer explicit recovery actions over generic error states/i)).toBeVisible();
+    await expect(page.getByText("Source evidence")).toBeVisible();
+    await expect(page.getByRole("link", { name: "Project Explorer" })).toHaveAttribute(
+      "href",
+      `/projects/${authenticatedProjectID}`,
+    );
+    await expect(page.getByRole("link", { name: "Decision Graph" })).toHaveAttribute(
+      "href",
+      `/projects/${authenticatedProjectID}/graph`,
+    );
+    await page.screenshot({
+      path: `${screenshotDir}/s10-auth-packet-builder.png`,
       fullPage: true,
     });
   });

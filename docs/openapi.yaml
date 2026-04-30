@@ -577,6 +577,92 @@ components:
           type: array
           items:
             type: string
+    PacketSnapshotReadResult:
+      type: object
+      required:
+        - snapshot_id
+        - project_id
+        - type
+        - target
+        - decision_ids
+        - open_question_ids
+        - source_artifact_ids
+        - missing_context
+        - public_readable
+        - created_at
+      properties:
+        snapshot_id:
+          type: string
+        project_id:
+          type: string
+        schema_version:
+          type: string
+        type:
+          type: string
+        target:
+          type: string
+        task_summary:
+          type: string
+        rendered_body:
+          type: string
+        style_cues:
+          type: array
+          items:
+            $ref: '#/components/schemas/PacketStyleCue'
+        supporting_notes:
+          type: array
+          items:
+            $ref: '#/components/schemas/PacketNote'
+        supporting_decisions:
+          type: array
+          items:
+            $ref: '#/components/schemas/PacketDecision'
+        supporting_questions:
+          type: array
+          items:
+            $ref: '#/components/schemas/PacketQuestion'
+        supporting_artifacts:
+          type: array
+          items:
+            $ref: '#/components/schemas/PacketArtifact'
+        why_included:
+          type: array
+          items:
+            type: string
+        approved_heuristic_ids:
+          type: array
+          items:
+            type: string
+        decision_ids:
+          type: array
+          items:
+            type: string
+        open_question_ids:
+          type: array
+          items:
+            type: string
+        source_artifact_ids:
+          type: array
+          items:
+            type: string
+        missing_context:
+          type: array
+          items:
+            type: string
+        public_readable:
+          type: boolean
+        public_token:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+    PacketSnapshotReadResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/PacketSnapshotReadResult'
     ShowResult:
       type: object
       required:
@@ -1789,6 +1875,50 @@ paths:
                 $ref: '#/components/schemas/ErrorEnvelope'
         '500':
           description: Internal error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /v1/projects/{project_id}/packet-snapshots/latest:
+    get:
+      tags: [snapshots]
+      summary: Read the latest immutable packet snapshot for a project
+      operationId: latestPacketSnapshot
+      security:
+        - BearerAuth: []
+        - CookieAuth: []
+      parameters:
+        - name: project_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+            default: codex
+      responses:
+        '200':
+          description: Latest packet snapshot
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PacketSnapshotReadResponse'
+        '401':
+          description: Missing or invalid auth
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: Snapshot not found
           content:
             application/json:
               schema:

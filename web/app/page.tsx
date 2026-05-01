@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { RELAY_API_URL, relayFetch, type RelayEnvelope } from "@/lib/api";
 import { getDictionary, resolveLocale } from "@/lib/i18n";
 import type { AuthMe } from "@/lib/onboarding";
+import { RelayCard, RelayLinkButton } from "@/components/relay";
 
 export const dynamic = "force-dynamic";
 
@@ -45,97 +46,19 @@ export default async function HomePage() {
   }
 
   return (
-    <main style={pageStyle}>
-      <p style={eyebrowStyle}>{dictionary.root.eyebrow}</p>
-      <h1 style={titleStyle}>{dictionary.root.title}</h1>
-      <p style={subtitleStyle}>{dictionary.root.subtitle}</p>
-      <section style={panelStyle} aria-labelledby="entry-title">
-        <h2 id="entry-title" style={panelTitleStyle}>
+    <main className="relay-auth-entry">
+      <p className="relay-auth-eyebrow">{dictionary.root.eyebrow}</p>
+      <h1 className="relay-auth-title">{dictionary.root.title}</h1>
+      <p className="relay-auth-subtitle">{dictionary.root.subtitle}</p>
+      <RelayCard className="relay-auth-panel" aria-labelledby="entry-title">
+        <h2 id="entry-title" className="relay-auth-panel-title">
           {dictionary.root.panelTitle}
         </h2>
-        <p style={panelCopyStyle}>{dictionary.root.panelCopy}</p>
-        <a href={authStartURL()} style={buttonStyle}>
+        <p className="relay-auth-panel-copy">{dictionary.root.panelCopy}</p>
+        <RelayLinkButton href={authStartURL()} variant="primary">
           {dictionary.root.signInButton}
-        </a>
-      </section>
+        </RelayLinkButton>
+      </RelayCard>
     </main>
   );
 }
-
-const pageStyle: React.CSSProperties = {
-  maxWidth: "760px",
-  margin: "0 auto",
-  padding: "96px 32px 120px",
-};
-
-const eyebrowStyle: React.CSSProperties = {
-  fontFamily: "var(--font-mono)",
-  fontSize: "11px",
-  letterSpacing: "0.18em",
-  textTransform: "uppercase",
-  color: "var(--muted)",
-  marginBottom: "32px",
-};
-
-const titleStyle: React.CSSProperties = {
-  fontFamily: "var(--font-display)",
-  fontWeight: 500,
-  fontSize: "clamp(56px, 9vw, 112px)",
-  lineHeight: 0.95,
-  letterSpacing: "-0.03em",
-  color: "var(--ink)",
-  marginBottom: "24px",
-  fontVariationSettings: '"opsz" 144, "SOFT" 50',
-};
-
-const subtitleStyle: React.CSSProperties = {
-  fontFamily: "var(--font-display)",
-  fontStyle: "italic",
-  fontWeight: 400,
-  fontSize: "clamp(20px, 2.8vw, 28px)",
-  lineHeight: 1.35,
-  color: "var(--ink-muted)",
-  maxWidth: "640px",
-  marginBottom: "42px",
-  fontVariationSettings: '"opsz" 48',
-};
-
-const panelStyle: React.CSSProperties = {
-  maxWidth: "560px",
-  padding: "28px",
-  border: "1px solid var(--border)",
-  borderRadius: "8px",
-  background: "var(--canvas-raised)",
-};
-
-const panelTitleStyle: React.CSSProperties = {
-  margin: "0 0 12px",
-  fontFamily: "var(--font-display)",
-  fontWeight: 500,
-  fontSize: "30px",
-  letterSpacing: "-0.015em",
-  fontVariationSettings: '"opsz" 96',
-};
-
-const panelCopyStyle: React.CSSProperties = {
-  margin: "0 0 22px",
-  color: "var(--ink-muted)",
-  fontSize: "15px",
-  lineHeight: 1.6,
-};
-
-const buttonStyle: React.CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  minHeight: "42px",
-  padding: "0 16px",
-  borderRadius: "8px",
-  border: "1px solid var(--border-strong)",
-  color: "var(--canvas)",
-  background: "var(--ink)",
-  textDecoration: "none",
-  fontFamily: "var(--font-sans)",
-  fontSize: "14px",
-  fontWeight: 800,
-};

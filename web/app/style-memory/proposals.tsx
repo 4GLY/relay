@@ -11,7 +11,16 @@ import {
 } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 
-import { RelayTopRail } from "@/components/relay-app-shell";
+import {
+  RelayButton,
+  RelayEmptyState,
+  RelayLinkButton,
+  RelayPageHead,
+  RelaySourceChip,
+  RelayStatusBadge,
+  RelayTopRail,
+} from "@/components/relay";
+import { cn } from "@/lib/utils";
 import {
   ProposalAlreadyResolvedError,
   REJECT_REASON_CODES,
@@ -398,36 +407,36 @@ export function Proposals({
   }, [pending.length]);
 
   return (
-    <div style={layoutStyle}>
+    <div className="relay-style-memory-page">
       <RelayTopRail
         activeStep="Refine"
         userLabel={userDisplayName}
         projectHref={`/style-memory?project=${encodeURIComponent(projectId)}`}
       />
 
-      <main style={workspaceStyle} aria-label="Style Memory workspace">
-        <div style={wsHeadStyle}>
-          <div>
-            <p style={pageEyebrowStyle}>{projectId} · Style Memory</p>
-            <h2 style={wsTitleStyle}>{subTitle}</h2>
-          </div>
-          <div style={wsActionsStyle}>
-            <a href={`/projects/${encodeURIComponent(projectId)}/packet-builder`} style={ghostActionStyle}>
+      <main className="relay-style-memory-workspace" aria-label="Style Memory workspace">
+        <RelayPageHead
+          eyebrow={<>{projectId} · Style Memory</>}
+          title={subTitle}
+          actions={
+            <>
+            <RelayLinkButton href={`/projects/${encodeURIComponent(projectId)}/packet-builder`} variant="secondary">
               Compose handoff
-            </a>
-          <button
-            type="button"
-            onClick={() => setView((v) => (v === "single" ? "batch" : "single"))}
-            style={viewToggleStyle(view === "batch")}
-            aria-pressed={view === "batch"}
-            data-testid="view-toggle"
-          >
-            {view === "batch" ? "Single hero" : "View all queue"}
-          </button>
-          </div>
-        </div>
+            </RelayLinkButton>
+            <RelayButton
+              type="button"
+              variant={view === "batch" ? "primary" : "secondary"}
+              onClick={() => setView((v) => (v === "single" ? "batch" : "single"))}
+              aria-pressed={view === "batch"}
+              data-testid="view-toggle"
+            >
+              {view === "batch" ? "Single hero" : "View all queue"}
+            </RelayButton>
+            </>
+          }
+        />
 
-        <nav style={tabsStyle} role="tablist" aria-label="Style Memory views">
+        <nav className="relay-tabs relay-style-memory-tabs" role="tablist" aria-label="Style Memory views">
           <TabButton active={tab === "proposals"} count={pending.length} onClick={() => setTab("proposals")}>
             Proposals
           </TabButton>
@@ -490,7 +499,7 @@ export function Proposals({
       <ToastDock toasts={toasts} />
 
       {view === "batch" && showShortcutHint && (
-        <div style={hintBarStyle} role="status" aria-live="polite">
+        <div className="relay-style-memory-hint" role="status" aria-live="polite">
           <kbd>j</kbd>/<kbd>k</kbd> navigate · <kbd>a</kbd> approve · <kbd>x</kbd> reject · <kbd>Esc</kbd> close
         </div>
       )}
@@ -510,9 +519,16 @@ function TabButton({
   onClick: () => void;
 }) {
   return (
-    <button type="button" role="tab" aria-selected={active} onClick={onClick} style={tabBtnStyle(active)}>
+    <button
+      type="button"
+      role="tab"
+      aria-selected={active}
+      onClick={onClick}
+      className="relay-tab relay-style-memory-tab"
+      data-active={active || undefined}
+    >
       {children}
-      <span style={tabCountStyle}>{count}</span>
+      <span className="relay-tab-count">{count}</span>
     </button>
   );
 }
@@ -552,19 +568,16 @@ function ProposalList({
 }: ProposalListProps) {
   if (!hero && queue.length === 0) {
     return (
-      <div style={emptyStateBlockStyle} role="status">
-        <h3 style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: "22px", marginBottom: "8px" }}>
-          All quiet on the swan front.
-        </h3>
-        <p style={{ fontFamily: "var(--font-display)", fontStyle: "italic", color: "var(--ink-muted)" }}>
-          No pending proposals. Capture some judgment traces and the curator will refill the queue.
-        </p>
-      </div>
+      <RelayEmptyState
+        role="status"
+        title="All quiet on the swan front."
+        copy="No pending proposals. Capture some judgment traces and the curator will refill the queue."
+      />
     );
   }
 
   return (
-    <div style={proposalsStyle}>
+    <div className="relay-style-memory-proposals">
       <AnimatePresence initial={false}>
         {view === "single" && hero && (
           <ProposalCard
@@ -587,7 +600,7 @@ function ProposalList({
       </AnimatePresence>
 
       {view === "single" && queue.length > 0 && (
-        <div style={queueLabelStyle}>
+        <div className="relay-style-memory-queue-label">
           <span>{queue.length} queued · resolve hero first</span>
         </div>
       )}
@@ -684,20 +697,20 @@ function ProposalCard({
     >
       {animating && !reduceMotion && <SwanGlow />}
 
-      <div style={cardTopStyle(isQueued)}>
-        <span style={scopeChipStyle}>
-          <span style={{ color: "var(--magic-primary)" }}>◈</span>
+      <div className={cn("relay-style-memory-card-top", isQueued && "relay-style-memory-card-top-queued")}>
+        <RelaySourceChip>
+          <span className="relay-magic-text">◈</span>
           {(proposal.workflow || "scope") + " × " + (proposal.artifactType || "any")}
-        </span>
+        </RelaySourceChip>
         {isQueued && (
-          <span style={peekTextStyle} title={proposal.canonicalText}>
+          <span className="relay-style-memory-peek" title={proposal.canonicalText}>
             {proposal.canonicalText}
           </span>
         )}
-        <span style={confidenceStyle}>
+        <span className="relay-style-memory-confidence">
           {conf !== null ? (
             <>
-              proposed <b style={confBoldStyle}>{conf.toFixed(2)}</b> · from {proposal.sourceTraceIds.length} trace
+              proposed <b className="relay-magic-text">{conf.toFixed(2)}</b> · from {proposal.sourceTraceIds.length} trace
               {proposal.sourceTraceIds.length === 1 ? "" : "s"}
             </>
           ) : (
@@ -726,47 +739,45 @@ function ProposalCard({
             </div>
           </div>
 
-          {proposal.reviewNotes && (
-            <p style={rationaleStyle}>{proposal.reviewNotes}</p>
-          )}
+          {proposal.reviewNotes && <p className="relay-style-memory-rationale">{proposal.reviewNotes}</p>}
 
           {(proposal.sourceTraceIds.length > 0 || proposal.sourceRefs.length > 0) && (
-            <div style={provenanceStyle}>
+            <div className="relay-style-memory-provenance">
               {proposal.sourceTraceIds.map((tid) => (
-                <span key={tid} style={sourceChipStyle("trace")}>
-                  <span style={sourceDotStyle("trace")} />
+                <RelayStatusBadge key={tid}>
+                  <span className="relay-style-memory-dot" data-variant="trace" />
                   trace · {tid.slice(0, 10)}
-                </span>
+                </RelayStatusBadge>
               ))}
               {proposal.sourceRefs.map((ref) => (
-                <span key={ref} style={sourceChipStyle("note")}>
-                  <span style={sourceDotStyle("note")} />
+                <RelayStatusBadge key={ref}>
+                  <span className="relay-style-memory-dot" data-variant="note" />
                   ref · {ref.slice(0, 10)}
-                </span>
+                </RelayStatusBadge>
               ))}
             </div>
           )}
 
-          <div style={actionsStyle}>
-            <button
+          <div className="relay-style-memory-actions">
+            <RelayButton
               type="button"
-              style={btnStyle("danger")}
+              variant="danger"
               onClick={() =>
                 setRejectDraft({ proposalId: proposal.proposalId, freeText: "" })
               }
               disabled={inflight}
             >
               Reject
-            </button>
-            <button
+            </RelayButton>
+            <RelayButton
               type="button"
-              style={btnStyle("primary")}
+              variant="primary"
               onClick={() => void approveProposal(proposal.proposalId)}
               disabled={inflight}
               data-testid={`approve-${proposal.proposalId}`}
             >
               Approve → Swan
-            </button>
+            </RelayButton>
           </div>
 
           {isRejecting && rejectDraft && (
@@ -779,7 +790,7 @@ function ProposalCard({
           )}
 
           {(showSavingChip || status?.kind === "error") && (
-            <div style={savingChipDockStyle}>
+            <div className="relay-style-memory-chip-dock">
               {status?.kind === "error" ? (
                 <ErrorChip
                   message={status.message}
@@ -804,6 +815,8 @@ function ProposalCard({
 function SwanGlow() {
   return (
     <motion.div
+      // TODO(design-system): inline-style exception. Framer glow uses runtime
+      // animation coordinates; replace if we introduce CSS animation variants.
       style={{
         position: "absolute",
         inset: 0,
@@ -832,10 +845,10 @@ function useElapsed(startedAt: number, active: boolean) {
 
 function SavingChip({ label, onCancel }: { label: string; onCancel?: () => void }) {
   return (
-    <div style={savingChipStyle}>
+    <div className="relay-style-memory-save-chip">
       <span>{label}</span>
       {onCancel && (
-        <button type="button" onClick={onCancel} style={cancelLinkStyle}>
+        <button type="button" onClick={onCancel} className="relay-link-reset relay-mono-link">
           Cancel
         </button>
       )}
@@ -845,9 +858,9 @@ function SavingChip({ label, onCancel }: { label: string; onCancel?: () => void 
 
 function ErrorChip({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
-    <div style={{ ...savingChipStyle, borderColor: "var(--danger)", color: "var(--danger)" }}>
+    <div className="relay-style-memory-save-chip" data-variant="danger">
       <span>Couldn’t save — {message.length > 40 ? "retry?" : message}</span>
-      <button type="button" onClick={onRetry} style={cancelLinkStyle}>
+      <button type="button" onClick={onRetry} className="relay-link-reset relay-mono-link">
         Retry
       </button>
     </div>
@@ -879,20 +892,21 @@ function RejectOverlay({
 
   return (
     <div
-      style={rejectOverlayStyle}
+      className="relay-style-memory-reject"
       role="region"
       aria-label="Reject reason picker"
       onKeyDown={handleKey}
       data-testid="reject-overlay"
     >
-      <p style={rejectOverlayLabelStyle}>Why reject?</p>
-      <div style={chipRowStyle}>
+      <p className="relay-style-memory-reject-label">Why reject?</p>
+      <div className="relay-chip-row">
         {REJECT_REASON_CODES.map((code) => (
           <button
             key={code}
             type="button"
             onClick={() => onChange({ ...draft, selected: code })}
-            style={reasonChipStyle(draft.selected === code)}
+            className="relay-style-memory-reason-chip"
+            data-active={draft.selected === code || undefined}
             aria-pressed={draft.selected === code}
             data-testid={`reject-chip-${code}`}
           >
@@ -907,24 +921,24 @@ function RejectOverlay({
           placeholder="Explain why (10–200 chars)"
           maxLength={200}
           rows={3}
-          style={rejectTextareaStyle}
+          className="relay-style-memory-textarea"
           aria-label="Reject reason free text"
           data-testid="reject-other-textarea"
         />
       )}
-      <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "10px" }}>
-        <button type="button" style={btnStyle("ghost")} onClick={onCancel}>
+      <div className="relay-style-memory-actions">
+        <RelayButton type="button" variant="secondary" onClick={onCancel}>
           Cancel
-        </button>
-        <button
+        </RelayButton>
+        <RelayButton
           type="button"
-          style={btnStyle("primary")}
+          variant="primary"
           onClick={onSubmit}
           disabled={submitDisabled}
           data-testid="reject-submit"
         >
           Submit
-        </button>
+        </RelayButton>
       </div>
     </div>
   );
@@ -941,44 +955,30 @@ function ApprovedList({
 }) {
   if (failed) {
     return (
-      <div style={emptyStateBlockStyle}>
-        <p style={{ marginBottom: "12px" }}>Couldn’t load approved heuristics.</p>
-        <button type="button" style={btnStyle("ghost")} onClick={onRetry}>
+      <RelayEmptyState copy="Couldn’t load approved heuristics.">
+        <RelayButton type="button" variant="secondary" onClick={onRetry}>
           Retry
-        </button>
-      </div>
+        </RelayButton>
+      </RelayEmptyState>
     );
   }
   if (items.length === 0) {
     return (
-      <div style={emptyStateBlockStyle}>
-        <p>No approved heuristics yet — approve a duckling and it will appear here.</p>
-      </div>
+      <RelayEmptyState copy="No approved heuristics yet — approve a proposal and it will appear here." />
     );
   }
   return (
-    <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "10px" }}>
+    <ul className="relay-style-memory-list">
       {items.map((h) => (
-        <li
-          key={h.heuristicId}
-          style={{
-            border: "1px solid var(--border)",
-            borderRadius: "10px",
-            padding: "14px 16px",
-            background: "var(--canvas-raised)",
-            display: "flex",
-            flexDirection: "column",
-            gap: "6px",
-          }}
-        >
-          <div style={{ display: "flex", justifyContent: "space-between", gap: "12px" }}>
-            <span style={scopeChipStyle}>
-              <span style={{ color: "var(--magic-primary)" }}>◈</span>
+        <li key={h.heuristicId} className="relay-list-row relay-style-memory-list-row">
+          <div className="relay-list-header">
+            <RelaySourceChip>
+              <span className="relay-magic-text">◈</span>
               {(h.workflow || "scope") + " × " + (h.artifactType || "any")}
-            </span>
-            <span style={muteMonoStyle}>state: {h.state}</span>
+            </RelaySourceChip>
+            <span className="relay-style-memory-muted">state: {h.state}</span>
           </div>
-          <p style={{ fontFamily: "var(--font-mono)", fontSize: "12px", color: "var(--ink-muted)", margin: 0 }}>
+          <p className="relay-style-memory-list-copy">
             {h.canonicalText}
           </p>
         </li>
@@ -998,44 +998,28 @@ function RejectedList({
 }) {
   if (failed) {
     return (
-      <div style={emptyStateBlockStyle}>
-        <p style={{ marginBottom: "12px" }}>Couldn’t load rejected proposals.</p>
-        <button type="button" style={btnStyle("ghost")} onClick={onRetry}>
+      <RelayEmptyState copy="Couldn’t load rejected proposals.">
+        <RelayButton type="button" variant="secondary" onClick={onRetry}>
           Retry
-        </button>
-      </div>
+        </RelayButton>
+      </RelayEmptyState>
     );
   }
   if (items.length === 0) {
-    return (
-      <div style={emptyStateBlockStyle}>
-        <p>No rejected proposals yet.</p>
-      </div>
-    );
+    return <RelayEmptyState copy="No rejected proposals yet." />;
   }
   return (
-    <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "10px" }}>
+    <ul className="relay-style-memory-list">
       {items.map((p) => (
-        <li
-          key={p.proposalId}
-          style={{
-            border: "1px solid color-mix(in oklab, var(--danger) 35%, var(--border))",
-            borderRadius: "10px",
-            padding: "14px 16px",
-            background: "var(--canvas-raised)",
-            display: "flex",
-            flexDirection: "column",
-            gap: "6px",
-          }}
-        >
-          <div style={{ display: "flex", justifyContent: "space-between", gap: "12px" }}>
-            <span style={scopeChipStyle}>
-              <span style={{ color: "var(--danger)" }}>×</span>
+        <li key={p.proposalId} className="relay-list-row relay-style-memory-list-row" data-variant="danger">
+          <div className="relay-list-header">
+            <RelaySourceChip>
+              <span className="relay-danger-text">×</span>
               {(p.workflow || "scope") + " × " + (p.artifactType || "any")}
-            </span>
-            <span style={muteMonoStyle}>{p.reviewNotes || "rejected"}</span>
+            </RelaySourceChip>
+            <span className="relay-style-memory-muted">{p.reviewNotes || "rejected"}</span>
           </div>
-          <p style={{ fontFamily: "var(--font-mono)", fontSize: "12px", color: "var(--ink-muted)", margin: 0 }}>
+          <p className="relay-style-memory-list-copy">
             {p.canonicalText}
           </p>
         </li>
@@ -1046,7 +1030,7 @@ function RejectedList({
 
 function ToastDock({ toasts }: { toasts: ToastMessage[] }) {
   return (
-    <div style={toastDockStyle}>
+    <div className="relay-style-memory-toast-dock">
       <AnimatePresence initial={false}>
         {toasts.map((t) => (
           <motion.div
@@ -1057,13 +1041,11 @@ function ToastDock({ toasts }: { toasts: ToastMessage[] }) {
             transition={{ duration: 0.22 }}
             role="status"
             aria-live="polite"
-            style={{
-              ...toastStyle,
-              borderColor: t.tone === "danger" ? "var(--danger)" : "var(--magic-primary-strong)",
-            }}
+            className="relay-style-memory-toast"
+            data-variant={t.tone}
           >
-            <div style={toastTitleStyle}>{t.title}</div>
-            {t.sub && <div style={toastSubStyle}>{t.sub}</div>}
+            <div className="relay-style-memory-toast-title">{t.title}</div>
+            {t.sub && <div className="relay-style-memory-toast-sub">{t.sub}</div>}
           </motion.div>
         ))}
       </AnimatePresence>
@@ -1073,134 +1055,8 @@ function ToastDock({ toasts }: { toasts: ToastMessage[] }) {
 
 /* ---------------- Styles ---------------- */
 
-const layoutStyle: CSSProperties = {
-  minHeight: "100vh",
-  background: "var(--canvas)",
-  color: "var(--ink)",
-  display: "flex",
-  flexDirection: "column",
-};
-
-const muteMonoStyle: CSSProperties = {
-  fontFamily: "var(--font-mono)",
-  fontSize: "11px",
-  color: "var(--muted)",
-  letterSpacing: "0.04em",
-};
-
-const workspaceStyle: CSSProperties = {
-  width: "100%",
-  maxWidth: "1120px",
-  margin: "0 auto",
-  padding: "32px 40px 80px",
-  flex: 1,
-};
-
-const wsHeadStyle: CSSProperties = {
-  display: "flex",
-  alignItems: "flex-end",
-  justifyContent: "space-between",
-  gap: "24px",
-  paddingBottom: "24px",
-  borderBottom: "1px solid var(--border)",
-  marginBottom: "28px",
-  flexWrap: "wrap",
-};
-
-const pageEyebrowStyle: CSSProperties = {
-  margin: "0 0 8px",
-  color: "var(--muted)",
-  fontFamily: "var(--font-mono)",
-  fontSize: "11px",
-  letterSpacing: "0.14em",
-  textTransform: "uppercase",
-};
-
-const wsTitleStyle: CSSProperties = {
-  fontFamily: "var(--font-display)",
-  fontWeight: 500,
-  fontSize: "40px",
-  lineHeight: 1.1,
-  letterSpacing: "-0.02em",
-  fontVariationSettings: '"opsz" 96, "SOFT" 40',
-  margin: 0,
-};
-
-const wsActionsStyle: CSSProperties = {
-  display: "flex",
-  gap: "8px",
-  flexWrap: "wrap",
-  alignItems: "center",
-};
-
-const ghostActionStyle: CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  minHeight: "34px",
-  padding: "0 13px",
-  border: "1px solid var(--border-strong)",
-  borderRadius: "8px",
-  color: "var(--ink)",
-  fontFamily: "var(--font-sans)",
-  fontSize: "12.5px",
-  fontWeight: 700,
-  textDecoration: "none",
-};
-
-function viewToggleStyle(active: boolean): CSSProperties {
-  return {
-    fontFamily: "var(--font-mono)",
-    fontSize: "11px",
-    letterSpacing: "0.08em",
-    textTransform: "uppercase",
-    padding: "6px 12px",
-    borderRadius: "999px",
-    border: `1px solid ${active ? "var(--magic-primary-strong)" : "var(--border-strong)"}`,
-    background: active ? "color-mix(in oklab, var(--magic-primary) 25%, var(--canvas-raised))" : "transparent",
-    color: "var(--ink)",
-    cursor: "pointer",
-  };
-}
-
-const tabsStyle: CSSProperties = {
-  display: "flex",
-  gap: "24px",
-  borderBottom: "1px solid var(--border)",
-  marginBottom: "28px",
-};
-
-function tabBtnStyle(active: boolean): CSSProperties {
-  return {
-    fontFamily: "var(--font-mono)",
-    fontSize: "11px",
-    padding: "0 0 12px",
-    marginBottom: "-1px",
-    color: active ? "var(--ink)" : "var(--muted)",
-    background: "transparent",
-    border: "0",
-    borderBottom: `1px solid ${active ? "var(--magic-primary-strong)" : "transparent"}`,
-    letterSpacing: "0.16em",
-    textTransform: "uppercase",
-    cursor: "pointer",
-    display: "inline-flex",
-    alignItems: "center",
-    gap: "6px",
-  };
-}
-
-const tabCountStyle: CSSProperties = {
-  fontFamily: "var(--font-mono)",
-  fontSize: "10px",
-  opacity: 0.75,
-  letterSpacing: "0.04em",
-};
-
-const proposalsStyle: CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: "14px",
-};
-
+// TODO(design-system): inline-style exception. Style Memory cards still compute
+// Framer Motion layout/exit state dynamically; keep static styling in CSS.
 function computeCardStyle(
   mode: CardMode,
   focused: boolean,
@@ -1240,62 +1096,8 @@ function computeCardStyle(
   return base;
 }
 
-function cardTopStyle(queued: boolean): CSSProperties {
-  if (queued) {
-    return {
-      display: "grid",
-      gridTemplateColumns: "auto 1fr auto",
-      gap: "14px",
-      alignItems: "center",
-    };
-  }
-  return {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: "14px",
-    gap: "16px",
-    flexWrap: "wrap",
-  };
-}
-
-const peekTextStyle: CSSProperties = {
-  fontFamily: "var(--font-mono)",
-  fontSize: "11.5px",
-  color: "var(--ink-muted)",
-  overflow: "hidden",
-  textOverflow: "ellipsis",
-  whiteSpace: "nowrap",
-  letterSpacing: "0.01em",
-  minWidth: 0,
-};
-
-const scopeChipStyle: CSSProperties = {
-  display: "inline-flex",
-  gap: "6px",
-  alignItems: "center",
-  fontFamily: "var(--font-mono)",
-  fontSize: "11px",
-  padding: "5px 9px",
-  borderRadius: "6px",
-  background: "var(--problem-soft)",
-  color: "var(--canvas)",
-  letterSpacing: "0.04em",
-};
-
-const confidenceStyle: CSSProperties = {
-  fontFamily: "var(--font-mono)",
-  fontSize: "11px",
-  color: "var(--muted)",
-  letterSpacing: "0.04em",
-};
-
-const confBoldStyle: CSSProperties = {
-  color: "var(--magic-primary-strong)",
-  fontWeight: 500,
-  fontVariantNumeric: "tabular-nums",
-};
-
+// TODO(design-system): inline-style exception. The diff panel has before/after
+// semantic colors and will move to a small RelayDiff primitive if reused.
 const diffStyle: CSSProperties = {
   display: "grid",
   gridTemplateColumns: "1fr 1fr",
@@ -1318,8 +1120,8 @@ function diffSideStyle(side: "before" | "after"): CSSProperties {
     };
   }
   return {
-      padding: "11px 13px",
-      borderRadius: "8px",
+    padding: "11px 13px",
+    borderRadius: "8px",
     lineHeight: 1.55,
     whiteSpace: "pre-wrap",
     wordBreak: "break-word",
@@ -1342,234 +1144,3 @@ function diffMetaStyle(side: "before" | "after"): CSSProperties {
       : "var(--magic-primary-strong)",
   };
 }
-
-const rationaleStyle: CSSProperties = {
-  fontFamily: "var(--font-display)",
-  fontStyle: "italic",
-  fontWeight: 400,
-  fontSize: "17px",
-  lineHeight: 1.5,
-  color: "var(--ink-muted)",
-  margin: "0 0 22px",
-  fontVariationSettings: '"opsz" 48',
-};
-
-const provenanceStyle: CSSProperties = {
-  display: "flex",
-  gap: "6px",
-  flexWrap: "wrap",
-  marginBottom: "16px",
-};
-
-function sourceChipStyle(_kind: "trace" | "note"): CSSProperties {
-  return {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: "6px",
-    fontFamily: "var(--font-mono)",
-    fontSize: "11px",
-    padding: "5px 10px",
-    borderRadius: "999px",
-    border: "1px solid var(--border)",
-    color: "var(--ink-muted)",
-    letterSpacing: "0.03em",
-    background: "var(--canvas-raised)",
-  };
-}
-
-function sourceDotStyle(kind: "trace" | "note"): CSSProperties {
-  return {
-    width: "6px",
-    height: "6px",
-    borderRadius: "999px",
-    background: kind === "trace" ? "var(--magic-accent-strong)" : "var(--success)",
-  };
-}
-
-const actionsStyle: CSSProperties = {
-  display: "flex",
-  gap: "8px",
-  justifyContent: "flex-end",
-  flexWrap: "wrap",
-};
-
-function btnStyle(variant: "primary" | "ghost" | "danger"): CSSProperties {
-  const base: CSSProperties = {
-    fontFamily: "var(--font-sans)",
-    fontWeight: 600,
-    fontSize: "12.5px",
-    padding: "8px 15px",
-    borderRadius: "8px",
-    border: "1px solid transparent",
-    letterSpacing: "0.01em",
-    cursor: "pointer",
-  };
-  if (variant === "primary") return { ...base, background: "var(--ink)", color: "var(--canvas)" };
-  if (variant === "danger") {
-    return {
-      ...base,
-      background: "transparent",
-      color: "var(--danger)",
-      borderColor: "color-mix(in oklab, var(--danger) 35%, transparent)",
-    };
-  }
-  return {
-    ...base,
-    background: "transparent",
-    color: "var(--ink-muted)",
-    borderColor: "var(--border-strong)",
-  };
-}
-
-const queueLabelStyle: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: "12px",
-  margin: "10px 2px 2px",
-  fontFamily: "var(--font-mono)",
-  fontSize: "10px",
-  letterSpacing: "0.14em",
-  textTransform: "uppercase",
-  color: "var(--muted)",
-};
-
-const rejectOverlayStyle: CSSProperties = {
-  marginTop: "14px",
-  paddingTop: "14px",
-  borderTop: "1px dashed var(--border)",
-  display: "flex",
-  flexDirection: "column",
-  gap: "10px",
-};
-
-const rejectOverlayLabelStyle: CSSProperties = {
-  fontFamily: "var(--font-mono)",
-  fontSize: "10px",
-  letterSpacing: "0.14em",
-  textTransform: "uppercase",
-  color: "var(--muted)",
-  margin: 0,
-};
-
-const chipRowStyle: CSSProperties = {
-  display: "flex",
-  flexWrap: "wrap",
-  gap: "6px",
-};
-
-function reasonChipStyle(active: boolean): CSSProperties {
-  return {
-    fontFamily: "var(--font-mono)",
-    fontSize: "11px",
-    padding: "5px 10px",
-    borderRadius: "999px",
-    border: `1px solid ${active ? "var(--magic-primary-strong)" : "var(--border-strong)"}`,
-    background: active ? "color-mix(in oklab, var(--magic-primary) 22%, var(--canvas-raised))" : "transparent",
-    color: "var(--ink)",
-    cursor: "pointer",
-    letterSpacing: "0.03em",
-  };
-}
-
-const rejectTextareaStyle: CSSProperties = {
-  fontFamily: "var(--font-mono)",
-  fontSize: "12px",
-  padding: "10px 12px",
-  borderRadius: "8px",
-  border: "1px solid var(--border-strong)",
-  background: "var(--canvas-raised)",
-  color: "var(--ink)",
-  resize: "vertical",
-  minHeight: "70px",
-};
-
-const savingChipDockStyle: CSSProperties = {
-  position: "absolute",
-  top: "12px",
-  right: "12px",
-};
-
-const savingChipStyle: CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  gap: "8px",
-  padding: "5px 10px",
-  borderRadius: "999px",
-  background: "var(--canvas-raised)",
-  border: "1px solid var(--border-strong)",
-  fontFamily: "var(--font-display)",
-  fontStyle: "italic",
-  fontSize: "12px",
-  color: "var(--ink-muted)",
-};
-
-const cancelLinkStyle: CSSProperties = {
-  background: "transparent",
-  border: "none",
-  color: "var(--magic-primary-strong)",
-  fontFamily: "var(--font-mono)",
-  fontSize: "11px",
-  cursor: "pointer",
-  padding: 0,
-};
-
-const emptyStateBlockStyle: CSSProperties = {
-  border: "1px dashed var(--border-strong)",
-  borderRadius: "12px",
-  padding: "32px 24px",
-  textAlign: "center",
-  color: "var(--ink-muted)",
-};
-
-const toastDockStyle: CSSProperties = {
-  position: "fixed",
-  right: "20px",
-  bottom: "20px",
-  display: "flex",
-  flexDirection: "column",
-  gap: "8px",
-  zIndex: 50,
-  pointerEvents: "none",
-};
-
-const toastStyle: CSSProperties = {
-  background: "var(--canvas-raised)",
-  border: "1px solid var(--magic-primary-strong)",
-  color: "var(--ink)",
-  borderRadius: "10px",
-  padding: "12px 16px",
-  fontSize: "13px",
-  boxShadow: "0 0 0 4px var(--halo), 0 20px 40px -20px rgba(0,0,0,0.15)",
-  maxWidth: "320px",
-  pointerEvents: "auto",
-};
-
-const toastTitleStyle: CSSProperties = {
-  fontFamily: "var(--font-display)",
-  fontWeight: 600,
-  fontSize: "14px",
-  marginBottom: "4px",
-  letterSpacing: "-0.01em",
-};
-
-const toastSubStyle: CSSProperties = {
-  fontFamily: "var(--font-display)",
-  fontStyle: "italic",
-  color: "var(--ink-muted)",
-  fontSize: "12.5px",
-};
-
-const hintBarStyle: CSSProperties = {
-  position: "fixed",
-  bottom: "20px",
-  left: "20px",
-  padding: "10px 14px",
-  background: "color-mix(in oklab, var(--ink) 92%, transparent)",
-  color: "var(--canvas)",
-  borderRadius: "999px",
-  fontFamily: "var(--font-mono)",
-  fontSize: "10.5px",
-  letterSpacing: "0.08em",
-  textTransform: "uppercase",
-  zIndex: 40,
-};

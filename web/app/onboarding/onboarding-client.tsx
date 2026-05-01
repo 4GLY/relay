@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import type { Dictionary, Locale } from "@/lib/i18n";
 import { translateErrorMessage } from "@/lib/i18n";
 import { completeOnboarding } from "@/lib/onboarding";
+import { RelayButton, RelayCard, RelayFeedback, RelayPageHead } from "@/components/relay";
 
 type Props = {
   copy: Dictionary["onboarding"]["client"];
@@ -39,59 +40,54 @@ export function OnboardingClient({ copy, locale, userDisplayName }: Props) {
   }
 
   return (
-    <section style={panelStyle} aria-labelledby="onboarding-title">
-      <div style={workspaceGridStyle}>
-        <div style={workspaceCardStyle}>
-          <span style={workspaceGlyphStyle}>●</span>
+    <RelayCard className="relay-onboarding-panel" aria-labelledby="onboarding-title">
+      <div className="relay-onboarding-workspace-grid">
+        <div className="relay-onboarding-workspace-card">
+          <span className="relay-onboarding-glyph">●</span>
           <div>
-            <h2 style={workspaceTitleStyle}>Personal</h2>
-            <p style={workspaceCopyStyle}>{localCopy.personal}</p>
+            <h2 className="relay-onboarding-workspace-title">Personal</h2>
+            <p className="relay-onboarding-workspace-copy">{localCopy.personal}</p>
           </div>
         </div>
-        <div style={workspaceCardStyle}>
-          <span style={{ ...workspaceGlyphStyle, color: "var(--magic-primary-strong)" }}>◈</span>
+        <div className="relay-onboarding-workspace-card">
+          <span className="relay-onboarding-glyph" data-variant="magic">
+            ◈
+          </span>
           <div>
-            <h2 style={workspaceTitleStyle}>Project Explorer</h2>
-            <p style={workspaceCopyStyle}>{localCopy.projectExplorer}</p>
+            <h2 className="relay-onboarding-workspace-title">Project Explorer</h2>
+            <p className="relay-onboarding-workspace-copy">{localCopy.projectExplorer}</p>
           </div>
         </div>
       </div>
-      <div style={emptyCalloutStyle}>
+      <div className="relay-onboarding-callout">
         {localCopy.providerCallout}
       </div>
-      <div style={contentStyle}>
-        <p style={eyebrowStyle}>
-          {copy.signedInEyebrowPrefix} · {userDisplayName ?? copy.fallbackUser}
-        </p>
-        <h1 id="onboarding-title" style={titleStyle}>
-          {copy.title}
-        </h1>
-        <p style={copyStyle}>{copy.copy}</p>
-        <div style={actionsStyle}>
-          <button
-            type="button"
+      <div>
+        <RelayPageHead
+          eyebrow={`${copy.signedInEyebrowPrefix} · ${userDisplayName ?? copy.fallbackUser}`}
+          title={copy.title}
+          titleId="onboarding-title"
+          copy={copy.copy}
+        />
+        <div className="relay-form-actions">
+          <RelayButton
             onClick={startOnboarding}
             disabled={status === "submitting"}
-            style={{
-              ...primaryButtonStyle,
-              opacity: status === "submitting" ? 0.68 : 1,
-              cursor: status === "submitting" ? "wait" : "pointer",
-            }}
             data-testid="complete-onboarding"
           >
             {status === "submitting" ? copy.startingButton : copy.startButton}
-          </button>
-          <span style={secondaryNoteStyle}>
+          </RelayButton>
+          <span className="relay-onboarding-note">
             {copy.providerSettingsLink} · {localCopy.afterWorkspace}
           </span>
         </div>
         {status === "error" && (
-          <p role="alert" style={errorStyle}>
+          <RelayFeedback role="alert" variant="error">
             {error}
-          </p>
+          </RelayFeedback>
         )}
       </div>
-    </section>
+    </RelayCard>
   );
 }
 
@@ -114,131 +110,3 @@ function onboardingLocalCopy(locale: Locale) {
     afterWorkspace: "after workspace creation",
   };
 }
-
-const panelStyle: React.CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: "24px",
-  padding: "28px",
-  border: "1px solid var(--border)",
-  borderRadius: "12px",
-  background: "var(--canvas-raised)",
-};
-
-const workspaceGridStyle: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-  gap: "14px",
-};
-
-const workspaceCardStyle: React.CSSProperties = {
-  display: "flex",
-  gap: "14px",
-  alignItems: "flex-start",
-  padding: "18px",
-  border: "1px solid var(--border)",
-  borderRadius: "12px",
-  background: "var(--canvas)",
-};
-
-const workspaceGlyphStyle: React.CSSProperties = {
-  color: "var(--success)",
-  fontFamily: "var(--font-mono)",
-  fontSize: "22px",
-  lineHeight: 1,
-};
-
-const workspaceTitleStyle: React.CSSProperties = {
-  margin: 0,
-  color: "var(--ink)",
-  fontFamily: "var(--font-sans)",
-  fontSize: "16px",
-  fontWeight: 800,
-};
-
-const workspaceCopyStyle: React.CSSProperties = {
-  margin: "4px 0 0",
-  color: "var(--ink-muted)",
-  fontSize: "13px",
-  lineHeight: 1.5,
-};
-
-const emptyCalloutStyle: React.CSSProperties = {
-  padding: "18px",
-  border: "1px dashed var(--border-strong)",
-  borderRadius: "12px",
-  background: "color-mix(in srgb, var(--magic-primary) 8%, var(--canvas))",
-  color: "var(--ink-muted)",
-  fontFamily: "var(--font-display)",
-  fontSize: "17px",
-  fontStyle: "italic",
-  lineHeight: 1.45,
-  textAlign: "center",
-};
-
-const contentStyle: React.CSSProperties = {
-  paddingTop: "2px",
-};
-
-const eyebrowStyle: React.CSSProperties = {
-  margin: "0 0 14px",
-  fontFamily: "var(--font-mono)",
-  fontSize: "11px",
-  letterSpacing: "0.14em",
-  textTransform: "uppercase",
-  color: "var(--muted)",
-};
-
-const titleStyle: React.CSSProperties = {
-  margin: "0 0 18px",
-  fontFamily: "var(--font-display)",
-  fontWeight: 500,
-  fontSize: "clamp(36px, 5vw, 58px)",
-  lineHeight: 1.02,
-  letterSpacing: "-0.02em",
-  fontVariationSettings: '"opsz" 144, "SOFT" 50',
-};
-
-const copyStyle: React.CSSProperties = {
-  maxWidth: "560px",
-  margin: "0 0 28px",
-  color: "var(--ink-muted)",
-  fontSize: "16px",
-  lineHeight: 1.65,
-};
-
-const actionsStyle: React.CSSProperties = {
-  display: "flex",
-  flexWrap: "wrap",
-  alignItems: "center",
-  gap: "14px",
-};
-
-const primaryButtonStyle: React.CSSProperties = {
-  minHeight: "44px",
-  border: 0,
-  borderRadius: "8px",
-  padding: "0 20px",
-  background: "var(--ink)",
-  color: "var(--canvas)",
-  fontFamily: "var(--font-sans)",
-  fontSize: "14px",
-  fontWeight: 800,
-};
-
-const secondaryNoteStyle: React.CSSProperties = {
-  color: "var(--ink-muted)",
-  fontFamily: "var(--font-mono)",
-  fontSize: "11px",
-  letterSpacing: "0.08em",
-  textTransform: "uppercase",
-};
-
-const errorStyle: React.CSSProperties = {
-  margin: "18px 0 0",
-  padding: "12px 14px",
-  border: "1px solid color-mix(in oklab, var(--danger) 35%, var(--border))",
-  borderRadius: "8px",
-  color: "var(--danger)",
-  background: "color-mix(in oklab, var(--danger) 8%, var(--canvas-raised))",
-};

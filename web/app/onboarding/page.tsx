@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { RELAY_API_URL, relayFetch, type RelayEnvelope } from "@/lib/api";
 import { getDictionary, resolveLocale } from "@/lib/i18n";
 import type { AuthMe } from "@/lib/onboarding";
-import { RelayTopRail } from "@/components/relay-app-shell";
+import { RelayCard, RelayLinkButton, RelayPageHead, RelayTopRail } from "@/components/relay";
 
 import { OnboardingClient } from "./onboarding-client";
 
@@ -46,10 +46,12 @@ export default async function OnboardingPage() {
   return (
     <>
       <RelayTopRail activeStep="Face" userLabel={me?.display_name ?? me?.email ?? "signed out"} />
-      <main style={pageStyle}>
-        <p style={eyebrowStyle}>{dictionary.onboarding.page.eyebrow}</p>
-        <h1 style={pageTitleStyle}>{dictionary.onboarding.page.title}</h1>
-        <p style={pageCopyStyle}>{dictionary.onboarding.page.subtitle}</p>
+      <main className="relay-onboarding-page">
+        <RelayPageHead
+          eyebrow={dictionary.onboarding.page.eyebrow}
+          title={dictionary.onboarding.page.title}
+          copy={dictionary.onboarding.page.subtitle}
+        />
         {me ? (
           <OnboardingClient
             copy={dictionary.onboarding.client}
@@ -57,114 +59,24 @@ export default async function OnboardingPage() {
             userDisplayName={me.display_name ?? me.email}
           />
         ) : (
-          <section style={signInPanelStyle} aria-labelledby="signin-title">
-            <span style={glyphStyle} aria-hidden="true">
+          <RelayCard className="relay-onboarding-signin" aria-labelledby="signin-title">
+            <span className="relay-onboarding-glyph" aria-hidden="true">
               ●
             </span>
             <div>
-              <h2 id="signin-title" style={signInTitleStyle}>
+              <h2 id="signin-title" className="relay-auth-panel-title">
                 {dictionary.onboarding.page.signInTitle}
               </h2>
-              <p style={signInCopyStyle}>{dictionary.onboarding.page.signInCopy}</p>
-              <div style={signInActionsStyle}>
-                <a href={authStartURL("github")} style={authButtonStyle}>
+              <p className="relay-auth-panel-copy">{dictionary.onboarding.page.signInCopy}</p>
+              <div className="relay-form-actions">
+                <RelayLinkButton href={authStartURL("github")} variant="secondary">
                   {dictionary.common.continueWithGitHub}
-                </a>
+                </RelayLinkButton>
               </div>
             </div>
-          </section>
+          </RelayCard>
         )}
       </main>
     </>
   );
 }
-
-const pageStyle: React.CSSProperties = {
-  maxWidth: "720px",
-  margin: "40px auto",
-  padding: "0 28px 96px",
-};
-
-const eyebrowStyle: React.CSSProperties = {
-  margin: "0 0 8px",
-  fontFamily: "var(--font-mono)",
-  fontSize: "11px",
-  letterSpacing: "0.16em",
-  textTransform: "uppercase",
-  color: "var(--muted)",
-};
-
-const pageTitleStyle: React.CSSProperties = {
-  margin: "0 0 14px",
-  color: "var(--ink)",
-  fontFamily: "var(--font-display)",
-  fontWeight: 500,
-  fontSize: "clamp(44px, 7vw, 64px)",
-  lineHeight: 1,
-  fontVariationSettings: '"opsz" 144, "SOFT" 50',
-};
-
-const pageCopyStyle: React.CSSProperties = {
-  margin: "0 0 28px",
-  color: "var(--ink-muted)",
-  fontFamily: "var(--font-display)",
-  fontSize: "19px",
-  fontStyle: "italic",
-  lineHeight: 1.5,
-  fontVariationSettings: '"opsz" 48',
-};
-
-const signInPanelStyle: React.CSSProperties = {
-  display: "flex",
-  gap: "14px",
-  alignItems: "flex-start",
-  padding: "28px",
-  border: "1px solid var(--border)",
-  borderRadius: "12px",
-  background: "var(--canvas-raised)",
-};
-
-const glyphStyle: React.CSSProperties = {
-  color: "var(--success)",
-  fontFamily: "var(--font-mono)",
-  fontSize: "22px",
-  lineHeight: 1,
-};
-
-const signInTitleStyle: React.CSSProperties = {
-  margin: "0 0 12px",
-  fontFamily: "var(--font-display)",
-  fontWeight: 500,
-  fontSize: "30px",
-  letterSpacing: "-0.015em",
-  fontVariationSettings: '"opsz" 96',
-};
-
-const signInCopyStyle: React.CSSProperties = {
-  margin: "0 0 22px",
-  color: "var(--ink-muted)",
-  fontSize: "15px",
-  lineHeight: 1.6,
-};
-
-const signInActionsStyle: React.CSSProperties = {
-  display: "flex",
-  flexWrap: "wrap",
-  gap: "12px",
-};
-
-const authButtonStyle: React.CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  minHeight: "42px",
-  padding: "0 16px",
-  borderRadius: "8px",
-  border: "1px solid var(--border-strong)",
-  color: "var(--ink)",
-  textDecoration: "none",
-  fontFamily: "var(--font-sans)",
-  fontSize: "14px",
-  fontWeight: 800,
-  background: "var(--canvas)",
-};

@@ -5,6 +5,20 @@ import { useState } from "react";
 import type { Dictionary, Locale } from "@/lib/i18n";
 import { translateErrorMessage } from "@/lib/i18n";
 import {
+  RelayButton,
+  RelayCard,
+  RelayCardHeader,
+  RelayCardKicker,
+  RelayCardTitle,
+  RelayEmptyState,
+  RelayFeedback,
+  RelayField,
+  RelayMetaGrid,
+  RelayPageHead,
+  RelayStatusBadge,
+  RelayTextInput,
+} from "@/components/relay";
+import {
   issueUserAPIKey,
   revokeUserAPIKey,
   type UserAPIKeySummary,
@@ -122,126 +136,102 @@ export function APIKeySettingsClient({ copy, errorMap, initialKeys, locale }: Pr
   const canIssue = name.trim().length > 0 && !isIssuing && !revokingKeyID;
 
   return (
-    <section style={surfaceStyle} aria-labelledby="api-key-settings-title">
-      <header style={pageHeadStyle}>
-        <p style={eyebrowStyle}>{copy.eyebrow}</p>
-        <div style={pageHeadRowStyle}>
-          <div>
-            <h1 id="api-key-settings-title" style={titleStyle}>
-              {copy.title}
-            </h1>
-            <p style={copyStyle}>{copy.copy}</p>
-          </div>
-          <p style={settingsOnlyStyle}>{copy.settingsOnlyPill}</p>
-        </div>
-      </header>
+    <section className="relay-settings-surface" aria-labelledby="api-key-settings-title">
+      <RelayPageHead
+        eyebrow={copy.eyebrow}
+        title={copy.title}
+        titleId="api-key-settings-title"
+        copy={copy.copy}
+        actions={<RelayStatusBadge>{copy.settingsOnlyPill}</RelayStatusBadge>}
+      />
 
-      <div style={settingsGridStyle}>
-        <section style={cardStyle} aria-labelledby="issue-api-key-title">
-          <div style={cardHeadStyle}>
-            <p style={cardKickerStyle}>{copy.settingsOnlyPill}</p>
-            <h2 id="issue-api-key-title" style={cardTitleStyle}>
-              {copy.issueButton}
-            </h2>
-          </div>
+      <div className="relay-settings-grid">
+        <RelayCard variant="elevated" aria-labelledby="issue-api-key-title">
+          <RelayCardHeader>
+            <RelayCardKicker>{copy.settingsOnlyPill}</RelayCardKicker>
+            <RelayCardTitle id="issue-api-key-title">{copy.issueButton}</RelayCardTitle>
+          </RelayCardHeader>
 
-          <label style={labelStyle} htmlFor="api-key-name">
-            {copy.nameLabel}
-          </label>
-          <input
-            id="api-key-name"
-            type="text"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            placeholder={copy.namePlaceholder}
-            autoComplete="off"
-            style={inputStyle}
-          />
-          <p style={fieldHelpStyle}>{copy.fieldHelp}</p>
+          <RelayField label={copy.nameLabel} htmlFor="api-key-name" help={copy.fieldHelp}>
+            <RelayTextInput
+              id="api-key-name"
+              type="text"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              placeholder={copy.namePlaceholder}
+              autoComplete="off"
+            />
+          </RelayField>
 
-          <div style={actionsStyle}>
-            <button
-              type="button"
+          <div className="relay-form-actions">
+            <RelayButton
               disabled={!canIssue}
               onClick={issueKey}
-              style={{
-                ...primaryButtonStyle,
-                opacity: canIssue ? 1 : 0.55,
-                cursor: canIssue ? "pointer" : "not-allowed",
-              }}
               data-testid="issue-api-key"
             >
               {isIssuing ? copy.issuingButton : copy.issueButton}
-            </button>
+            </RelayButton>
           </div>
 
           {issuedToken && (
-            <section style={tokenPanelStyle} aria-live="polite">
+            <section className="relay-token-panel" aria-live="polite">
               <div>
-                <strong style={tokenTitleStyle}>{copy.tokenPanelTitle}</strong>
-                <p style={tokenCopyStyle}>
+                <strong className="relay-token-title">{copy.tokenPanelTitle}</strong>
+                <p className="relay-token-copy">
                   {copy.tokenPanelCopy} {issuedToken.name} · {issuedToken.tokenPrefix}
                 </p>
               </div>
-              <label style={labelStyle} htmlFor="issued-api-key-token">
-                {copy.tokenLabel}
-              </label>
-              <div style={tokenRowStyle}>
-                <input
+              <RelayField label={copy.tokenLabel} htmlFor="issued-api-key-token">
+                <div className="relay-token-row">
+                  <RelayTextInput
                   id="issued-api-key-token"
                   type="text"
                   readOnly
                   value={issuedToken.token}
                   autoComplete="off"
                   spellCheck={false}
-                  style={tokenInputStyle}
                 />
-                <button
-                  type="button"
-                  onClick={copyIssuedToken}
-                  style={secondaryButtonStyle}
-                  data-testid="copy-issued-api-key"
-                >
-                  {copyStatus === "copied" ? copy.copiedButton : copy.copyButton}
-                </button>
-              </div>
+                  <RelayButton
+                    onClick={copyIssuedToken}
+                    variant="secondary"
+                    data-testid="copy-issued-api-key"
+                  >
+                    {copyStatus === "copied" ? copy.copiedButton : copy.copyButton}
+                  </RelayButton>
+                </div>
+              </RelayField>
               {copyStatus === "error" && (
-                <p role="alert" style={errorStyle}>
+                <RelayFeedback role="alert" variant="error">
                   {copy.copyError}
-                </p>
+                </RelayFeedback>
               )}
             </section>
           )}
 
           {feedback.message && (
-            <p
+            <RelayFeedback
               aria-live="polite"
               role={feedback.kind === "error" ? "alert" : "status"}
-              style={feedback.kind === "error" ? errorStyle : successStyle}
+              variant={feedback.kind === "error" ? "error" : "success"}
             >
               {feedback.message}
-            </p>
+            </RelayFeedback>
           )}
-        </section>
+        </RelayCard>
 
-        <section style={cardStyle} aria-labelledby="issued-keys-title">
-          <div style={listHeaderStyle}>
+        <RelayCard variant="elevated" aria-labelledby="issued-keys-title">
+          <div className="relay-list-header">
             <div>
-              <p style={cardKickerStyle}>{copy.scopeLabel}</p>
-              <h2 id="issued-keys-title" style={listTitleStyle}>
-                {copy.listTitle}
-              </h2>
+              <RelayCardKicker>{copy.scopeLabel}</RelayCardKicker>
+              <RelayCardTitle id="issued-keys-title">{copy.listTitle}</RelayCardTitle>
             </div>
-            <span style={countBadgeStyle}>{keys.length}</span>
+            <RelayStatusBadge>{keys.length}</RelayStatusBadge>
           </div>
 
           {keys.length === 0 ? (
-            <div style={emptyStateStyle}>
-              <span style={emptyGlyphStyle}>○</span>
-              <p style={emptyCopyStyle}>{copy.emptyState}</p>
-            </div>
+            <RelayEmptyState copy={copy.emptyState} />
           ) : (
-            <ul style={listStyle}>
+            <ul className="relay-key-list">
               {keys.map((item) => {
                 const isRevoking = revokingKeyID === item.key_id;
                 const isConfirming = confirmingKeyID === item.key_id;
@@ -249,64 +239,61 @@ export function APIKeySettingsClient({ copy, errorMap, initialKeys, locale }: Pr
                   item.scope === "project" ? copy.scopeProject : copy.scopeGlobal;
 
                 return (
-                  <li key={item.key_id} style={rowStyle}>
-                    <div style={rowTopStyle}>
+                  <li key={item.key_id} className="relay-key-row">
+                    <div className="relay-key-row-top">
                       <div>
-                        <strong style={rowTitleStyle}>{item.name}</strong>
-                        <p style={rowMetaStyle}>{item.token_prefix}</p>
+                        <strong className="relay-key-name">{item.name}</strong>
+                        <p className="relay-key-meta">{item.token_prefix}</p>
                       </div>
-                      <span style={item.revoked ? revokedBadgeStyle : activeBadgeStyle}>
+                      <RelayStatusBadge variant={item.revoked ? "neutral" : "success"}>
                         {item.revoked ? copy.revokedStatus : copy.activeStatus}
-                      </span>
+                      </RelayStatusBadge>
                     </div>
 
-                    <dl style={metaGridStyle}>
+                    <RelayMetaGrid>
                       <div>
-                        <dt style={metaLabelStyle}>{copy.scopeLabel}</dt>
-                        <dd style={metaValueStyle}>{scopeLabel}</dd>
+                        <dt className="relay-meta-label">{copy.scopeLabel}</dt>
+                        <dd className="relay-meta-value">{scopeLabel}</dd>
                       </div>
                       {item.project_id ? (
                         <div>
-                          <dt style={metaLabelStyle}>{copy.projectLabel}</dt>
-                          <dd style={metaValueStyle}>{item.project_id}</dd>
+                          <dt className="relay-meta-label">{copy.projectLabel}</dt>
+                          <dd className="relay-meta-value">{item.project_id}</dd>
                         </div>
                       ) : null}
-                    </dl>
+                    </RelayMetaGrid>
 
                     {!item.revoked && (
-                      <div style={rowActionsStyle}>
+                      <div className="relay-row-actions">
                         {isConfirming ? (
                           <>
-                            <p style={confirmCopyStyle}>{copy.revokeConfirmCopy}</p>
-                            <div style={confirmActionsStyle}>
-                              <button
-                                type="button"
+                            <p className="relay-confirm-copy">{copy.revokeConfirmCopy}</p>
+                            <div className="relay-form-actions">
+                              <RelayButton
                                 onClick={() => revokeKey(item.key_id)}
                                 disabled={Boolean(revokingKeyID)}
-                                style={dangerButtonStyle}
+                                variant="danger"
                                 data-testid={`confirm-revoke-${item.key_id}`}
                               >
                                 {isRevoking ? copy.revokingButton : copy.confirmRevokeButton}
-                              </button>
-                              <button
-                                type="button"
+                              </RelayButton>
+                              <RelayButton
                                 onClick={() => setConfirmingKeyID(null)}
                                 disabled={Boolean(revokingKeyID)}
-                                style={secondaryButtonStyle}
+                                variant="secondary"
                               >
                                 {copy.cancelRevokeButton}
-                              </button>
+                              </RelayButton>
                             </div>
                           </>
                         ) : (
-                          <button
-                            type="button"
+                          <RelayButton
                             onClick={() => setConfirmingKeyID(item.key_id)}
-                            style={secondaryButtonStyle}
+                            variant="secondary"
                             data-testid={`revoke-api-key-${item.key_id}`}
                           >
                             {copy.revokeButton}
-                          </button>
+                          </RelayButton>
                         )}
                       </div>
                     )}
@@ -315,366 +302,8 @@ export function APIKeySettingsClient({ copy, errorMap, initialKeys, locale }: Pr
               })}
             </ul>
           )}
-        </section>
+        </RelayCard>
       </div>
     </section>
   );
 }
-
-const surfaceStyle: React.CSSProperties = {
-  width: "100%",
-  maxWidth: "1120px",
-};
-
-const pageHeadStyle: React.CSSProperties = {
-  marginBottom: "24px",
-  paddingBottom: "22px",
-  borderBottom: "1px solid var(--border)",
-};
-
-const pageHeadRowStyle: React.CSSProperties = {
-  display: "flex",
-  flexWrap: "wrap",
-  justifyContent: "space-between",
-  gap: "18px",
-  alignItems: "end",
-};
-
-const settingsGridStyle: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "minmax(300px, 0.9fr) minmax(340px, 1.1fr)",
-  gap: "18px",
-  alignItems: "start",
-};
-
-const cardStyle: React.CSSProperties = {
-  minWidth: 0,
-  padding: "22px",
-  border: "1px solid var(--border)",
-  borderRadius: "12px",
-  background: "var(--canvas-raised)",
-  boxShadow: "0 18px 48px var(--halo)",
-};
-
-const cardHeadStyle: React.CSSProperties = {
-  marginBottom: "20px",
-};
-
-const cardKickerStyle: React.CSSProperties = {
-  margin: "0 0 8px",
-  color: "var(--magic-primary-strong)",
-  fontFamily: "var(--font-mono)",
-  fontSize: "10px",
-  letterSpacing: "0.16em",
-  textTransform: "uppercase",
-};
-
-const cardTitleStyle: React.CSSProperties = {
-  margin: 0,
-  fontFamily: "var(--font-display)",
-  fontSize: "28px",
-  fontWeight: 600,
-};
-
-const eyebrowStyle: React.CSSProperties = {
-  margin: "0 0 12px",
-  fontFamily: "var(--font-mono)",
-  fontSize: "11px",
-  letterSpacing: "0.14em",
-  textTransform: "uppercase",
-  color: "var(--muted)",
-};
-
-const titleStyle: React.CSSProperties = {
-  margin: "0 0 10px",
-  fontFamily: "var(--font-display)",
-  fontSize: "clamp(38px, 5vw, 64px)",
-  fontWeight: 600,
-  letterSpacing: "0",
-  lineHeight: 0.95,
-};
-
-const copyStyle: React.CSSProperties = {
-  maxWidth: "620px",
-  margin: 0,
-  color: "var(--ink-muted)",
-  lineHeight: 1.6,
-};
-
-const settingsOnlyStyle: React.CSSProperties = {
-  display: "inline-flex",
-  minHeight: "32px",
-  alignItems: "center",
-  border: "1px solid var(--border-strong)",
-  borderRadius: "6px",
-  padding: "0 11px",
-  margin: 0,
-  color: "var(--ink-muted)",
-  fontFamily: "var(--font-mono)",
-  fontSize: "11px",
-  letterSpacing: "0.08em",
-  textTransform: "uppercase",
-  background: "var(--canvas)",
-};
-
-const labelStyle: React.CSSProperties = {
-  display: "block",
-  marginBottom: "8px",
-  color: "var(--ink)",
-  fontFamily: "var(--font-mono)",
-  fontSize: "11px",
-  fontWeight: 700,
-  letterSpacing: "0.12em",
-  textTransform: "uppercase",
-};
-
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  minHeight: "44px",
-  border: "1px solid var(--border-strong)",
-  borderRadius: "8px",
-  padding: "0 12px",
-  background: "var(--canvas)",
-  color: "var(--ink)",
-  fontFamily: "var(--font-sans)",
-  fontSize: "14px",
-};
-
-const fieldHelpStyle: React.CSSProperties = {
-  margin: "8px 0 0",
-  color: "var(--muted)",
-  fontSize: "12px",
-  lineHeight: 1.5,
-};
-
-const actionsStyle: React.CSSProperties = {
-  display: "flex",
-  flexWrap: "wrap",
-  gap: "12px",
-  marginTop: "16px",
-};
-
-const primaryButtonStyle: React.CSSProperties = {
-  minHeight: "42px",
-  border: 0,
-  borderRadius: "8px",
-  padding: "0 18px",
-  background: "var(--ink)",
-  color: "var(--canvas)",
-  fontWeight: 800,
-};
-
-const secondaryButtonStyle: React.CSSProperties = {
-  minHeight: "42px",
-  border: "1px solid var(--border-strong)",
-  borderRadius: "8px",
-  padding: "0 18px",
-  background: "var(--canvas)",
-  color: "var(--ink)",
-  fontWeight: 800,
-  cursor: "pointer",
-};
-
-const dangerButtonStyle: React.CSSProperties = {
-  ...secondaryButtonStyle,
-  color: "var(--danger)",
-};
-
-const tokenPanelStyle: React.CSSProperties = {
-  marginTop: "20px",
-  padding: "18px",
-  border: "1px solid var(--magic-primary-strong)",
-  borderRadius: "12px",
-  background: "color-mix(in srgb, var(--magic-primary) 14%, var(--canvas-raised))",
-};
-
-const tokenTitleStyle: React.CSSProperties = {
-  display: "block",
-  marginBottom: "6px",
-  fontSize: "14px",
-};
-
-const tokenCopyStyle: React.CSSProperties = {
-  margin: "0 0 14px",
-  color: "var(--ink-muted)",
-  fontSize: "13px",
-  lineHeight: 1.5,
-};
-
-const tokenRowStyle: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "minmax(0, 1fr) auto",
-  gap: "12px",
-  alignItems: "center",
-};
-
-const tokenInputStyle: React.CSSProperties = {
-  width: "100%",
-  minHeight: "44px",
-  border: "1px solid var(--border-strong)",
-  borderRadius: "8px",
-  padding: "0 12px",
-  background: "var(--canvas-raised)",
-  color: "var(--ink)",
-  fontFamily: "var(--font-mono)",
-  fontSize: "12px",
-};
-
-const successStyle: React.CSSProperties = {
-  margin: "18px 0 0",
-  color: "var(--success)",
-  fontSize: "13px",
-};
-
-const errorStyle: React.CSSProperties = {
-  margin: "18px 0 0",
-  color: "var(--danger)",
-  fontSize: "13px",
-};
-
-const listHeaderStyle: React.CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  gap: "12px",
-  alignItems: "start",
-  marginBottom: "16px",
-};
-
-const listTitleStyle: React.CSSProperties = {
-  margin: 0,
-  fontFamily: "var(--font-display)",
-  fontWeight: 600,
-  fontSize: "28px",
-};
-
-const countBadgeStyle: React.CSSProperties = {
-  display: "inline-flex",
-  minWidth: "30px",
-  minHeight: "30px",
-  alignItems: "center",
-  justifyContent: "center",
-  border: "1px solid var(--border-strong)",
-  borderRadius: "999px",
-  color: "var(--ink-muted)",
-  fontFamily: "var(--font-mono)",
-  fontSize: "12px",
-};
-
-const emptyStateStyle: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "20px minmax(0, 1fr)",
-  gap: "12px",
-  alignItems: "start",
-  padding: "18px",
-  border: "1px dashed var(--border-strong)",
-  borderRadius: "12px",
-  background: "var(--canvas)",
-};
-
-const emptyGlyphStyle: React.CSSProperties = {
-  color: "var(--muted)",
-  fontFamily: "var(--font-mono)",
-};
-
-const emptyCopyStyle: React.CSSProperties = {
-  margin: 0,
-  color: "var(--ink-muted)",
-  lineHeight: 1.6,
-};
-
-const listStyle: React.CSSProperties = {
-  listStyle: "none",
-  padding: 0,
-  margin: 0,
-  display: "grid",
-  gap: "12px",
-};
-
-const rowStyle: React.CSSProperties = {
-  padding: "16px",
-  border: "1px solid var(--border)",
-  borderRadius: "12px",
-  background: "var(--canvas)",
-};
-
-const rowTopStyle: React.CSSProperties = {
-  display: "flex",
-  flexWrap: "wrap",
-  justifyContent: "space-between",
-  gap: "12px",
-  alignItems: "start",
-};
-
-const rowTitleStyle: React.CSSProperties = {
-  display: "block",
-  fontSize: "15px",
-};
-
-const rowMetaStyle: React.CSSProperties = {
-  margin: "4px 0 0",
-  color: "var(--ink-muted)",
-  fontFamily: "var(--font-mono)",
-  fontSize: "12px",
-};
-
-const badgeBaseStyle: React.CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  minHeight: "26px",
-  padding: "0 10px",
-  borderRadius: "6px",
-  fontFamily: "var(--font-mono)",
-  fontSize: "11px",
-  fontWeight: 700,
-  letterSpacing: "0.08em",
-  textTransform: "uppercase",
-};
-
-const activeBadgeStyle: React.CSSProperties = {
-  ...badgeBaseStyle,
-  background: "color-mix(in oklab, var(--success) 14%, var(--canvas-raised))",
-  color: "var(--success)",
-};
-
-const revokedBadgeStyle: React.CSSProperties = {
-  ...badgeBaseStyle,
-  background: "color-mix(in oklab, var(--muted) 16%, var(--canvas-raised))",
-  color: "var(--ink-muted)",
-};
-
-const metaGridStyle: React.CSSProperties = {
-  display: "flex",
-  flexWrap: "wrap",
-  gap: "18px",
-  margin: "16px 0 0",
-};
-
-const metaLabelStyle: React.CSSProperties = {
-  color: "var(--muted)",
-  fontFamily: "var(--font-mono)",
-  fontSize: "11px",
-  letterSpacing: "0.08em",
-  textTransform: "uppercase",
-  marginBottom: "4px",
-};
-
-const metaValueStyle: React.CSSProperties = {
-  margin: 0,
-  fontSize: "13px",
-};
-
-const rowActionsStyle: React.CSSProperties = {
-  marginTop: "16px",
-};
-
-const confirmCopyStyle: React.CSSProperties = {
-  margin: "0 0 10px",
-  color: "var(--ink-muted)",
-  fontSize: "12px",
-};
-
-const confirmActionsStyle: React.CSSProperties = {
-  display: "flex",
-  flexWrap: "wrap",
-  gap: "10px",
-};

@@ -1,9 +1,15 @@
 import { cookies } from "next/headers";
-import Link from "next/link";
 import { redirect } from "next/navigation";
-import type { CSSProperties } from "react";
 
-import { RelayAppShell } from "@/components/relay-app-shell";
+import {
+  RelayAppShell,
+  RelayCard,
+  RelayEmptyState,
+  RelayFeedback,
+  RelayLinkButton,
+  RelayMetricTile,
+  RelayPageHead,
+} from "@/components/relay";
 import { RELAY_API_URL, relayFetch, type RelayEnvelope } from "@/lib/api";
 import type { AuthMe } from "@/lib/onboarding";
 import {
@@ -103,39 +109,41 @@ function DecisionGraph({
       projectHref={`/projects/${encodeURIComponent(graph.projectId)}`}
       railItems={projectRailItems(graph.projectId, "graph")}
     >
-      <section style={pageHeadStyle} aria-labelledby="graph-title">
-        <div>
-          <p style={eyebrowStyle}>{graph.projectId} · Decision Graph</p>
-          <h1 id="graph-title" style={titleStyle}>
-            Decision Graph
-          </h1>
-          <p style={subtitleStyle}>
-            {nodes.length > 1
-              ? "How decisions reached swan."
-              : "Capture evidence to reveal the path to swan."}
-          </p>
-        </div>
-        <nav style={actionsStyle} aria-label="Graph actions">
-          <button type="button" style={secondaryButtonStyle}>
-            Re-layout
-          </button>
-          <Link href={`/projects/${encodeURIComponent(graph.projectId)}/packet-builder`} style={primaryLinkStyle}>
-            Compose handoff
-          </Link>
-        </nav>
-      </section>
+      <RelayPageHead
+        eyebrow={`${graph.projectId} · Decision Graph`}
+        title="Decision Graph"
+        titleId="graph-title"
+        copy={
+          nodes.length > 1
+            ? "How decisions reached swan."
+            : "Capture evidence to reveal the path to swan."
+        }
+        actions={
+          <>
+            <button type="button" className="relay-action" data-variant="secondary">
+              Re-layout
+            </button>
+            <RelayLinkButton
+              href={`/projects/${encodeURIComponent(graph.projectId)}/packet-builder`}
+              variant="primary"
+            >
+              Compose handoff
+            </RelayLinkButton>
+          </>
+        }
+      />
 
-      <section style={summaryGridStyle} aria-label="Graph summary">
-        <Metric label="Decisions" value={counts.decision ?? 0} />
-        <Metric label="Traces" value={counts.judgment_trace ?? 0} />
-        <Metric label="Proposals" value={counts.heuristic_proposal ?? 0} />
-        <Metric label="Heuristics" value={counts.approved_heuristic ?? 0} />
-        <Metric label="Snapshots" value={counts.packet_snapshot ?? 0} />
+      <section className="relay-summary-grid" aria-label="Graph summary">
+        <RelayMetricTile label="Decisions" value={counts.decision ?? 0} />
+        <RelayMetricTile label="Traces" value={counts.judgment_trace ?? 0} />
+        <RelayMetricTile label="Proposals" value={counts.heuristic_proposal ?? 0} />
+        <RelayMetricTile label="Heuristics" value={counts.approved_heuristic ?? 0} />
+        <RelayMetricTile label="Snapshots" value={counts.packet_snapshot ?? 0} />
       </section>
 
       {nodes.length > 1 ? (
-        <section className="relay-card" style={graphShellStyle} aria-label="Decision Graph map">
-          <svg viewBox="0 0 960 540" role="img" aria-label="Decision evidence graph" style={svgStyle}>
+        <RelayCard className="relay-graph-shell" aria-label="Decision Graph map">
+          <svg viewBox="0 0 960 540" role="img" aria-label="Decision evidence graph" className="relay-graph-svg">
             <defs>
               <pattern id="relay-graph-dot" width="20" height="20" patternUnits="userSpaceOnUse">
                 <circle cx="1" cy="1" r="0.75" fill="var(--border-strong)" />
@@ -172,38 +180,50 @@ function DecisionGraph({
                     stroke={swatch.stroke}
                     strokeWidth={active ? 1.8 : 1}
                   />
-                  <text x={node.x} y={node.y - 2} textAnchor="middle" style={{ ...nodeKindTextStyle, fill: swatch.text }}>
+                  <text
+                    x={node.x}
+                    y={node.y - 2}
+                    textAnchor="middle"
+                    className="relay-graph-node-kind"
+                    fill={swatch.text}
+                  >
                     {nodeGlyph(node.kind)} {formatKind(node.kind)}
                   </text>
-                  <text x={node.x} y={node.y + 13} textAnchor="middle" style={{ ...nodeLabelTextStyle, fill: swatch.text }}>
+                  <text
+                    x={node.x}
+                    y={node.y + 13}
+                    textAnchor="middle"
+                    className="relay-graph-node-label"
+                    fill={swatch.text}
+                  >
                     {compactNodeLabel(node)}
                   </text>
                 </g>
               );
             })}
           </svg>
-          <div style={legendStyle}>
+          <div className="relay-graph-legend">
             <span>● Project</span>
             <span>◇ Trace</span>
             <span>◈ Swan</span>
             <span>△ Duckling</span>
             <span>■ Snapshot</span>
           </div>
-        </section>
+        </RelayCard>
       ) : (
-        <section style={emptyPanelStyle}>
-          <h2 style={emptyTitleStyle}>No graph evidence yet.</h2>
-          <p style={quietCopyStyle}>Capture notes, traces, decisions, heuristics, or snapshots to fill the map.</p>
-        </section>
+        <RelayEmptyState
+          title="No graph evidence yet."
+          copy="Capture notes, traces, decisions, heuristics, or snapshots to fill the map."
+        />
       )}
 
-      <section style={nodeListStyle} aria-label="Graph nodes">
+      <section className="relay-node-list" aria-label="Graph nodes">
         {nodes.map((node) => (
-          <article key={node.id} className="relay-card" style={nodeCardStyle}>
-            <span style={kindStyle}>{formatKind(node.kind)}</span>
-            <h2 style={nodeTitleStyle}>{node.title || node.id}</h2>
-            <p style={nodeMetaStyle}>{node.workflow || node.packetKind || node.state || node.sourcePath || node.id}</p>
-          </article>
+          <RelayCard key={node.id} className="relay-node-card">
+            <span className="relay-node-kind">{formatKind(node.kind)}</span>
+            <h2 className="relay-node-title">{node.title || node.id}</h2>
+            <p className="relay-node-meta">{node.workflow || node.packetKind || node.state || node.sourcePath || node.id}</p>
+          </RelayCard>
         ))}
       </section>
     </RelayAppShell>
@@ -232,24 +252,19 @@ function projectRailItems(projectId: string, active: "traces" | "graph") {
   ];
 }
 
-function Metric({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="relay-metric">
-      <span className="relay-metric-value">{value}</span>
-      <span className="relay-metric-label">{label}</span>
-    </div>
-  );
-}
-
 function SignInRequired({ projectId }: { projectId: string }) {
   return (
-    <main style={emptyPageStyle}>
-      <p style={eyebrowStyle}>Decision Graph</p>
-      <h1 style={emptyTitleStyle}>Sign in first</h1>
-      <p style={quietCopyStyle}>Decision evidence is private to the project workspace.</p>
-      <a href={signInURL(projectId)} style={primaryLinkStyle}>
-        Continue with GitHub
-      </a>
+    <main className="relay-empty-page">
+      <RelayPageHead
+        eyebrow="Decision Graph"
+        title="Sign in first"
+        copy="Decision evidence is private to the project workspace."
+        actions={
+          <RelayLinkButton href={signInURL(projectId)} variant="primary">
+            Continue with GitHub
+          </RelayLinkButton>
+        }
+      />
     </main>
   );
 }
@@ -266,15 +281,19 @@ function DecisionGraphError({
   const code = error instanceof ProjectGraphError ? error.code : "UNKNOWN";
   const message = error instanceof Error ? error.message : "Decision Graph failed to load.";
   return (
-    <main style={emptyPageStyle}>
-      <p style={eyebrowStyle}>Decision Graph · {userDisplayName ?? "signed in"}</p>
-      <h1 style={emptyTitleStyle}>Couldn’t open graph</h1>
-      <p style={errorBoxStyle}>
+    <main className="relay-empty-page">
+      <RelayPageHead
+        eyebrow={`Decision Graph · ${userDisplayName ?? "signed in"}`}
+        title="Couldn’t open graph"
+        actions={
+          <RelayLinkButton href={`/projects/${encodeURIComponent(projectId)}/graph`} variant="primary">
+            Retry
+          </RelayLinkButton>
+        }
+      />
+      <RelayFeedback role="alert" variant="error">
         {code}: {message}
-      </p>
-      <a href={`/projects/${encodeURIComponent(projectId)}/graph`} style={primaryLinkStyle}>
-        Retry
-      </a>
+      </RelayFeedback>
     </main>
   );
 }
@@ -377,189 +396,3 @@ function compactNodeLabel(node: ProjectGraphNode) {
 function formatKind(kind: string) {
   return kind.replaceAll("_", " ");
 }
-
-const pageHeadStyle: CSSProperties = {
-  display: "flex",
-  gap: "28px",
-  alignItems: "flex-end",
-  justifyContent: "space-between",
-  flexWrap: "wrap",
-  marginBottom: "24px",
-};
-
-const eyebrowStyle: CSSProperties = {
-  margin: "0 0 14px",
-  color: "var(--muted)",
-  fontFamily: "var(--font-mono)",
-  fontSize: "12px",
-  letterSpacing: "0.16em",
-  textTransform: "uppercase",
-};
-
-const titleStyle: CSSProperties = {
-  margin: 0,
-  color: "var(--ink)",
-  fontFamily: "var(--font-display)",
-  fontSize: "clamp(44px, 5.5vw, 72px)",
-  fontWeight: 500,
-  lineHeight: 1,
-  fontVariationSettings: '"opsz" 144, "SOFT" 50',
-};
-
-const subtitleStyle: CSSProperties = {
-  margin: "12px 0 0",
-  color: "var(--ink-muted)",
-  fontFamily: "var(--font-display)",
-  fontSize: "24px",
-  fontStyle: "italic",
-  fontVariationSettings: '"opsz" 48',
-};
-
-const actionsStyle: CSSProperties = {
-  display: "flex",
-  gap: "12px",
-  flexWrap: "wrap",
-};
-
-const primaryLinkStyle: CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  minHeight: "46px",
-  padding: "0 18px",
-  borderRadius: "8px",
-  background: "var(--ink)",
-  color: "var(--canvas)",
-  fontFamily: "var(--font-sans)",
-  fontWeight: 800,
-  textDecoration: "none",
-};
-
-const secondaryButtonStyle: CSSProperties = {
-  ...primaryLinkStyle,
-  background: "transparent",
-  color: "var(--ink)",
-  border: "1px solid var(--border-strong)",
-  cursor: "pointer",
-};
-
-const summaryGridStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-  gap: "12px",
-  marginBottom: "18px",
-};
-
-const graphShellStyle: CSSProperties = {
-  position: "relative",
-  overflow: "hidden",
-  minHeight: "480px",
-  background: "var(--canvas-raised)",
-};
-
-const svgStyle: CSSProperties = {
-  display: "block",
-  width: "100%",
-  minHeight: "460px",
-};
-
-const nodeKindTextStyle: CSSProperties = {
-  fontFamily: "var(--font-mono)",
-  fontSize: "8.5px",
-  letterSpacing: "0.08em",
-  textTransform: "uppercase",
-};
-
-const nodeLabelTextStyle: CSSProperties = {
-  fontFamily: "var(--font-mono)",
-  fontSize: "10px",
-  fontWeight: 700,
-};
-
-const legendStyle: CSSProperties = {
-  position: "absolute",
-  left: "16px",
-  bottom: "14px",
-  display: "flex",
-  gap: "14px",
-  flexWrap: "wrap",
-  color: "var(--muted)",
-  fontFamily: "var(--font-mono)",
-  fontSize: "10px",
-  letterSpacing: "0.14em",
-  textTransform: "uppercase",
-};
-
-const nodeListStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-  gap: "12px",
-  marginTop: "18px",
-};
-
-const nodeCardStyle: CSSProperties = {
-  padding: "18px",
-};
-
-const kindStyle: CSSProperties = {
-  color: "var(--magic-primary-strong)",
-  fontFamily: "var(--font-mono)",
-  fontSize: "11px",
-  letterSpacing: "0.14em",
-  textTransform: "uppercase",
-};
-
-const nodeTitleStyle: CSSProperties = {
-  margin: "10px 0 8px",
-  color: "var(--ink)",
-  fontFamily: "var(--font-display)",
-  fontSize: "24px",
-  fontWeight: 500,
-  lineHeight: 1.2,
-};
-
-const nodeMetaStyle: CSSProperties = {
-  margin: 0,
-  color: "var(--ink-muted)",
-  fontFamily: "var(--font-mono)",
-  fontSize: "12px",
-  overflowWrap: "anywhere",
-};
-
-const quietCopyStyle: CSSProperties = {
-  margin: 0,
-  color: "var(--ink-muted)",
-  fontSize: "16px",
-  lineHeight: 1.6,
-};
-
-const emptyPanelStyle: CSSProperties = {
-  padding: "48px",
-  border: "1px dashed var(--border-strong)",
-  borderRadius: "8px",
-  textAlign: "center",
-};
-
-const emptyPageStyle: CSSProperties = {
-  maxWidth: "620px",
-  margin: "0 auto",
-  padding: "120px 32px",
-};
-
-const emptyTitleStyle: CSSProperties = {
-  margin: "0 0 18px",
-  fontFamily: "var(--font-display)",
-  fontSize: "46px",
-  fontWeight: 500,
-};
-
-const errorBoxStyle: CSSProperties = {
-  margin: "0 0 22px",
-  padding: "14px",
-  border: "1px solid var(--danger)",
-  borderRadius: "8px",
-  color: "var(--danger)",
-  background: "color-mix(in srgb, var(--danger) 8%, transparent)",
-  fontFamily: "var(--font-mono)",
-  fontSize: "13px",
-};

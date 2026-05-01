@@ -1,6 +1,12 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
+import {
+  RelayEmptyState,
+  RelayLinkButton,
+  RelayPageHead,
+  RelayPageKicker,
+} from "@/components/relay";
 import { relayFetch, type RelayEnvelope } from "@/lib/api";
 import {
   listApprovedHeuristics,
@@ -99,54 +105,18 @@ export default async function StyleMemoryPage({
 
 function MissingProject({ userDisplayName }: { userDisplayName?: string }) {
   return (
-    <main
-      style={{
-        maxWidth: "640px",
-        margin: "0 auto",
-        padding: "120px 32px",
-        fontFamily: "var(--font-sans)",
-        color: "var(--ink)",
-      }}
-    >
-      <p
-        style={{
-          fontFamily: "var(--font-mono)",
-          fontSize: "11px",
-          letterSpacing: "0.18em",
-          textTransform: "uppercase",
-          color: "var(--muted)",
-          marginBottom: "16px",
-        }}
-      >
-        Style Memory · {userDisplayName ?? "signed in"}
-      </p>
-      <h1
-        style={{
-          fontFamily: "var(--font-display)",
-          fontWeight: 500,
-          fontSize: "clamp(36px, 6vw, 56px)",
-          lineHeight: 1.05,
-          letterSpacing: "-0.025em",
-          marginBottom: "20px",
-          fontVariationSettings: '"opsz" 144, "SOFT" 50',
-        }}
-      >
-        Pick a project
-      </h1>
-      <p
-        style={{
-          fontFamily: "var(--font-display)",
-          fontStyle: "italic",
-          fontSize: "16px",
-          lineHeight: 1.55,
-          color: "var(--ink-muted)",
-          fontVariationSettings: '"opsz" 48',
-        }}
-      >
-        Style Memory needs a project to read proposals from. Add{" "}
-        <code style={{ fontFamily: "var(--font-mono)", fontSize: "13px" }}>?project=&lt;id&gt;</code>{" "}
-        to the URL, or finish onboarding to land here automatically.
-      </p>
+    <main className="relay-empty-page">
+      <RelayPageHead
+        eyebrow={<>Style Memory · {userDisplayName ?? "signed in"}</>}
+        title="Pick a project"
+        copy={
+          <>
+            Style Memory needs a project to read proposals from. Add{" "}
+            <code className="relay-inline-code">?project=&lt;id&gt;</code> to the URL, or finish
+            onboarding to land here automatically.
+          </>
+        }
+      />
     </main>
   );
 }
@@ -159,69 +129,21 @@ function FullPageError({
   projectId: string;
 }) {
   return (
-    <main
-      style={{
-        maxWidth: "640px",
-        margin: "0 auto",
-        padding: "120px 32px",
-        fontFamily: "var(--font-sans)",
-        color: "var(--ink)",
-      }}
-    >
-      <p
-        style={{
-          fontFamily: "var(--font-mono)",
-          fontSize: "11px",
-          letterSpacing: "0.18em",
-          textTransform: "uppercase",
-          color: "var(--danger)",
-          marginBottom: "16px",
-        }}
-      >
+    <main className="relay-empty-page">
+      <RelayPageKicker className="relay-danger-text">
         Couldn’t load proposals
-      </p>
-      <h1
-        style={{
-          fontFamily: "var(--font-display)",
-          fontWeight: 500,
-          fontSize: "clamp(28px, 4vw, 40px)",
-          lineHeight: 1.1,
-          marginBottom: "16px",
-        }}
-      >
-        Something is wrong with the queue right now.
-      </h1>
-      <p
-        style={{
-          fontFamily: "var(--font-mono)",
-          fontSize: "12px",
-          color: "var(--ink-muted)",
-          background: "var(--canvas-raised)",
-          border: "1px solid var(--border)",
-          borderRadius: "8px",
-          padding: "12px",
-          marginBottom: "20px",
-          whiteSpace: "pre-wrap",
-        }}
-      >
+      </RelayPageKicker>
+      <RelayEmptyState title="Something is wrong with the queue right now." glyph="!">
+      <p className="relay-error-pre">
         {reason}
       </p>
-      <a
+      <RelayLinkButton
         href={`/style-memory?project=${encodeURIComponent(projectId)}`}
-        style={{
-          display: "inline-block",
-          fontFamily: "var(--font-sans)",
-          fontWeight: 600,
-          fontSize: "13px",
-          padding: "10px 18px",
-          borderRadius: "8px",
-          background: "var(--ink)",
-          color: "var(--canvas)",
-          textDecoration: "none",
-        }}
+        variant="primary"
       >
         Retry
-      </a>
+      </RelayLinkButton>
+      </RelayEmptyState>
     </main>
   );
 }

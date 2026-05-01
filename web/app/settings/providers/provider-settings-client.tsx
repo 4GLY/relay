@@ -6,6 +6,18 @@ import { useRouter } from "next/navigation";
 import type { Dictionary, Locale } from "@/lib/i18n";
 import { translateErrorMessage } from "@/lib/i18n";
 import {
+  RelayButton,
+  RelayCard,
+  RelayCardHeader,
+  RelayCardKicker,
+  RelayCardTitle,
+  RelayFeedback,
+  RelayField,
+  RelayPageHead,
+  RelayStatusBadge,
+  RelayTextInput,
+} from "@/components/relay";
+import {
   connectProviderCredential,
   disconnectProviderCredential,
   type ProviderCredentialStatus,
@@ -80,89 +92,75 @@ export function ProviderSettingsClient({ copy, errorMap, initialCredential, loca
           : copy.disconnectedHelp;
 
   return (
-    <section style={surfaceStyle} aria-labelledby="provider-title">
-      <header style={pageHeadStyle}>
-        <p style={eyebrowStyle}>{copy.eyebrow}</p>
-        <div style={pageHeadRowStyle}>
-          <div>
-            <h1 id="provider-title" style={titleStyle}>
-              {copy.title}
-            </h1>
-            <p style={copyStyle}>{copy.copy}</p>
-          </div>
-          <p style={settingsOnlyStyle}>{copy.settingsOnlyPill}</p>
-        </div>
-      </header>
+    <section className="relay-settings-surface" aria-labelledby="provider-title">
+      <RelayPageHead
+        eyebrow={copy.eyebrow}
+        title={copy.title}
+        titleId="provider-title"
+        copy={copy.copy}
+        actions={<RelayStatusBadge>{copy.settingsOnlyPill}</RelayStatusBadge>}
+      />
 
-      <div style={settingsGridStyle}>
-        <section style={cardStyle} aria-labelledby="provider-status-title">
-          <div style={cardHeadStyle}>
-            <p style={cardKickerStyle}>{copy.eyebrow}</p>
-            <h2 id="provider-status-title" style={cardTitleStyle}>
-              {copy.title}
-            </h2>
-          </div>
+      <div className="relay-settings-grid">
+        <RelayCard variant="elevated" aria-labelledby="provider-status-title">
+          <RelayCardHeader>
+            <RelayCardKicker>{copy.eyebrow}</RelayCardKicker>
+            <RelayCardTitle id="provider-status-title">{copy.title}</RelayCardTitle>
+          </RelayCardHeader>
 
-          <div style={statusRowStyle} aria-live="polite">
-            <span style={credential?.connected ? connectedDotStyle : disconnectedDotStyle} />
+          <div className="relay-credential-status" aria-live="polite">
+            <span
+              className="relay-status-dot"
+              data-variant={credential?.connected ? "success" : "neutral"}
+            />
             <div>
-              <strong style={statusTitleStyle}>
+              <strong className="relay-status-title">
                 {credential?.connected ? copy.connected : copy.disconnected}
               </strong>
-              <p style={statusCopyStyle}>
+              <p className="relay-status-copy">
                 {credential?.connected
                   ? `${credential.key_prefix ?? "sk-ant"} ${copy.maskedKeySeparator} ${credential.key_last4 ?? "••••"}`
                   : copy.noStoredKey}
               </p>
-              <p style={statusHelpStyle}>{statusMessage}</p>
+              <p className="relay-status-help">{statusMessage}</p>
             </div>
           </div>
 
           {credential?.connected ? (
-            <button
-              type="button"
+            <RelayButton
               disabled={busy}
               onClick={disconnect}
-              style={dangerButtonStyle}
+              variant="danger"
               data-testid="disconnect-provider"
             >
               {status === "disconnecting" ? copy.disconnectingButton : copy.disconnectButton}
-            </button>
+            </RelayButton>
           ) : null}
-        </section>
+        </RelayCard>
 
-        <section style={cardStyle} aria-labelledby="provider-connect-title">
-          <div style={cardHeadStyle}>
-            <p style={cardKickerStyle}>{copy.settingsOnlyPill}</p>
-            <h2 id="provider-connect-title" style={cardTitleStyle}>
+        <RelayCard variant="elevated" aria-labelledby="provider-connect-title">
+          <RelayCardHeader>
+            <RelayCardKicker>{copy.settingsOnlyPill}</RelayCardKicker>
+            <RelayCardTitle id="provider-connect-title">
               {credential?.connected ? copy.replaceButton : copy.connectButton}
-            </h2>
-          </div>
+            </RelayCardTitle>
+          </RelayCardHeader>
 
-          <label style={labelStyle} htmlFor="anthropic-key">
-            {copy.apiKeyLabel}
-          </label>
-          <input
-            id="anthropic-key"
-            type="password"
-            value={apiKey}
-            onChange={(event) => setAPIKey(event.target.value)}
-            placeholder={copy.apiKeyPlaceholder}
-            autoComplete="off"
-            style={inputStyle}
-          />
-          <p style={fieldHelpStyle}>{copy.fieldHelp}</p>
+          <RelayField label={copy.apiKeyLabel} htmlFor="anthropic-key" help={copy.fieldHelp}>
+            <RelayTextInput
+              id="anthropic-key"
+              type="password"
+              value={apiKey}
+              onChange={(event) => setAPIKey(event.target.value)}
+              placeholder={copy.apiKeyPlaceholder}
+              autoComplete="off"
+            />
+          </RelayField>
 
-          <div style={actionsStyle}>
-            <button
-              type="button"
+          <div className="relay-form-actions">
+            <RelayButton
               disabled={!canSave}
               onClick={connect}
-              style={{
-                ...primaryButtonStyle,
-                opacity: canSave ? 1 : 0.55,
-                cursor: canSave ? "pointer" : "not-allowed",
-              }}
               data-testid="connect-provider"
             >
               {status === "saving"
@@ -170,224 +168,16 @@ export function ProviderSettingsClient({ copy, errorMap, initialCredential, loca
                 : credential?.connected
                   ? copy.replaceButton
                   : copy.connectButton}
-            </button>
+            </RelayButton>
           </div>
 
           {status === "error" && (
-            <p role="alert" style={errorStyle}>
+            <RelayFeedback role="alert" variant="error">
               {error}
-            </p>
+            </RelayFeedback>
           )}
-        </section>
+        </RelayCard>
       </div>
     </section>
   );
 }
-
-const surfaceStyle: React.CSSProperties = {
-  width: "100%",
-  maxWidth: "1120px",
-};
-
-const pageHeadStyle: React.CSSProperties = {
-  marginBottom: "24px",
-  paddingBottom: "22px",
-  borderBottom: "1px solid var(--border)",
-};
-
-const pageHeadRowStyle: React.CSSProperties = {
-  display: "flex",
-  flexWrap: "wrap",
-  justifyContent: "space-between",
-  gap: "18px",
-  alignItems: "end",
-};
-
-const settingsGridStyle: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "minmax(300px, 0.9fr) minmax(340px, 1.1fr)",
-  gap: "18px",
-  alignItems: "start",
-};
-
-const cardStyle: React.CSSProperties = {
-  minWidth: 0,
-  padding: "22px",
-  border: "1px solid var(--border)",
-  borderRadius: "12px",
-  background: "var(--canvas-raised)",
-  boxShadow: "0 18px 48px var(--halo)",
-};
-
-const cardHeadStyle: React.CSSProperties = {
-  marginBottom: "20px",
-};
-
-const cardKickerStyle: React.CSSProperties = {
-  margin: "0 0 8px",
-  color: "var(--magic-primary-strong)",
-  fontFamily: "var(--font-mono)",
-  fontSize: "10px",
-  letterSpacing: "0.16em",
-  textTransform: "uppercase",
-};
-
-const cardTitleStyle: React.CSSProperties = {
-  margin: 0,
-  fontFamily: "var(--font-display)",
-  fontSize: "28px",
-  fontWeight: 600,
-};
-
-const eyebrowStyle: React.CSSProperties = {
-  margin: "0 0 12px",
-  fontFamily: "var(--font-mono)",
-  fontSize: "11px",
-  letterSpacing: "0.14em",
-  textTransform: "uppercase",
-  color: "var(--muted)",
-};
-
-const titleStyle: React.CSSProperties = {
-  margin: "0 0 10px",
-  fontFamily: "var(--font-display)",
-  fontSize: "clamp(38px, 5vw, 64px)",
-  fontWeight: 600,
-  letterSpacing: "0",
-  lineHeight: 0.95,
-};
-
-const copyStyle: React.CSSProperties = {
-  maxWidth: "620px",
-  margin: 0,
-  color: "var(--ink-muted)",
-  lineHeight: 1.6,
-};
-
-const settingsOnlyStyle: React.CSSProperties = {
-  display: "inline-flex",
-  minHeight: "32px",
-  alignItems: "center",
-  border: "1px solid var(--border-strong)",
-  borderRadius: "6px",
-  padding: "0 11px",
-  margin: 0,
-  color: "var(--ink-muted)",
-  fontFamily: "var(--font-mono)",
-  fontSize: "11px",
-  letterSpacing: "0.08em",
-  textTransform: "uppercase",
-  background: "var(--canvas)",
-};
-
-const statusRowStyle: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "16px minmax(0, 1fr)",
-  gap: "12px",
-  alignItems: "start",
-  padding: "16px",
-  border: "1px solid var(--border)",
-  borderRadius: "12px",
-  marginBottom: "16px",
-  background: "var(--canvas)",
-};
-
-const connectedDotStyle: React.CSSProperties = {
-  width: "11px",
-  height: "11px",
-  marginTop: "6px",
-  borderRadius: "50%",
-  background: "var(--success)",
-};
-
-const disconnectedDotStyle: React.CSSProperties = {
-  ...connectedDotStyle,
-  background: "var(--muted)",
-};
-
-const statusTitleStyle: React.CSSProperties = {
-  display: "block",
-  fontSize: "14px",
-};
-
-const statusCopyStyle: React.CSSProperties = {
-  margin: "3px 0 0",
-  color: "var(--ink-muted)",
-  fontSize: "13px",
-};
-
-const statusHelpStyle: React.CSSProperties = {
-  margin: "8px 0 0",
-  color: "var(--muted)",
-  fontSize: "12px",
-  lineHeight: 1.5,
-};
-
-const labelStyle: React.CSSProperties = {
-  display: "block",
-  marginBottom: "8px",
-  color: "var(--ink)",
-  fontFamily: "var(--font-mono)",
-  fontSize: "11px",
-  fontWeight: 700,
-  letterSpacing: "0.12em",
-  textTransform: "uppercase",
-};
-
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  minHeight: "44px",
-  border: "1px solid var(--border-strong)",
-  borderRadius: "8px",
-  padding: "0 12px",
-  background: "var(--canvas)",
-  color: "var(--ink)",
-  fontFamily: "var(--font-mono)",
-  fontSize: "13px",
-};
-
-const fieldHelpStyle: React.CSSProperties = {
-  margin: "8px 0 0",
-  color: "var(--muted)",
-  fontSize: "12px",
-  lineHeight: 1.5,
-};
-
-const actionsStyle: React.CSSProperties = {
-  display: "flex",
-  flexWrap: "wrap",
-  gap: "12px",
-  marginTop: "16px",
-};
-
-const primaryButtonStyle: React.CSSProperties = {
-  minHeight: "42px",
-  border: 0,
-  borderRadius: "8px",
-  padding: "0 18px",
-  background: "var(--ink)",
-  color: "var(--canvas)",
-  fontWeight: 800,
-};
-
-const secondaryButtonStyle: React.CSSProperties = {
-  minHeight: "42px",
-  border: "1px solid var(--border-strong)",
-  borderRadius: "8px",
-  padding: "0 18px",
-  background: "var(--canvas)",
-  color: "var(--ink)",
-  fontWeight: 800,
-  cursor: "pointer",
-};
-
-const dangerButtonStyle: React.CSSProperties = {
-  ...secondaryButtonStyle,
-  color: "var(--danger)",
-};
-
-const errorStyle: React.CSSProperties = {
-  margin: "16px 0 0",
-  color: "var(--danger)",
-  fontSize: "13px",
-};

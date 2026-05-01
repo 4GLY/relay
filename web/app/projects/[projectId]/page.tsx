@@ -8,7 +8,16 @@ import {
   ProjectExplorerError,
   type ProjectExplorer,
 } from "@/lib/project-explorer";
-import { RelayAppShell, RelayTopRail } from "@/components/relay-app-shell";
+import {
+  RelayAppShell,
+  RelayCard,
+  RelayFeedback,
+  RelayLinkButton,
+  RelayMetaGrid,
+  RelayMetricTile,
+  RelayPageHead,
+  RelayTopRail,
+} from "@/components/relay";
 
 export const dynamic = "force-dynamic";
 
@@ -86,70 +95,67 @@ function Explorer({
       railItems={projectRailItems(explorer)}
       inspector={<ProjectInspector explorer={explorer} />}
     >
-      <section style={heroStyle} aria-labelledby="project-title">
-        <p style={eyebrowStyle}>Project Explorer · {explorer.project.status}</p>
-        <div style={heroRowStyle}>
-          <div>
-            <h1 id="project-title" style={titleStyle}>
-              {explorer.project.name}
-            </h1>
-            <p style={subtitleStyle}>{memoryReady}</p>
-          </div>
-          <nav style={actionsStyle} aria-label="Project actions">
-            <a href={`/style-memory?project=${encodeURIComponent(explorer.project.projectId)}`} style={primaryLinkStyle}>
+      <RelayPageHead
+        eyebrow={`Project Explorer · ${explorer.project.status}`}
+        title={explorer.project.name}
+        titleId="project-title"
+        copy={memoryReady}
+        actions={
+          <>
+            <RelayLinkButton href={`/style-memory?project=${encodeURIComponent(explorer.project.projectId)}`} variant="primary">
               Style Memory
-            </a>
-            <a href={`/projects/${encodeURIComponent(explorer.project.projectId)}/traces`} style={secondaryLinkStyle}>
+            </RelayLinkButton>
+            <RelayLinkButton href={`/projects/${encodeURIComponent(explorer.project.projectId)}/traces`} variant="secondary">
               Trace Browser
-            </a>
-            <a href={`/projects/${encodeURIComponent(explorer.project.projectId)}/graph`} style={secondaryLinkStyle}>
+            </RelayLinkButton>
+            <RelayLinkButton href={`/projects/${encodeURIComponent(explorer.project.projectId)}/graph`} variant="secondary">
               Decision Graph
-            </a>
-            <a href={`/projects/${encodeURIComponent(explorer.project.projectId)}/packet-builder`} style={secondaryLinkStyle}>
+            </RelayLinkButton>
+            <RelayLinkButton href={`/projects/${encodeURIComponent(explorer.project.projectId)}/packet-builder`} variant="secondary">
               Packet Builder
-            </a>
-            <a href="/settings/providers" style={secondaryLinkStyle}>
+            </RelayLinkButton>
+            <RelayLinkButton href="/settings/providers" variant="secondary">
               Provider Settings
-            </a>
-            <a href="/settings/api-keys" style={secondaryLinkStyle}>
+            </RelayLinkButton>
+            <RelayLinkButton href="/settings/api-keys" variant="secondary">
               API Key Settings
-            </a>
-          </nav>
-        </div>
+            </RelayLinkButton>
+          </>
+        }
+      />
+
+      <section className="relay-summary-grid" aria-label="Project summary">
+        <RelayMetricTile label="Notes" value={c.notes} />
+        <RelayMetricTile label="Decisions" value={c.decisions} />
+        <RelayMetricTile label="Snapshots" value={c.packetSnapshots} />
       </section>
 
-      <section style={metricsGridStyle} aria-label="Project summary">
-        <Metric label="Notes" value={c.notes} />
-        <Metric label="Decisions" value={c.decisions} />
-        <Metric label="Snapshots" value={c.packetSnapshots} />
-      </section>
-
-      <details style={inspectorStyle}>
-        <summary style={inspectorSummaryStyle}>Workspace inspector — detailed counts</summary>
-        <dl style={inspectorGridStyle} aria-label="Workspace inspector counts">
+      <details className="relay-workspace-inspector">
+        <summary className="relay-details-summary">Workspace inspector — detailed counts</summary>
+        <RelayMetaGrid className="relay-workspace-inspector-grid" aria-label="Workspace inspector counts">
           <InspectorMetric label="Artifacts" value={c.artifacts} />
           <InspectorMetric label="Questions" value={c.openQuestions} />
           <InspectorMetric label="Traces" value={c.judgmentTraces} />
           <InspectorMetric label="Pending proposals" value={c.pendingProposals} />
           <InspectorMetric label="Approved heuristics" value={c.approvedHeuristics} />
           <InspectorMetric label="Rejected proposals" value={c.rejectedProposals} />
-        </dl>
+        </RelayMetaGrid>
       </details>
 
-      <section style={workGridStyle}>
+      <section className="relay-work-grid">
         <Panel title="Style Memory" kicker={`${c.pendingProposals} pending`}>
           {explorer.styleMemory.nextProposalText ? (
             <>
-              <p style={proposalTextStyle}>{explorer.styleMemory.nextProposalText}</p>
-              <a
+              <p className="relay-proposal-text">{explorer.styleMemory.nextProposalText}</p>
+              <RelayLinkButton
                 href={`/style-memory?project=${encodeURIComponent(explorer.project.projectId)}`}
-                style={inlineActionStyle}
+                variant="ghost"
               >
                 Review proposal
-              </a>
+              </RelayLinkButton>
             </>
           ) : (
-            <p style={quietCopyStyle}>No pending proposals.</p>
+            <p className="relay-quiet-copy">No pending proposals.</p>
           )}
         </Panel>
 
@@ -157,42 +163,42 @@ function Explorer({
           {explorer.latestSnapshot ? (
             <>
               <Snapshot snapshot={explorer.latestSnapshot} />
-              <a
+              <RelayLinkButton
                 href={`/projects/${encodeURIComponent(explorer.project.projectId)}/packet-builder`}
-                style={inlineActionStyle}
+                variant="ghost"
               >
                 Open Packet Builder
-              </a>
+              </RelayLinkButton>
             </>
           ) : (
-            <p style={quietCopyStyle}>No packet snapshots yet.</p>
+            <p className="relay-quiet-copy">No packet snapshots yet.</p>
           )}
         </Panel>
 
         <Panel title="Recent Activity" kicker={`${explorer.recentActivity.length} latest`}>
           {explorer.recentActivity.length > 0 ? (
-            <ol style={activityListStyle}>
+            <ol className="relay-activity-list">
               {explorer.recentActivity.map((item) => (
-                <li key={`${item.kind}:${item.id}`} style={activityItemStyle}>
-                  <span style={activityKindStyle}>{formatKind(item.kind)}</span>
+                <li key={`${item.kind}:${item.id}`} className="relay-activity-item">
+                  <span className="relay-activity-kind">{formatKind(item.kind)}</span>
                   {item.kind === "judgment_trace" ? (
                     <a
                       href={traceURL(explorer.project.projectId, item.id)}
-                      style={activityLinkStyle}
+                      className="relay-activity-title"
                     >
                       {item.title}
                     </a>
                   ) : (
-                    <span style={activityTitleStyle}>{item.title}</span>
+                    <span className="relay-activity-title">{item.title}</span>
                   )}
-                  <time dateTime={item.createdAt} style={activityTimeStyle}>
+                  <time dateTime={item.createdAt} className="relay-activity-time">
                     {formatDate(item.createdAt)}
                   </time>
                 </li>
               ))}
             </ol>
           ) : (
-            <p style={quietCopyStyle}>No recent activity.</p>
+            <p className="relay-quiet-copy">No recent activity.</p>
           )}
         </Panel>
       </section>
@@ -254,11 +260,11 @@ function ProjectInspector({ explorer }: { explorer: ProjectExplorer }) {
   const c = explorer.counts;
   return (
     <div>
-      <p style={eyebrowStyle}>Current Transform</p>
-      <h2 style={inspectorTitleStyle}>Face → Project workspace</h2>
-      <section className="relay-card" style={{ padding: "16px", marginBottom: "22px" }}>
-        <p style={{ ...metaLabelStyle, margin: "0 0 12px" }}>Scope Matrix</p>
-        <dl style={inspectorRowsStyle}>
+      <p className="relay-page-kicker">Current Transform</p>
+      <h2 className="relay-inspector-title">Face → Project workspace</h2>
+      <RelayCard className="relay-inspector-card">
+        <p className="relay-meta-label relay-meta-heading">Scope Matrix</p>
+        <RelayMetaGrid className="relay-inspector-rows">
           <InspectorMetric label="Status" value={explorer.project.status} />
           <InspectorMetric label="Artifacts" value={c.artifacts} />
           <InspectorMetric label="Questions" value={c.openQuestions} />
@@ -266,32 +272,23 @@ function ProjectInspector({ explorer }: { explorer: ProjectExplorer }) {
           <InspectorMetric label="Pending proposals" value={c.pendingProposals} />
           <InspectorMetric label="Approved heuristics" value={c.approvedHeuristics} />
           <InspectorMetric label="Rejected proposals" value={c.rejectedProposals} />
-        </dl>
+        </RelayMetaGrid>
+      </RelayCard>
+      <section className="relay-inspector-metrics">
+        <RelayMetricTile label="Notes" value={c.notes} />
+        <RelayMetricTile label="Decisions" value={c.decisions} />
+        <RelayMetricTile label="Snapshots" value={c.packetSnapshots} />
+        <RelayMetricTile label="Traces" value={c.judgmentTraces} />
       </section>
-      <section style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-        <Metric label="Notes" value={c.notes} />
-        <Metric label="Decisions" value={c.decisions} />
-        <Metric label="Snapshots" value={c.packetSnapshots} />
-        <Metric label="Traces" value={c.judgmentTraces} />
-      </section>
-    </div>
-  );
-}
-
-function Metric({ label, value }: { label: string; value: number }) {
-  return (
-    <div style={metricStyle}>
-      <span style={metricValueStyle}>{value}</span>
-      <span style={metricLabelStyle}>{label}</span>
     </div>
   );
 }
 
 function InspectorMetric({ label, value }: { label: string; value: number | string }) {
   return (
-    <div style={inspectorMetricStyle}>
-      <dt style={metaLabelStyle}>{label}</dt>
-      <dd style={metaValueStyle}>{value}</dd>
+    <div className="relay-inspector-metric">
+      <dt className="relay-meta-label">{label}</dt>
+      <dd className="relay-meta-value">{value}</dd>
     </div>
   );
 }
@@ -306,38 +303,38 @@ function Panel({
   children: React.ReactNode;
 }) {
   return (
-    <section style={panelStyle}>
-      <div style={panelHeaderStyle}>
-        <h2 style={panelTitleStyle}>{title}</h2>
-        <span style={panelKickerStyle}>{kicker}</span>
+    <RelayCard className="relay-work-panel">
+      <div className="relay-panel-header">
+        <h2 className="relay-panel-title">{title}</h2>
+        <span className="relay-panel-kicker">{kicker}</span>
       </div>
       {children}
-    </section>
+    </RelayCard>
   );
 }
 
 function Snapshot({ snapshot }: { snapshot: NonNullable<ProjectExplorer["latestSnapshot"]> }) {
   return (
     <div>
-      <p style={snapshotTitleStyle}>{snapshot.taskSummary || snapshot.target}</p>
-      <dl style={snapshotMetaStyle}>
+      <p className="relay-snapshot-title">{snapshot.taskSummary || snapshot.target}</p>
+      <RelayMetaGrid className="relay-snapshot-meta">
         <div>
-          <dt style={metaLabelStyle}>Kind</dt>
-          <dd style={metaValueStyle}>{snapshot.packetKind}</dd>
+          <dt className="relay-meta-label">Kind</dt>
+          <dd className="relay-meta-value">{snapshot.packetKind}</dd>
         </div>
         <div>
-          <dt style={metaLabelStyle}>Visibility</dt>
-          <dd style={metaValueStyle}>{snapshot.publicReadable ? "public" : "private"}</dd>
+          <dt className="relay-meta-label">Visibility</dt>
+          <dd className="relay-meta-value">{snapshot.publicReadable ? "public" : "private"}</dd>
         </div>
         <div>
-          <dt style={metaLabelStyle}>Created</dt>
-          <dd style={metaValueStyle}>{formatDate(snapshot.createdAt)}</dd>
+          <dt className="relay-meta-label">Created</dt>
+          <dd className="relay-meta-value">{formatDate(snapshot.createdAt)}</dd>
         </div>
-      </dl>
+      </RelayMetaGrid>
       {snapshot.publicReadable && snapshot.publicToken ? (
-        <a href={`/p/${encodeURIComponent(snapshot.publicToken)}`} style={inlineActionStyle}>
+        <RelayLinkButton href={`/p/${encodeURIComponent(snapshot.publicToken)}`} variant="ghost">
           Open public snapshot
-        </a>
+        </RelayLinkButton>
       ) : null}
     </div>
   );
@@ -347,13 +344,17 @@ function SignInRequired({ projectId }: { projectId: string }) {
   return (
     <>
       <RelayTopRail activeStep="Face" userLabel="signed out" />
-      <main style={emptyPageStyle}>
-        <p style={eyebrowStyle}>Project Explorer</p>
-        <h1 style={emptyTitleStyle}>Sign in first</h1>
-        <p style={quietCopyStyle}>Project workspaces are private.</p>
-        <a href={signInURL(projectId)} style={primaryLinkStyle}>
-          Continue with GitHub
-        </a>
+      <main className="relay-empty-page">
+        <RelayPageHead
+          eyebrow="Project Explorer"
+          title="Sign in first"
+          copy="Project workspaces are private."
+          actions={
+            <RelayLinkButton href={signInURL(projectId)} variant="primary">
+              Continue with GitHub
+            </RelayLinkButton>
+          }
+        />
       </main>
     </>
   );
@@ -373,15 +374,19 @@ function ExplorerError({
   return (
     <>
       <RelayTopRail activeStep="Face" userLabel={userDisplayName} />
-      <main style={emptyPageStyle}>
-        <p style={eyebrowStyle}>Project Explorer · {userDisplayName ?? "signed in"}</p>
-        <h1 style={emptyTitleStyle}>Couldn’t open this project</h1>
-        <p style={errorBoxStyle}>
+      <main className="relay-empty-page">
+        <RelayPageHead
+          eyebrow={`Project Explorer · ${userDisplayName ?? "signed in"}`}
+          title="Couldn’t open this project"
+          actions={
+            <RelayLinkButton href={`/projects/${encodeURIComponent(projectId)}`} variant="primary">
+              Retry
+            </RelayLinkButton>
+          }
+        />
+        <RelayFeedback role="alert" variant="error">
           {code}: {message}
-        </p>
-        <a href={`/projects/${encodeURIComponent(projectId)}`} style={primaryLinkStyle}>
-          Retry
-        </a>
+        </RelayFeedback>
       </main>
     </>
   );
@@ -405,303 +410,3 @@ function formatKind(kind: string) {
 function traceURL(projectId: string, traceId: string) {
   return `/projects/${encodeURIComponent(projectId)}/traces?trace=${encodeURIComponent(traceId)}`;
 }
-
-const heroStyle: React.CSSProperties = {
-  padding: "24px 0 36px",
-};
-
-const heroRowStyle: React.CSSProperties = {
-  display: "flex",
-  gap: "28px",
-  alignItems: "flex-end",
-  justifyContent: "space-between",
-  flexWrap: "wrap",
-};
-
-const eyebrowStyle: React.CSSProperties = {
-  margin: "0 0 14px",
-  color: "var(--muted)",
-  fontFamily: "var(--font-mono)",
-  fontSize: "12px",
-  letterSpacing: "0.16em",
-  textTransform: "uppercase",
-};
-
-const titleStyle: React.CSSProperties = {
-  margin: 0,
-  color: "var(--ink)",
-  fontFamily: "var(--font-display)",
-  fontSize: "clamp(48px, 7vw, 84px)",
-  fontWeight: 500,
-  lineHeight: 1,
-  overflowWrap: "anywhere",
-  wordBreak: "break-word",
-  fontVariationSettings: '"opsz" 144, "SOFT" 50',
-};
-
-const subtitleStyle: React.CSSProperties = {
-  margin: "14px 0 0",
-  color: "var(--ink-muted)",
-  fontFamily: "var(--font-display)",
-  fontSize: "24px",
-  fontStyle: "italic",
-  fontVariationSettings: '"opsz" 48',
-};
-
-const actionsStyle: React.CSSProperties = {
-  display: "flex",
-  gap: "12px",
-  flexWrap: "wrap",
-};
-
-const primaryLinkStyle: React.CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  minHeight: "46px",
-  padding: "0 18px",
-  borderRadius: "8px",
-  background: "var(--ink)",
-  color: "var(--canvas)",
-  fontWeight: 800,
-  textDecoration: "none",
-};
-
-const secondaryLinkStyle: React.CSSProperties = {
-  ...primaryLinkStyle,
-  background: "transparent",
-  color: "var(--ink)",
-  border: "1px solid var(--border-strong)",
-};
-
-const metricsGridStyle: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-  gap: "12px",
-  marginBottom: "12px",
-};
-
-const metricStyle: React.CSSProperties = {
-  padding: "18px",
-  border: "1px solid var(--border)",
-  borderRadius: "8px",
-  background: "var(--canvas-raised)",
-};
-
-const metricValueStyle: React.CSSProperties = {
-  display: "block",
-  color: "var(--ink)",
-  fontFamily: "var(--font-display)",
-  fontSize: "36px",
-  lineHeight: 1,
-  fontWeight: 500,
-};
-
-const metricLabelStyle: React.CSSProperties = {
-  display: "block",
-  marginTop: "10px",
-  color: "var(--muted)",
-  fontFamily: "var(--font-mono)",
-  fontSize: "11px",
-  letterSpacing: "0.14em",
-  textTransform: "uppercase",
-};
-
-const workGridStyle: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-  gap: "16px",
-  alignItems: "stretch",
-  marginTop: "24px",
-};
-
-const inspectorStyle: React.CSSProperties = {
-  marginBottom: "28px",
-  border: "1px solid var(--border)",
-  borderRadius: "8px",
-  background: "var(--canvas-raised)",
-};
-
-const inspectorSummaryStyle: React.CSSProperties = {
-  cursor: "pointer",
-  padding: "14px 16px",
-  color: "var(--ink)",
-  fontFamily: "var(--font-mono)",
-  fontSize: "12px",
-  letterSpacing: "0.14em",
-  textTransform: "uppercase",
-};
-
-const inspectorGridStyle: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-  gap: "12px",
-  margin: 0,
-  padding: "0 16px 16px",
-};
-
-const inspectorMetricStyle: React.CSSProperties = {
-  minWidth: 0,
-  padding: "12px",
-  border: "1px solid var(--border)",
-  borderRadius: "8px",
-};
-
-const inspectorRowsStyle: React.CSSProperties = {
-  display: "grid",
-  gap: "10px",
-  margin: 0,
-};
-
-const inspectorTitleStyle: React.CSSProperties = {
-  margin: "0 0 18px",
-  fontFamily: "var(--font-display)",
-  fontSize: "22px",
-  fontWeight: 500,
-  lineHeight: 1.15,
-};
-
-const panelStyle: React.CSSProperties = {
-  minHeight: "260px",
-  padding: "24px",
-  border: "1px solid var(--border)",
-  borderRadius: "8px",
-  background: "var(--canvas-raised)",
-};
-
-const panelHeaderStyle: React.CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  gap: "16px",
-  marginBottom: "22px",
-};
-
-const panelTitleStyle: React.CSSProperties = {
-  margin: 0,
-  fontFamily: "var(--font-display)",
-  fontSize: "28px",
-  fontWeight: 500,
-};
-
-const panelKickerStyle: React.CSSProperties = {
-  color: "var(--muted)",
-  fontFamily: "var(--font-mono)",
-  fontSize: "11px",
-  letterSpacing: "0.14em",
-  textTransform: "uppercase",
-  whiteSpace: "nowrap",
-};
-
-const proposalTextStyle: React.CSSProperties = {
-  margin: "0 0 22px",
-  color: "var(--ink)",
-  fontFamily: "var(--font-mono)",
-  fontSize: "17px",
-  lineHeight: 1.6,
-};
-
-const inlineActionStyle: React.CSSProperties = {
-  color: "var(--magic-primary-strong)",
-  fontWeight: 800,
-  textDecoration: "none",
-};
-
-const quietCopyStyle: React.CSSProperties = {
-  margin: 0,
-  color: "var(--ink-muted)",
-  fontSize: "16px",
-  lineHeight: 1.6,
-};
-
-const snapshotTitleStyle: React.CSSProperties = {
-  margin: "0 0 22px",
-  color: "var(--ink)",
-  fontFamily: "var(--font-display)",
-  fontSize: "24px",
-  fontStyle: "italic",
-  lineHeight: 1.35,
-};
-
-const snapshotMetaStyle: React.CSSProperties = {
-  display: "grid",
-  gap: "12px",
-  margin: 0,
-};
-
-const metaLabelStyle: React.CSSProperties = {
-  color: "var(--muted)",
-  fontFamily: "var(--font-mono)",
-  fontSize: "11px",
-  letterSpacing: "0.14em",
-  textTransform: "uppercase",
-};
-
-const metaValueStyle: React.CSSProperties = {
-  margin: "2px 0 0",
-  color: "var(--ink)",
-  fontWeight: 800,
-};
-
-const activityListStyle: React.CSSProperties = {
-  display: "grid",
-  gap: "14px",
-  margin: 0,
-  padding: 0,
-  listStyle: "none",
-};
-
-const activityItemStyle: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "minmax(0, 1fr)",
-  gap: "4px",
-  paddingBottom: "14px",
-  borderBottom: "1px solid var(--border)",
-};
-
-const activityKindStyle: React.CSSProperties = {
-  color: "var(--magic-primary-strong)",
-  fontFamily: "var(--font-mono)",
-  fontSize: "11px",
-  letterSpacing: "0.14em",
-  textTransform: "uppercase",
-};
-
-const activityTitleStyle: React.CSSProperties = {
-  color: "var(--ink)",
-  fontSize: "15px",
-  fontWeight: 800,
-};
-
-const activityLinkStyle: React.CSSProperties = {
-  ...activityTitleStyle,
-  textDecoration: "none",
-};
-
-const activityTimeStyle: React.CSSProperties = {
-  color: "var(--muted)",
-  fontSize: "13px",
-};
-
-const emptyPageStyle: React.CSSProperties = {
-  maxWidth: "620px",
-  margin: "0 auto",
-  padding: "120px 32px",
-};
-
-const emptyTitleStyle: React.CSSProperties = {
-  margin: "0 0 18px",
-  fontFamily: "var(--font-display)",
-  fontSize: "46px",
-  fontWeight: 500,
-};
-
-const errorBoxStyle: React.CSSProperties = {
-  margin: "0 0 22px",
-  padding: "14px",
-  border: "1px solid var(--danger)",
-  borderRadius: "8px",
-  color: "var(--danger)",
-  background: "color-mix(in srgb, var(--danger) 8%, transparent)",
-  fontFamily: "var(--font-mono)",
-  fontSize: "13px",
-};

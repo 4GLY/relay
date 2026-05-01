@@ -1,5 +1,4 @@
 import { cookies } from "next/headers";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { RELAY_API_URL, relayFetch, type RelayEnvelope } from "@/lib/api";
@@ -9,7 +8,14 @@ import {
   PacketBuilderError,
   type PacketBuilderSnapshot,
 } from "@/lib/packet-builder";
-import { RelayTopRail } from "@/components/relay-app-shell";
+import {
+  RelayCard,
+  RelayFeedback,
+  RelayLinkButton,
+  RelayMetricTile,
+  RelayPageHead,
+  RelayTopRail,
+} from "@/components/relay";
 
 export const dynamic = "force-dynamic";
 
@@ -91,96 +97,97 @@ function PacketBuilder({
         userLabel={userDisplayName ?? "signed in"}
         projectHref={`/projects/${encodeURIComponent(snapshot.projectId)}`}
       />
-      <main style={pageStyle}>
-        <section style={pageHeadStyle} aria-labelledby="packet-title">
-          <div>
-            <p style={eyebrowStyle}>{snapshot.projectId} · Packet Builder</p>
-            <h1 id="packet-title" style={titleStyle}>
-              Compose a handoff.
-            </h1>
-          </div>
-          <nav style={actionsStyle} aria-label="Packet actions">
-            <button type="button" style={ghostButtonStyle} disabled>
-              Save draft
-            </button>
-            <Link href={`/projects/${encodeURIComponent(snapshot.projectId)}/graph`} style={ghostLinkStyle}>
-              Decision Graph
-            </Link>
-            {publicSnapshotHref ? (
-              <Link href={publicSnapshotHref} style={primaryLinkStyle}>
-                Open public snapshot →
-              </Link>
-            ) : (
-              <span style={disabledActionStyle}>Build snapshot →</span>
-            )}
-          </nav>
+      <main className="relay-packet-page">
+        <RelayPageHead
+          eyebrow={`${snapshot.projectId} · Packet Builder`}
+          title="Compose a handoff."
+          titleId="packet-title"
+          actions={
+            <>
+              <button type="button" className="relay-action" data-variant="secondary" disabled>
+                Save draft
+              </button>
+              <RelayLinkButton href={`/projects/${encodeURIComponent(snapshot.projectId)}/graph`} variant="secondary">
+                Decision Graph
+              </RelayLinkButton>
+              {publicSnapshotHref ? (
+                <RelayLinkButton href={publicSnapshotHref} variant="primary">
+                  Open public snapshot →
+                </RelayLinkButton>
+              ) : (
+                <span className="relay-action" data-variant="secondary" aria-disabled="true">
+                  Build snapshot →
+                </span>
+              )}
+            </>
+          }
+        />
+
+        <section className="relay-summary-grid" aria-label="Packet metadata">
+          <RelayMetricTile label="Snapshot" value={snapshot.snapshotId} />
+          <RelayMetricTile label="Target" value={snapshot.target} />
+          <RelayMetricTile label="Evidence" value={`${evidenceCount}`} />
+          <RelayMetricTile label="Visibility" value={snapshot.publicReadable ? "public" : "private"} />
         </section>
 
-        <section style={metaGridStyle} aria-label="Packet metadata">
-          <Metric label="Snapshot" value={snapshot.snapshotId} />
-          <Metric label="Target" value={snapshot.target} />
-          <Metric label="Evidence" value={`${evidenceCount}`} />
-          <Metric label="Visibility" value={snapshot.publicReadable ? "public" : "private"} />
-        </section>
-
-        <section className="relay-packet-builder-grid" style={builderGridStyle}>
-          <article style={compositionCardStyle} aria-label="Packet composition">
-            <span style={kickerStyle}>cover note · Fraunces italic</span>
+        <section className="relay-packet-builder-grid">
+          <RelayCard className="relay-packet-composition" aria-label="Packet composition">
+            <span className="relay-card-kicker">cover note · Fraunces italic</span>
             <textarea
               readOnly
               value={previewTitle}
               aria-label="Packet cover note"
-              style={coverNoteStyle}
+              className="relay-packet-cover-note"
             />
 
-            <section style={sourceSectionStyle} aria-label="Included sources">
-              <span style={kickerStyle}>included sources · {sources.length}</span>
+            <section className="relay-packet-source-section" aria-label="Included sources">
+              <span className="relay-card-kicker">included sources · {sources.length}</span>
               {sources.length > 0 ? (
-                <div style={sourceListStyle}>
+                <div className="relay-packet-source-list">
                   {sources.map((source) => (
                     <SourceRow key={source.id} kind={source.kind} label={source.label} />
                   ))}
                 </div>
               ) : (
-                <div style={emptyDropzoneStyle}>No sources were selected for this packet snapshot.</div>
+                <div className="relay-packet-dropzone">No sources were selected for this packet snapshot.</div>
               )}
             </section>
 
-            <div style={emptyDropzoneStyle}>Drop a trace, note, or artifact here. Or pick from the Inspector.</div>
+            <div className="relay-packet-dropzone">Drop a trace, note, or artifact here. Or pick from the Inspector.</div>
 
-            <details open style={documentDetailsStyle}>
-              <summary style={summaryStyle}>Rendered packet body</summary>
-              <pre style={packetBodyStyle}>{snapshot.renderedBody || "No rendered packet body."}</pre>
+            <details open className="relay-packet-details">
+              <summary className="relay-details-summary">Rendered packet body</summary>
+              <pre className="relay-packet-body">{snapshot.renderedBody || "No rendered packet body."}</pre>
             </details>
-          </article>
+          </RelayCard>
 
-          <aside style={previewColumnStyle} aria-label="Packet preview">
-            <span style={kickerStyle}>snapshot preview</span>
-            <div style={previewCardStyle}>
-              <div style={previewHeaderStyle}>
-                <div style={kickerStyle}>{snapshot.snapshotId}</div>
-                <h2 style={previewTitleStyle}>{previewTitle}</h2>
-                <p style={previewMetaStyle}>
+          <aside className="relay-packet-preview-column" aria-label="Packet preview">
+            <span className="relay-card-kicker">snapshot preview</span>
+            <RelayCard className="relay-packet-preview-card">
+              <div className="relay-packet-preview-header">
+                <div className="relay-card-kicker">{snapshot.snapshotId}</div>
+                <h2 className="relay-packet-preview-title">{previewTitle}</h2>
+                <p className="relay-packet-preview-meta">
                   {snapshot.styleCues.length} heuristics ·{" "}
                   {snapshot.supportingDecisions.length + snapshot.supportingQuestions.length} traces ·{" "}
                   {snapshot.supportingNotes.length + snapshot.supportingArtifacts.length} sources
                 </p>
               </div>
-              <div style={previewBodyStyle}>
-                <span style={kickerStyle}>recipient</span>
-                <span style={monoValueStyle}>{snapshot.target}</span>
-                <span style={{ ...kickerStyle, marginTop: "8px" }}>visibility</span>
-                <span style={monoValueStyle}>
+              <div className="relay-packet-preview-body">
+                <span className="relay-card-kicker">recipient</span>
+                <span className="relay-mono-value">{snapshot.target}</span>
+                <span className="relay-card-kicker relay-kicker-spaced">visibility</span>
+                <span className="relay-mono-value">
                   {snapshot.publicReadable ? "Public link" : "Private workspace"}
                 </span>
-                <span style={{ ...kickerStyle, marginTop: "8px" }}>created</span>
-                <span style={monoValueStyle}>{snapshot.createdAt}</span>
+                <span className="relay-card-kicker relay-kicker-spaced">created</span>
+                <span className="relay-mono-value">{snapshot.createdAt}</span>
               </div>
-            </div>
+            </RelayCard>
 
-            <div style={inspectorStyle}>
+            <div className="relay-packet-inspector">
               <details>
-                <summary style={summaryStyle}>Source evidence</summary>
+                <summary className="relay-details-summary">Source evidence</summary>
                 <EvidenceList title="Style cues" items={snapshot.styleCues.map((item) => item.canonicalText || item.heuristicId)} />
                 <EvidenceList title="Notes" items={snapshot.supportingNotes.map((item) => item.excerpt)} />
                 <EvidenceList title="Decisions" items={snapshot.supportingDecisions.map((item) => item.summary)} />
@@ -189,8 +196,8 @@ function PacketBuilder({
               </details>
 
               <details>
-                <summary style={summaryStyle}>Publish controls</summary>
-                <p style={quietCopyStyle}>
+                <summary className="relay-details-summary">Publish controls</summary>
+                <p className="relay-quiet-copy">
                   Publish and revoke remain on the admin snapshot API for this slice. This builder reads the
                   latest snapshot and shows the public route when the snapshot is already published.
                 </p>
@@ -241,58 +248,46 @@ function SourceRow({
   label: string;
 }) {
   return (
-    <div style={sourceRowStyle}>
-      <span style={{ ...sourceDotStyle, background: sourceKindColor(kind) }} />
-      <span style={sourceLabelStyle}>{label}</span>
-      <span style={sourceRemoveStyle}>remove</span>
+    <div className="relay-packet-source-row">
+      <span className="relay-packet-source-dot" data-kind={kind} />
+      <span className="relay-packet-source-label">{label}</span>
+      <span className="relay-packet-source-remove">remove</span>
     </div>
   );
 }
 
-function sourceKindColor(kind: "swan" | "trace" | "note" | "artifact") {
-  if (kind === "swan") return "var(--magic-primary-strong)";
-  if (kind === "trace") return "var(--magic-accent-strong)";
-  if (kind === "note") return "var(--success)";
-  return "var(--muted)";
-}
-
 function EvidenceList({ title, items }: { title: string; items: string[] }) {
   return (
-    <section style={evidenceSectionStyle}>
-      <h2 style={inspectorTitleStyle}>{title}</h2>
+    <section className="relay-evidence-section">
+      <h2 className="relay-evidence-title">{title}</h2>
       {items.length > 0 ? (
-        <ul style={evidenceListStyle}>
+        <ul className="relay-evidence-list">
           {items.map((item, index) => (
-            <li key={`${title}:${index}`} style={evidenceItemStyle}>
+            <li key={`${title}:${index}`} className="relay-evidence-item">
               {item}
             </li>
           ))}
         </ul>
       ) : (
-        <p style={quietCopyStyle}>None.</p>
+        <p className="relay-quiet-copy">None.</p>
       )}
     </section>
   );
 }
 
-function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <div style={metricStyle}>
-      <span style={metricValueStyle}>{value}</span>
-      <span style={metricLabelStyle}>{label}</span>
-    </div>
-  );
-}
-
 function SignInRequired({ projectId }: { projectId: string }) {
   return (
-    <main style={emptyPageStyle}>
-      <p style={eyebrowStyle}>Packet Builder</p>
-      <h1 style={emptyTitleStyle}>Sign in first</h1>
-      <p style={quietCopyStyle}>Packet snapshots are private to the project workspace.</p>
-      <a href={signInURL(projectId)} style={primaryLinkStyle}>
-        Continue with GitHub
-      </a>
+    <main className="relay-empty-page">
+      <RelayPageHead
+        eyebrow="Packet Builder"
+        title="Sign in first"
+        copy="Packet snapshots are private to the project workspace."
+        actions={
+          <RelayLinkButton href={signInURL(projectId)} variant="primary">
+            Continue with GitHub
+          </RelayLinkButton>
+        }
+      />
     </main>
   );
 }
@@ -310,356 +305,22 @@ function PacketBuilderFallback({
   const message = error instanceof Error ? error.message : "Packet Builder failed to load.";
   const noSnapshot = code === "NOT_FOUND";
   return (
-    <main style={emptyPageStyle}>
-      <p style={eyebrowStyle}>Packet Builder · {userDisplayName ?? "signed in"}</p>
-      <h1 style={emptyTitleStyle}>{noSnapshot ? "No packet yet" : "Couldn’t open packet"}</h1>
-      <p style={noSnapshot ? quietCopyStyle : errorBoxStyle}>
-        {noSnapshot ? "Build a packet snapshot first, then return here to inspect it." : `${code}: ${message}`}
-      </p>
-      <a href={`/projects/${encodeURIComponent(projectId)}`} style={primaryLinkStyle}>
-        Project Explorer
-      </a>
+    <main className="relay-empty-page">
+      <RelayPageHead
+        eyebrow={`Packet Builder · ${userDisplayName ?? "signed in"}`}
+        title={noSnapshot ? "No packet yet" : "Couldn’t open packet"}
+        copy={noSnapshot ? "Build a packet snapshot first, then return here to inspect it." : undefined}
+        actions={
+          <RelayLinkButton href={`/projects/${encodeURIComponent(projectId)}`} variant="primary">
+            Project Explorer
+          </RelayLinkButton>
+        }
+      />
+      {!noSnapshot ? (
+        <RelayFeedback role="alert" variant="error">
+          {code}: {message}
+        </RelayFeedback>
+      ) : null}
     </main>
   );
 }
-
-const pageStyle: React.CSSProperties = {
-  maxWidth: "1180px",
-  margin: "0 auto",
-  padding: "44px 28px 96px",
-};
-
-const pageHeadStyle: React.CSSProperties = {
-  display: "flex",
-  gap: "20px",
-  alignItems: "center",
-  justifyContent: "space-between",
-  flexWrap: "wrap",
-  marginBottom: "28px",
-  paddingBottom: "24px",
-  borderBottom: "1px solid var(--border)",
-};
-
-const eyebrowStyle: React.CSSProperties = {
-  margin: "0 0 14px",
-  color: "var(--muted)",
-  fontFamily: "var(--font-mono)",
-  fontSize: "12px",
-  letterSpacing: "0.16em",
-  textTransform: "uppercase",
-};
-
-const titleStyle: React.CSSProperties = {
-  margin: 0,
-  color: "var(--ink)",
-  fontFamily: "var(--font-display)",
-  fontSize: "clamp(44px, 6vw, 68px)",
-  fontWeight: 500,
-  lineHeight: 1,
-  fontVariationSettings: '"opsz" 144, "SOFT" 50',
-};
-
-const actionsStyle: React.CSSProperties = {
-  display: "flex",
-  gap: "12px",
-  flexWrap: "wrap",
-};
-
-const primaryLinkStyle: React.CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  minHeight: "46px",
-  padding: "0 18px",
-  borderRadius: "8px",
-  background: "var(--ink)",
-  color: "var(--canvas)",
-  fontWeight: 800,
-  textDecoration: "none",
-};
-
-const ghostLinkStyle: React.CSSProperties = {
-  ...primaryLinkStyle,
-  background: "transparent",
-  color: "var(--ink)",
-  border: "1px solid var(--border-strong)",
-};
-
-const ghostButtonStyle: React.CSSProperties = {
-  ...ghostLinkStyle,
-  fontFamily: "var(--font-sans)",
-  fontSize: "14px",
-  opacity: 0.62,
-  cursor: "not-allowed",
-};
-
-const disabledActionStyle: React.CSSProperties = {
-  ...ghostLinkStyle,
-  color: "var(--muted)",
-};
-
-const metaGridStyle: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
-  gap: "12px",
-  marginBottom: "18px",
-};
-
-const metricStyle: React.CSSProperties = {
-  minWidth: 0,
-  padding: "16px",
-  border: "1px solid var(--border)",
-  borderRadius: "8px",
-  background: "var(--canvas-raised)",
-};
-
-const metricValueStyle: React.CSSProperties = {
-  display: "block",
-  color: "var(--ink)",
-  fontFamily: "var(--font-mono)",
-  fontSize: "15px",
-  overflowWrap: "anywhere",
-};
-
-const metricLabelStyle: React.CSSProperties = {
-  display: "block",
-  marginTop: "8px",
-  color: "var(--muted)",
-  fontFamily: "var(--font-mono)",
-  fontSize: "11px",
-  letterSpacing: "0.14em",
-  textTransform: "uppercase",
-};
-
-const builderGridStyle: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "minmax(0, 1fr) minmax(260px, 340px)",
-  gap: "20px",
-  alignItems: "start",
-};
-
-const compositionCardStyle: React.CSSProperties = {
-  padding: "24px",
-  border: "1px solid var(--border)",
-  borderRadius: "12px",
-  background: "var(--canvas-raised)",
-  overflow: "hidden",
-};
-
-const kickerStyle: React.CSSProperties = {
-  color: "var(--muted)",
-  fontFamily: "var(--font-mono)",
-  fontSize: "11px",
-  letterSpacing: "0.14em",
-  textTransform: "uppercase",
-};
-
-const coverNoteStyle: React.CSSProperties = {
-  width: "100%",
-  minHeight: "96px",
-  marginTop: "10px",
-  padding: "14px",
-  border: "1px solid var(--border-strong)",
-  borderRadius: "8px",
-  background: "var(--canvas)",
-  color: "var(--ink)",
-  fontFamily: "var(--font-display)",
-  fontSize: "17px",
-  fontStyle: "italic",
-  lineHeight: 1.5,
-  resize: "vertical",
-  fontVariationSettings: '"opsz" 48',
-};
-
-const sourceSectionStyle: React.CSSProperties = {
-  marginTop: "22px",
-};
-
-const sourceListStyle: React.CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: "8px",
-  marginTop: "12px",
-};
-
-const sourceRowStyle: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: "10px",
-  padding: "10px 14px",
-  border: "1px solid var(--border)",
-  borderRadius: "8px",
-  background: "var(--canvas)",
-};
-
-const sourceDotStyle: React.CSSProperties = {
-  width: "8px",
-  height: "8px",
-  flex: "0 0 auto",
-  borderRadius: "999px",
-};
-
-const sourceLabelStyle: React.CSSProperties = {
-  minWidth: 0,
-  flex: 1,
-  color: "var(--ink)",
-  fontSize: "13px",
-  overflowWrap: "anywhere",
-};
-
-const sourceRemoveStyle: React.CSSProperties = {
-  color: "var(--muted)",
-  fontFamily: "var(--font-mono)",
-  fontSize: "11px",
-};
-
-const emptyDropzoneStyle: React.CSSProperties = {
-  marginTop: "14px",
-  padding: "22px",
-  border: "1px dashed var(--border-strong)",
-  borderRadius: "12px",
-  background: "color-mix(in srgb, var(--magic-primary) 8%, var(--canvas))",
-  color: "var(--ink-muted)",
-  fontFamily: "var(--font-display)",
-  fontSize: "17px",
-  fontStyle: "italic",
-  textAlign: "center",
-};
-
-const documentDetailsStyle: React.CSSProperties = {
-  marginTop: "18px",
-};
-
-const packetBodyStyle: React.CSSProperties = {
-  margin: 0,
-  padding: "18px 2px 0",
-  whiteSpace: "pre-wrap",
-  overflowWrap: "anywhere",
-  color: "var(--ink)",
-  fontFamily: "var(--font-mono)",
-  fontSize: "15px",
-  lineHeight: 1.7,
-};
-
-const previewColumnStyle: React.CSSProperties = {
-  minWidth: 0,
-};
-
-const previewCardStyle: React.CSSProperties = {
-  marginTop: "12px",
-  border: "1px solid var(--border)",
-  borderRadius: "12px",
-  background: "var(--canvas-raised)",
-  overflow: "hidden",
-};
-
-const previewHeaderStyle: React.CSSProperties = {
-  padding: "20px 22px 16px",
-  borderBottom: "1px solid var(--border)",
-};
-
-const previewTitleStyle: React.CSSProperties = {
-  margin: "8px 0 0",
-  color: "var(--ink)",
-  fontFamily: "var(--font-display)",
-  fontSize: "22px",
-  fontWeight: 500,
-  lineHeight: 1.2,
-  fontVariationSettings: '"opsz" 72',
-};
-
-const previewMetaStyle: React.CSSProperties = {
-  margin: "10px 0 0",
-  color: "var(--muted)",
-  fontFamily: "var(--font-mono)",
-  fontSize: "11px",
-};
-
-const previewBodyStyle: React.CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: "8px",
-  padding: "16px 22px",
-};
-
-const monoValueStyle: React.CSSProperties = {
-  color: "var(--ink)",
-  fontFamily: "var(--font-mono)",
-  fontSize: "13px",
-  overflowWrap: "anywhere",
-};
-
-const inspectorStyle: React.CSSProperties = {
-  display: "grid",
-  gap: "12px",
-  marginTop: "16px",
-};
-
-const summaryStyle: React.CSSProperties = {
-  cursor: "pointer",
-  padding: "16px",
-  border: "1px solid var(--border)",
-  borderRadius: "8px",
-  background: "var(--canvas-raised)",
-  color: "var(--ink)",
-  fontFamily: "var(--font-mono)",
-  fontSize: "12px",
-  letterSpacing: "0.14em",
-  textTransform: "uppercase",
-};
-
-const evidenceSectionStyle: React.CSSProperties = {
-  padding: "14px 16px 0",
-};
-
-const inspectorTitleStyle: React.CSSProperties = {
-  margin: "0 0 8px",
-  color: "var(--ink)",
-  fontFamily: "var(--font-display)",
-  fontSize: "20px",
-  fontWeight: 500,
-};
-
-const evidenceListStyle: React.CSSProperties = {
-  margin: 0,
-  paddingLeft: "18px",
-};
-
-const evidenceItemStyle: React.CSSProperties = {
-  marginBottom: "8px",
-  color: "var(--ink-muted)",
-  fontSize: "14px",
-  lineHeight: 1.5,
-  overflowWrap: "anywhere",
-};
-
-const quietCopyStyle: React.CSSProperties = {
-  margin: 0,
-  color: "var(--ink-muted)",
-  fontSize: "16px",
-  lineHeight: 1.6,
-};
-
-const emptyPageStyle: React.CSSProperties = {
-  maxWidth: "620px",
-  margin: "0 auto",
-  padding: "120px 32px",
-};
-
-const emptyTitleStyle: React.CSSProperties = {
-  margin: "0 0 18px",
-  fontFamily: "var(--font-display)",
-  fontSize: "46px",
-  fontWeight: 500,
-};
-
-const errorBoxStyle: React.CSSProperties = {
-  margin: "0 0 22px",
-  padding: "14px",
-  border: "1px solid var(--danger)",
-  borderRadius: "8px",
-  color: "var(--danger)",
-  background: "color-mix(in srgb, var(--danger) 8%, transparent)",
-  fontFamily: "var(--font-mono)",
-  fontSize: "13px",
-};

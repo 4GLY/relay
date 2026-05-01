@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 
-type RelayStep = "Face" | "Dissect" | "Refine" | "Transform";
+export type RelayStep = "Face" | "Dissect" | "Refine" | "Transform";
 
 type RailItem = {
   href: string;
@@ -76,7 +76,7 @@ function TransformRibbon({ activeStep }: { activeStep: RelayStep }) {
   return (
     <div className="relay-transform-ribbon" aria-label="Relay transformation steps">
       {steps.map((step, index) => (
-        <span key={step} style={{ display: "contents" }}>
+        <span key={step} className="relay-contents">
           <span className="relay-transform-step" data-active={step === activeStep}>
             {step}
           </span>
@@ -104,7 +104,7 @@ function ProjectRail({ items }: { items: RailItem[] }) {
               {glyphs[kind]}
             </span>
             <span className="relay-rail-name">{item.label}</span>
-            <span style={{ display: "inline-flex", gap: "4px" }}>
+            <span className="relay-rail-badges">
               {item.ducklings ? (
                 <span className="relay-badge-duckling" title="Ducklings">
                   {item.ducklings}

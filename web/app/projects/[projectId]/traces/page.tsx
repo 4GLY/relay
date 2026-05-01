@@ -1,9 +1,17 @@
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import type { CSSProperties } from "react";
 
-import { RelayAppShell } from "@/components/relay-app-shell";
+import {
+  RelayAppShell,
+  RelayCard,
+  RelayEmptyState,
+  RelayFeedback,
+  RelayLinkButton,
+  RelayPageHead,
+  RelayStatusBadge,
+  RelayTabs,
+} from "@/components/relay";
 import { RELAY_API_URL, relayFetch, type RelayEnvelope } from "@/lib/api";
 import type { AuthMe } from "@/lib/onboarding";
 import {
@@ -111,38 +119,27 @@ function TraceBrowser({
       projectHref={`/projects/${encodeURIComponent(projectId)}`}
       railItems={projectRailItems(projectId, "traces", traces.length)}
     >
-      <section style={pageHeadStyle} aria-labelledby="trace-title">
-        <div>
-          <p style={eyebrowStyle}>{projectId} · Judgment Traces</p>
-          <h1 id="trace-title" style={titleStyle}>
-            {traces.length} trace{traces.length === 1 ? "" : "s"} captured.
-          </h1>
-        </div>
-        <nav aria-label="Trace actions" style={actionsStyle}>
-          <Link href={`/projects/${encodeURIComponent(projectId)}`} style={secondaryLinkStyle}>
-            Project Explorer
-          </Link>
-          <Link href={`/style-memory?project=${encodeURIComponent(projectId)}`} style={primaryLinkStyle}>
-            Style Memory
-          </Link>
-        </nav>
-      </section>
+      <RelayPageHead
+        title={`${traces.length} trace${traces.length === 1 ? "" : "s"} captured.`}
+        titleId="trace-title"
+        eyebrow={`${projectId} · Judgment Traces`}
+        actions={
+          <>
+            <RelayLinkButton href={`/projects/${encodeURIComponent(projectId)}`} variant="secondary">
+              Project Explorer
+            </RelayLinkButton>
+            <RelayLinkButton href={`/style-memory?project=${encodeURIComponent(projectId)}`} variant="primary">
+              Style Memory
+            </RelayLinkButton>
+          </>
+        }
+      />
 
-      <nav aria-label="Trace filters" style={tabsStyle}>
-        {tabs.map((tab) => (
-          <span
-            key={tab.label}
-            aria-current={tab.active ? "page" : undefined}
-            style={tab.active ? activeTabStyle : tabStyle}
-          >
-            {tab.label} · {tab.count}
-          </span>
-        ))}
-      </nav>
+      <RelayTabs aria-label="Trace filters" items={tabs} />
 
       {selectedTrace ? (
-        <section className="relay-card relay-trace-table" style={traceTableStyle} aria-label="Judgment trace list">
-          <div className="relay-trace-header-row" style={traceHeaderRowStyle} aria-hidden="true">
+        <RelayCard className="relay-trace-table" aria-label="Judgment trace list">
+          <div className="relay-trace-header-row" aria-hidden="true">
             <span>Trace</span>
             <span>Decision</span>
             <span>State</span>
@@ -157,18 +154,17 @@ function TraceBrowser({
                 id={trace.traceId}
                 className="relay-trace-row"
                 data-selected={selected || undefined}
-                style={selected ? selectedTraceRowStyle : traceRowStyle}
               >
                 <Link
                   href={`/projects/${encodeURIComponent(projectId)}/traces?trace=${encodeURIComponent(trace.traceId)}`}
-                  style={traceIdStyle}
+                  className="relay-trace-id"
                 >
                   {truncateId(trace.traceId)}
                 </Link>
-                <div style={traceDecisionCellStyle}>
-                  <h2 style={traceDecisionStyle}>{trace.decision}</h2>
-                  {trace.rationale ? <p style={traceRationaleStyle}>{trace.rationale}</p> : null}
-                  <div style={traceMetaLineStyle}>
+                <div className="relay-trace-decision-cell">
+                  <h2 className="relay-trace-decision">{trace.decision}</h2>
+                  {trace.rationale ? <p className="relay-trace-rationale">{trace.rationale}</p> : null}
+                  <div className="relay-trace-meta-line">
                     <span>{firstNonEmpty(trace.workflow, "workflow")}</span>
                     <span>·</span>
                     <span>{firstNonEmpty(trace.artifactType, "artifact")}</span>
@@ -186,32 +182,32 @@ function TraceBrowser({
                     ) : null}
                   </div>
                   {trace.sourceRefs.length > 0 ? (
-                    <ul aria-label={`Source refs for ${trace.traceId}`} style={sourceRefListStyle}>
+                    <ul aria-label={`Source refs for ${trace.traceId}`} className="relay-source-ref-list">
                       {trace.sourceRefs.slice(0, 3).map((sourceRef) => (
-                        <li key={sourceRef} style={sourceRefStyle}>
-                          <span style={sourceDotStyle} aria-hidden="true" />
+                        <li key={sourceRef} className="relay-source-ref">
+                          <span className="relay-source-ref-dot" aria-hidden="true" />
                           {sourceRef}
                         </li>
                       ))}
                     </ul>
                   ) : null}
                 </div>
-                <span style={stateBadgeStyle(traceState(trace))}>{traceState(trace)}</span>
-                <time dateTime={trace.createdAt} style={timeStyle}>
+                <RelayStatusBadge variant={traceStateVariant(trace)}>{traceState(trace)}</RelayStatusBadge>
+                <time dateTime={trace.createdAt} className="relay-trace-time">
                   {formatDate(trace.createdAt)}
                 </time>
-                <span style={refsStyle}>
+                <span className="relay-trace-refs">
                   {trace.sourceRefs.length} ref{trace.sourceRefs.length === 1 ? "" : "s"}
                 </span>
               </article>
             );
           })}
-        </section>
+        </RelayCard>
       ) : (
-        <section style={emptyPanelStyle}>
-          <h2 style={emptyTitleStyle}>No traces captured yet.</h2>
-          <p style={quietCopyStyle}>Capture judgment traces to give Style Memory reviewable evidence.</p>
-        </section>
+        <RelayEmptyState
+          title="No traces captured yet."
+          copy="Capture judgment traces to give Style Memory reviewable evidence."
+        />
       )}
     </RelayAppShell>
   );
@@ -257,6 +253,13 @@ function traceState(trace: JudgmentTrace) {
   return "Duckling";
 }
 
+function traceStateVariant(trace: JudgmentTrace): "magic" | "danger" | "pending" {
+  const state = traceState(trace);
+  if (state === "Swan") return "magic";
+  if (state === "Rejected") return "danger";
+  return "pending";
+}
+
 function truncateId(value: string) {
   if (value.length <= 16) return value;
   return `${value.slice(0, 14)}…`;
@@ -264,13 +267,17 @@ function truncateId(value: string) {
 
 function SignInRequired({ projectId }: { projectId: string }) {
   return (
-    <main style={emptyPageStyle}>
-      <p style={eyebrowStyle}>Trace Browser</p>
-      <h1 style={emptyTitleStyle}>Sign in first</h1>
-      <p style={quietCopyStyle}>Trace history is private to the project workspace.</p>
-      <a href={signInURL(projectId)} style={primaryLinkStyle}>
-        Continue with GitHub
-      </a>
+    <main className="relay-empty-page">
+      <RelayPageHead
+        eyebrow="Trace Browser"
+        title="Sign in first"
+        copy="Trace history is private to the project workspace."
+        actions={
+          <RelayLinkButton href={signInURL(projectId)} variant="primary">
+            Continue with GitHub
+          </RelayLinkButton>
+        }
+      />
     </main>
   );
 }
@@ -287,15 +294,19 @@ function TraceBrowserError({
   const code = error instanceof ProjectTracesError ? error.code : "UNKNOWN";
   const message = error instanceof Error ? error.message : "Trace Browser failed to load.";
   return (
-    <main style={emptyPageStyle}>
-      <p style={eyebrowStyle}>Trace Browser · {userDisplayName ?? "signed in"}</p>
-      <h1 style={emptyTitleStyle}>Couldn’t open traces</h1>
-      <p style={errorBoxStyle}>
+    <main className="relay-empty-page">
+      <RelayPageHead
+        eyebrow={`Trace Browser · ${userDisplayName ?? "signed in"}`}
+        title="Couldn’t open traces"
+        actions={
+          <RelayLinkButton href={`/projects/${encodeURIComponent(projectId)}/traces`} variant="primary">
+            Retry
+          </RelayLinkButton>
+        }
+      />
+      <RelayFeedback role="alert" variant="error">
         {code}: {message}
-      </p>
-      <a href={`/projects/${encodeURIComponent(projectId)}/traces`} style={primaryLinkStyle}>
-        Retry
-      </a>
+      </RelayFeedback>
     </main>
   );
 }
@@ -317,258 +328,3 @@ function formatDate(value: string) {
     minute: "2-digit",
   }).format(date);
 }
-
-const pageHeadStyle: CSSProperties = {
-  display: "flex",
-  gap: "28px",
-  alignItems: "flex-end",
-  justifyContent: "space-between",
-  flexWrap: "wrap",
-  marginBottom: "24px",
-};
-
-const eyebrowStyle: CSSProperties = {
-  margin: "0 0 14px",
-  color: "var(--muted)",
-  fontFamily: "var(--font-mono)",
-  fontSize: "12px",
-  letterSpacing: "0.16em",
-  textTransform: "uppercase",
-};
-
-const titleStyle: CSSProperties = {
-  margin: 0,
-  color: "var(--ink)",
-  fontFamily: "var(--font-display)",
-  fontSize: "clamp(40px, 5vw, 68px)",
-  fontWeight: 500,
-  lineHeight: 1.04,
-  fontVariationSettings: '"opsz" 144, "SOFT" 50',
-};
-
-const actionsStyle: CSSProperties = {
-  display: "flex",
-  gap: "12px",
-  flexWrap: "wrap",
-};
-
-const primaryLinkStyle: CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  minHeight: "46px",
-  padding: "0 18px",
-  borderRadius: "8px",
-  background: "var(--ink)",
-  color: "var(--canvas)",
-  fontFamily: "var(--font-sans)",
-  fontWeight: 800,
-  textDecoration: "none",
-};
-
-const secondaryLinkStyle: CSSProperties = {
-  ...primaryLinkStyle,
-  background: "transparent",
-  color: "var(--ink)",
-  border: "1px solid var(--border-strong)",
-};
-
-const tabsStyle: CSSProperties = {
-  display: "flex",
-  gap: "8px",
-  flexWrap: "wrap",
-  marginBottom: "18px",
-};
-
-const tabStyle: CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  minHeight: "38px",
-  padding: "0 14px",
-  border: "1px solid transparent",
-  borderRadius: "999px",
-  color: "var(--muted)",
-  fontFamily: "var(--font-mono)",
-  fontSize: "11px",
-  letterSpacing: "0.14em",
-  textTransform: "uppercase",
-};
-
-const activeTabStyle: CSSProperties = {
-  ...tabStyle,
-  borderColor: "var(--border-strong)",
-  background: "var(--ink)",
-  color: "var(--canvas)",
-};
-
-const traceTableStyle: CSSProperties = {
-  overflow: "hidden",
-};
-
-const traceHeaderRowStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "132px minmax(240px, 1fr) 104px 132px 72px",
-  gap: "18px",
-  padding: "14px 20px",
-  borderBottom: "1px solid var(--border)",
-  color: "var(--muted)",
-  fontFamily: "var(--font-mono)",
-  fontSize: "10px",
-  letterSpacing: "0.14em",
-  textTransform: "uppercase",
-};
-
-const traceRowStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "132px minmax(240px, 1fr) 104px 132px 72px",
-  gap: "18px",
-  alignItems: "start",
-  padding: "18px 20px",
-  borderTop: "1px solid var(--border)",
-  background: "var(--canvas-raised)",
-};
-
-const selectedTraceRowStyle: CSSProperties = {
-  ...traceRowStyle,
-  borderColor: "var(--magic-primary-strong)",
-  boxShadow:
-    "inset 4px 0 0 var(--magic-primary-strong), 0 0 0 4px color-mix(in srgb, var(--magic-primary-strong) 18%, transparent)",
-};
-
-const traceIdStyle: CSSProperties = {
-  color: "var(--muted)",
-  fontFamily: "var(--font-mono)",
-  fontSize: "11px",
-  textDecoration: "none",
-  overflowWrap: "anywhere",
-};
-
-const traceDecisionCellStyle: CSSProperties = {
-  minWidth: 0,
-};
-
-const traceDecisionStyle: CSSProperties = {
-  margin: 0,
-  color: "var(--ink)",
-  fontFamily: "var(--font-sans)",
-  fontSize: "15px",
-  fontWeight: 800,
-  lineHeight: 1.35,
-};
-
-const traceRationaleStyle: CSSProperties = {
-  margin: "6px 0 0",
-  color: "var(--ink-muted)",
-  fontSize: "13px",
-  lineHeight: 1.5,
-};
-
-const traceMetaLineStyle: CSSProperties = {
-  display: "flex",
-  gap: "8px",
-  flexWrap: "wrap",
-  marginTop: "10px",
-  color: "var(--muted)",
-  fontFamily: "var(--font-mono)",
-  fontSize: "10px",
-  letterSpacing: "0.08em",
-};
-
-function stateBadgeStyle(state: string): CSSProperties {
-  const swan = state === "Swan";
-  const rejected = state === "Rejected";
-  return {
-    justifySelf: "start",
-    padding: "4px 10px",
-    borderRadius: "6px",
-    background: swan
-      ? "color-mix(in srgb, var(--magic-primary) 25%, var(--canvas-raised))"
-      : rejected
-        ? "color-mix(in srgb, var(--danger) 12%, var(--canvas-raised))"
-        : "var(--problem)",
-    color: swan ? "var(--magic-primary-strong)" : rejected ? "var(--danger)" : "var(--canvas)",
-    fontFamily: "var(--font-mono)",
-    fontSize: "10px",
-    fontWeight: 700,
-    letterSpacing: "0.04em",
-  };
-}
-
-const timeStyle: CSSProperties = {
-  color: "var(--muted)",
-  fontFamily: "var(--font-mono)",
-  fontSize: "11px",
-};
-
-const refsStyle: CSSProperties = {
-  color: "var(--muted)",
-  fontFamily: "var(--font-mono)",
-  fontSize: "11px",
-  textAlign: "right",
-};
-
-const sourceRefListStyle: CSSProperties = {
-  display: "flex",
-  flexWrap: "wrap",
-  gap: "8px",
-  margin: "12px 0 0",
-  padding: 0,
-  listStyle: "none",
-};
-
-const sourceRefStyle: CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  gap: "6px",
-  padding: "5px 9px",
-  border: "1px solid var(--border)",
-  borderRadius: "999px",
-  color: "var(--ink-muted)",
-  fontFamily: "var(--font-mono)",
-  fontSize: "10px",
-};
-
-const sourceDotStyle: CSSProperties = {
-  width: "6px",
-  height: "6px",
-  borderRadius: "999px",
-  background: "var(--magic-primary-strong)",
-};
-
-const quietCopyStyle: CSSProperties = {
-  margin: 0,
-  color: "var(--ink-muted)",
-  fontSize: "16px",
-  lineHeight: 1.6,
-};
-
-const emptyPanelStyle: CSSProperties = {
-  padding: "48px",
-  border: "1px dashed var(--border-strong)",
-  borderRadius: "8px",
-  textAlign: "center",
-};
-
-const emptyPageStyle: CSSProperties = {
-  maxWidth: "620px",
-  margin: "0 auto",
-  padding: "120px 32px",
-};
-
-const emptyTitleStyle: CSSProperties = {
-  margin: "0 0 18px",
-  fontFamily: "var(--font-display)",
-  fontSize: "46px",
-  fontWeight: 500,
-};
-
-const errorBoxStyle: CSSProperties = {
-  margin: "0 0 22px",
-  padding: "14px",
-  border: "1px solid var(--danger)",
-  borderRadius: "8px",
-  color: "var(--danger)",
-  background: "color-mix(in srgb, var(--danger) 8%, transparent)",
-  fontFamily: "var(--font-mono)",
-  fontSize: "13px",
-};

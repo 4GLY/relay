@@ -122,6 +122,30 @@ describe("<PacketBuilderPage>", () => {
     });
   });
 
+  it("renders Korean packet chrome with a locale-formatted created time", async () => {
+    globalThis.__setNextIntlLocale("ko");
+    mocks.relayFetch.mockResolvedValueOnce(
+      authResponse(200, {
+        ok: true,
+        command: "relay auth me",
+        data: {
+          user_id: "user_1",
+          display_name: "Hoon",
+          onboarding_complete: true,
+          default_project_id: "proj_1",
+        },
+        warnings: [],
+      }),
+    );
+    mocks.getLatestPacketSnapshot.mockResolvedValueOnce(snapshot);
+
+    render(await PacketBuilderPage({ params: Promise.resolve({ projectId: "proj_1" }) }));
+
+    expect(screen.getByText("만든 시간")).toBeVisible();
+    expect(screen.getAllByText(/4월/).length).toBeGreaterThan(0);
+    expect(screen.queryByText("2026-04-30T00:00:00Z")).not.toBeInTheDocument();
+  });
+
   it("shows sign-in when there is no session", async () => {
     mocks.relayFetch.mockResolvedValueOnce(
       authResponse(401, {

@@ -152,7 +152,7 @@
     "eyebrow": "Project Explorer · {status}",
     "actions": {
       "styleMemory": "Style Memory",
-      "traceBrowser": "Trace 브라우저",
+      "traceBrowser": "기록 브라우저",
       "decisionGraph": "Decision Graph",
       "packetBuilder": "Packet Builder",
       "providerSettings": "Provider 설정",
@@ -170,7 +170,7 @@
       "snapshots": "스냅샷",
       "artifacts": "산출물",
       "questions": "질문",
-      "traces": "Trace",
+      "traces": "기록",
       "pendingProposals": "대기 중인 제안",
       "approvedHeuristics": "승인된 Heuristic",
       "rejectedProposals": "거절된 제안",
@@ -198,7 +198,7 @@
     },
     "empty": {
       "noPendingProposals": "대기 중인 제안이 없습니다.",
-      "noPacketSnapshots": "아직 packet 스냅샷이 없습니다.",
+      "noPacketSnapshots": "아직 패킷 스냅샷이 없습니다.",
       "noRecentActivity": "최근 활동이 없습니다."
     },
     "signIn": {
@@ -212,17 +212,27 @@
       "fallbackMessage": "Project Explorer를 불러오지 못했습니다."
     },
     "nav": {
-      "judgmentTraces": "Judgment Trace"
+      "judgmentTraces": "판단 기록"
     },
     "memoryPendingOne": "대기 중인 제안 {count}개",
     "memoryPendingMany": "대기 중인 제안 {count}개",
-    "memoryApprovedOne": "발행된 swan {count}개",
-    "memoryApprovedMany": "발행된 swan {count}개"
+    "memoryApprovedOne": "발행된 백조 {count}개",
+    "memoryApprovedMany": "발행된 백조 {count}개",
+    "activityKinds": {
+      "judgmentTrace": "판단 기록",
+      "approvedHeuristic": "승인된 Heuristic",
+      "heuristicProposal": "Heuristic 제안",
+      "packetSnapshot": "패킷 스냅샷",
+      "decision": "결정",
+      "note": "노트",
+      "artifact": "산출물",
+      "openQuestion": "열린 질문"
+    }
   },
   "Traces": {
-    "eyebrow": "{projectId} · Judgment Trace",
-    "filtersLabel": "Trace 필터",
-    "listLabel": "Judgment trace 목록",
+    "eyebrow": "{projectId} · 판단 기록",
+    "filtersLabel": "기록 필터",
+    "listLabel": "판단 기록 목록",
     "sourceRefsLabel": "{traceId}의 출처 참조",
     "tabs": {
       "all": "전체",
@@ -231,7 +241,7 @@
       "notes": "노트"
     },
     "columns": {
-      "trace": "Trace",
+      "trace": "기록",
       "decision": "결정",
       "state": "상태",
       "captured": "캡처됨",
@@ -246,8 +256,8 @@
     },
     "state": {
       "rejected": "거절됨",
-      "swan": "Swan",
-      "duckling": "Duckling"
+      "swan": "백조",
+      "duckling": "초안"
     },
     "actions": {
       "projectExplorer": "Project Explorer",
@@ -257,38 +267,38 @@
     },
     "nav": {
       "projectExplorer": "Project Explorer",
-      "traceBrowser": "Trace 브라우저",
+      "traceBrowser": "기록 브라우저",
       "decisionGraph": "Decision Graph",
       "styleMemory": "Style Memory",
       "packetBuilder": "Packet Builder",
       "settings": "설정"
     },
     "empty": {
-      "title": "아직 캡처된 trace가 없습니다.",
-      "copy": "judgment trace를 캡처하면 Style Memory가 검토할 근거가 생깁니다."
+      "title": "아직 캡처된 기록이 없습니다.",
+      "copy": "판단 기록을 캡처하면 Style Memory가 검토할 근거가 생깁니다."
     },
     "signIn": {
-      "eyebrow": "Trace 브라우저",
+      "eyebrow": "기록 브라우저",
       "title": "먼저 로그인하세요",
-      "copy": "Trace 기록은 프로젝트 작업공간 안에서 비공개입니다."
+      "copy": "기록은 프로젝트 작업공간 안에서 비공개입니다."
     },
     "error": {
-      "eyebrow": "Trace 브라우저 · {user}",
+      "eyebrow": "기록 브라우저 · {user}",
       "signedInFallback": "로그인됨",
-      "title": "Trace를 열지 못했습니다",
-      "fallbackMessage": "Trace 브라우저를 불러오지 못했습니다."
+      "title": "기록을 열지 못했습니다",
+      "fallbackMessage": "기록 브라우저를 불러오지 못했습니다."
     },
-    "titleOne": "캡처된 trace {count}개",
-    "titleMany": "캡처된 trace {count}개"
+    "titleOne": "캡처된 기록 {count}개",
+    "titleMany": "캡처된 기록 {count}개"
   },
   "DecisionGraph": {
     "title": "Decision Graph",
     "eyebrow": "{projectId} · Decision Graph",
-    "copyReady": "결정이 swan에 도달한 경로입니다.",
-    "copyEmpty": "근거를 캡처하면 swan까지의 경로가 드러납니다.",
+    "copyReady": "결정이 백조에 도달한 경로입니다.",
+    "copyEmpty": "근거를 캡처하면 백조까지의 경로가 드러납니다.",
     "actions": {
       "relayout": "다시 배치",
-      "composeHandoff": "handoff 작성",
+      "composeHandoff": "인계 작성",
       "continueWithGitHub": "GitHub로 계속하기",
       "retry": "다시 시도"
     },
@@ -298,21 +308,21 @@
       "decisionEvidenceGraph": "결정 근거 그래프",
       "graphNodes": "그래프 노드",
       "decisions": "결정",
-      "traces": "Trace",
+      "traces": "기록",
       "proposals": "제안",
       "heuristics": "휴리스틱",
       "snapshots": "스냅샷"
     },
     "legend": {
       "project": "프로젝트",
-      "trace": "Trace",
-      "swan": "Swan",
-      "duckling": "Duckling",
+      "trace": "기록",
+      "swan": "백조",
+      "duckling": "초안",
       "snapshot": "스냅샷"
     },
     "nav": {
       "projectExplorer": "Project Explorer",
-      "traceBrowser": "Trace 브라우저",
+      "traceBrowser": "기록 브라우저",
       "decisionGraph": "Decision Graph",
       "styleMemory": "Style Memory",
       "packetBuilder": "Packet Builder",
@@ -320,7 +330,7 @@
     },
     "empty": {
       "title": "아직 그래프 근거가 없습니다.",
-      "copy": "노트, trace, 결정, Heuristic, 스냅샷을 캡처하면 맵이 채워집니다."
+      "copy": "노트, 기록, 결정, Heuristic, 스냅샷을 캡처하면 맵이 채워집니다."
     },
     "signIn": {
       "eyebrow": "Decision Graph",
@@ -332,11 +342,22 @@
       "signedInFallback": "로그인됨",
       "title": "그래프를 열지 못했습니다",
       "fallbackMessage": "Decision Graph를 불러오지 못했습니다."
+    },
+    "nodeKinds": {
+      "project": "프로젝트",
+      "judgmentTrace": "판단 기록",
+      "heuristicProposal": "Heuristic 제안",
+      "approvedHeuristic": "승인된 Heuristic",
+      "decision": "결정",
+      "packetSnapshot": "패킷 스냅샷",
+      "note": "노트",
+      "artifact": "산출물",
+      "openQuestion": "열린 질문"
     }
   },
   "PacketBuilder": {
     "eyebrow": "{projectId} · Packet Builder",
-    "title": "handoff 작성",
+    "title": "인계 작성",
     "signedInFallback": "로그인됨",
     "actions": {
       "saveDraft": "초안 저장",
@@ -355,21 +376,21 @@
       "public": "공개",
       "private": "비공개",
       "packetComposition": "Packet 구성",
-      "coverNote": "커버 노트 · Fraunces italic",
+      "coverNote": "커버 노트 · Fraunces 이탤릭",
       "packetCoverNote": "Packet 커버 노트",
-      "includedSources": "포함된 소스 · {count}",
-      "renderedPacketBody": "렌더링된 packet 본문",
+      "includedSources": "포함된 출처 · {count}",
+      "renderedPacketBody": "렌더링된 패킷 본문",
       "packetPreview": "Packet 미리보기",
       "snapshotPreview": "스냅샷 미리보기",
       "heuristics": "휴리스틱",
-      "traces": "trace",
-      "sources": "소스",
+      "traces": "기록",
+      "sources": "출처",
       "recipient": "수신자",
       "visibilityKicker": "공개 범위",
       "created": "만든 시간",
       "publicLink": "공개 링크",
       "privateWorkspace": "비공개 작업공간",
-      "sourceEvidence": "소스 근거",
+      "sourceEvidence": "출처 근거",
       "publishControls": "게시 제어",
       "styleCues": "스타일 단서",
       "notes": "노트",
@@ -378,9 +399,9 @@
       "artifacts": "산출물"
     },
     "empty": {
-      "noSources": "이 packet 스냅샷에 선택된 소스가 없습니다.",
-      "dropzone": "trace, 노트, 산출물을 여기로 끌어오거나 Inspector에서 선택하세요.",
-      "noRenderedBody": "렌더링된 packet 본문이 없습니다.",
+      "noSources": "이 패킷 스냅샷에 선택된 출처가 없습니다.",
+      "dropzone": "기록, 노트, 산출물을 여기로 끌어오거나 인스펙터에서 선택하세요.",
+      "noRenderedBody": "렌더링된 패킷 본문이 없습니다.",
       "none": "없음."
     },
     "sourceKind": {
@@ -391,33 +412,33 @@
       "artifact": "산출물",
       "remove": "제거"
     },
-    "publishCopy": "게시와 폐기는 이 slice에서는 admin snapshot API에 남아 있습니다. 이 builder는 최신 스냅샷을 읽고, 이미 게시된 경우 공개 route를 보여줍니다.",
+    "publishCopy": "게시와 폐기는 이 범위에서는 관리자 스냅샷 API에 남아 있습니다. 이 빌더는 최신 스냅샷을 읽고, 이미 게시된 경우 공개 경로를 보여줍니다.",
     "signIn": {
       "eyebrow": "Packet Builder",
       "title": "먼저 로그인하세요",
-      "copy": "Packet 스냅샷은 프로젝트 작업공간 안에서 비공개입니다."
+      "copy": "패킷 스냅샷은 프로젝트 작업공간 안에서 비공개입니다."
     },
     "error": {
       "eyebrow": "Packet Builder · {user}",
       "signedInFallback": "로그인됨",
-      "noSnapshotTitle": "아직 packet이 없습니다",
-      "title": "packet을 열지 못했습니다",
-      "noSnapshotCopy": "먼저 packet 스냅샷을 만든 뒤 여기로 돌아와 확인하세요.",
+      "noSnapshotTitle": "아직 패킷이 없습니다",
+      "title": "패킷을 열지 못했습니다",
+      "noSnapshotCopy": "먼저 패킷 스냅샷을 만든 뒤 여기로 돌아와 확인하세요.",
       "fallbackMessage": "Packet Builder를 불러오지 못했습니다."
     }
   },
   "StyleMemory": {
     "workspaceLabel": "Style Memory 작업공간",
     "eyebrow": "{projectId} · Style Memory",
-    "subtitleEmpty": "swan 전선은 조용합니다.",
+    "subtitleEmpty": "백조 전선은 조용합니다.",
     "subtitleOne": "판단을 기다리는 제안 1개",
     "subtitleMany": "판단을 기다리는 제안 {count}개",
     "actions": {
-      "composeHandoff": "handoff 작성",
-      "singleHero": "단일 hero",
+      "composeHandoff": "인계 작성",
+      "singleHero": "단일 대표 카드",
       "viewAllQueue": "전체 대기열 보기",
       "reject": "거절",
-      "approveSwan": "승인 → Swan",
+      "approveSwan": "승인 → 백조",
       "cancel": "취소",
       "submit": "제출",
       "retry": "다시 시도"
@@ -429,7 +450,7 @@
       "rejected": "거절됨"
     },
     "toast": {
-      "swanMinted": "Swan 발행됨",
+      "swanMinted": "백조 발행됨",
       "swanMintedSub": "휴리스틱을 갤러리에 추가했습니다.",
       "alreadyResolved": "이미 처리됨",
       "alreadyResolvedSub": "다른 세션에서 이 카드를 처리했습니다.",
@@ -448,18 +469,18 @@
       "close": "닫기"
     },
     "labels": {
-      "scopeFallback": "scope",
-      "anyFallback": "any",
+      "scopeFallback": "범위",
+      "anyFallback": "전체",
       "proposed": "제안됨",
       "from": "출처",
-      "traceSingular": "trace",
-      "tracePlural": "trace",
+      "traceSingular": "기록",
+      "tracePlural": "기록",
       "currentHeuristic": "현재 Heuristic",
       "proposedRefinement": "제안된 개선",
-      "firstRevision": "없음 — 첫 revision",
-      "tracePrefix": "trace",
-      "refPrefix": "ref",
-      "queued": "대기 {count}개 · hero 먼저 처리",
+      "firstRevision": "없음 — 첫 수정",
+      "tracePrefix": "기록",
+      "refPrefix": "참조",
+      "queued": "대기 {count}개 · 대표 카드 먼저 처리",
       "rejectPicker": "거절 사유 선택",
       "whyReject": "왜 거절하나요?",
       "explainWhy": "이유를 설명하세요 (10–200자)",
@@ -477,8 +498,8 @@
       "other": "기타…"
     },
     "empty": {
-      "pendingTitle": "swan 전선은 조용합니다.",
-      "pendingCopy": "대기 중인 제안이 없습니다. judgment trace를 캡처하면 curator가 대기열을 다시 채웁니다.",
+      "pendingTitle": "백조 전선은 조용합니다.",
+      "pendingCopy": "대기 중인 제안이 없습니다. 판단 기록을 캡처하면 큐레이터가 대기열을 다시 채웁니다.",
       "approvedFailed": "승인된 휴리스틱을 불러오지 못했습니다.",
       "approvedEmpty": "아직 승인된 휴리스틱이 없습니다. 제안을 승인하면 여기에 표시됩니다.",
       "rejectedFailed": "거절된 제안을 불러오지 못했습니다.",

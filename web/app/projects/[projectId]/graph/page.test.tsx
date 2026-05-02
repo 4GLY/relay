@@ -105,6 +105,29 @@ describe("<DecisionGraphPage>", () => {
     });
   });
 
+  it("localizes graph node kind labels in Korean", async () => {
+    globalThis.__setNextIntlLocale("ko");
+    mocks.relayFetch.mockResolvedValueOnce(
+      authResponse(200, {
+        ok: true,
+        command: "relay auth me",
+        data: {
+          user_id: "user_1",
+          display_name: "Hoon",
+          onboarding_complete: true,
+          default_project_id: "proj_1",
+        },
+        warnings: [],
+      }),
+    );
+    mocks.getProjectGraph.mockResolvedValueOnce(graph);
+
+    render(await DecisionGraphPage({ params: Promise.resolve({ projectId: "proj_1" }) }));
+
+    expect(screen.getAllByText("판단 기록").length).toBeGreaterThan(0);
+    expect(screen.queryByText("judgment trace")).not.toBeInTheDocument();
+  });
+
   it("shows sign-in when there is no session", async () => {
     mocks.relayFetch.mockResolvedValueOnce(
       authResponse(401, {

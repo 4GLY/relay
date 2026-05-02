@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 
 import { RELAY_API_URL, relayFetch, type RelayEnvelope } from "@/lib/api";
@@ -53,6 +53,7 @@ export default async function PacketBuilderPage({
   const { projectId } = await params;
   const cookieStore = await cookies();
   const cookieHeader = cookieStore.toString();
+  const locale = await getLocale();
   const t = await getTranslations("PacketBuilder");
   const me = await resolveSession(cookieHeader);
 
@@ -73,17 +74,19 @@ export default async function PacketBuilderPage({
     return <PacketBuilderFallback projectId={projectId} error={error} userDisplayName={me.display_name} t={t} />;
   }
 
-  return <PacketBuilder snapshot={snapshot} userDisplayName={me.display_name} t={t} />;
+  return <PacketBuilder snapshot={snapshot} userDisplayName={me.display_name} t={t} locale={locale} />;
 }
 
 function PacketBuilder({
   snapshot,
   userDisplayName,
   t,
+  locale,
 }: {
   snapshot: PacketBuilderSnapshot;
   userDisplayName?: string;
   t: ProductT;
+  locale: string;
 }) {
   const evidenceCount =
     snapshot.styleCues.length +
@@ -187,7 +190,7 @@ function PacketBuilder({
                   {snapshot.publicReadable ? t("labels.publicLink") : t("labels.privateWorkspace")}
                 </span>
                 <span className="relay-card-kicker relay-kicker-spaced">{t("labels.created")}</span>
-                <span className="relay-mono-value">{snapshot.createdAt}</span>
+                <span className="relay-mono-value">{formatDate(snapshot.createdAt, locale)}</span>
               </div>
             </RelayCard>
 
@@ -280,6 +283,17 @@ function EvidenceList({ title, items, t }: { title: string; items: string[]; t: 
       )}
     </section>
   );
+}
+
+function formatDate(value: string, locale: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat(locale, {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
 }
 
 function SignInRequired({ projectId, t }: { projectId: string; t: ProductT }) {

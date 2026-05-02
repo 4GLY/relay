@@ -193,7 +193,7 @@ function DecisionGraph({
                     className="relay-graph-node-kind"
                     fill={swatch.text}
                   >
-                    {nodeGlyph(node.kind)} {formatKind(node.kind)}
+                    {nodeGlyph(node.kind)} {nodeKindLabel(node.kind, t)}
                   </text>
                   <text
                     x={node.x}
@@ -226,7 +226,7 @@ function DecisionGraph({
       <section className="relay-node-list" aria-label={t("labels.graphNodes")}>
         {nodes.map((node) => (
           <RelayCard key={node.id} className="relay-node-card">
-            <span className="relay-node-kind">{formatKind(node.kind)}</span>
+            <span className="relay-node-kind">{nodeKindLabel(node.kind, t)}</span>
             <h2 className="relay-node-title">{node.title || node.id}</h2>
             <p className="relay-node-meta">{node.workflow || node.packetKind || node.state || node.sourcePath || node.id}</p>
           </RelayCard>
@@ -401,6 +401,17 @@ function compactNodeLabel(node: ProjectGraphNode) {
   return `${label.slice(0, 20)}…`;
 }
 
-function formatKind(kind: string) {
-  return kind.replaceAll("_", " ");
+function nodeKindLabel(kind: string, t: ProductT) {
+  const labels: Record<string, string> = {
+    project: t("nodeKinds.project"),
+    judgment_trace: t("nodeKinds.judgmentTrace"),
+    heuristic_proposal: t("nodeKinds.heuristicProposal"),
+    approved_heuristic: t("nodeKinds.approvedHeuristic"),
+    decision: t("nodeKinds.decision"),
+    packet_snapshot: t("nodeKinds.packetSnapshot"),
+    note: t("nodeKinds.note"),
+    artifact: t("nodeKinds.artifact"),
+    open_question: t("nodeKinds.openQuestion"),
+  };
+  return labels[kind] ?? kind.replaceAll("_", " ");
 }

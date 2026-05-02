@@ -189,7 +189,7 @@ function Explorer({
             <ol className="relay-activity-list">
               {explorer.recentActivity.map((item) => (
                 <li key={`${item.kind}:${item.id}`} className="relay-activity-item">
-                  <span className="relay-activity-kind">{formatKind(item.kind)}</span>
+                  <span className="relay-activity-kind">{activityKindLabel(item.kind, t)}</span>
                   {item.kind === "judgment_trace" ? (
                     <a
                       href={traceURL(explorer.project.projectId, item.id)}
@@ -422,8 +422,18 @@ function formatDate(value: string, locale: string) {
   }).format(date);
 }
 
-function formatKind(kind: string) {
-  return kind.replaceAll("_", " ");
+function activityKindLabel(kind: string, t: ProductT) {
+  const labels: Record<string, string> = {
+    judgment_trace: t("activityKinds.judgmentTrace"),
+    approved_heuristic: t("activityKinds.approvedHeuristic"),
+    heuristic_proposal: t("activityKinds.heuristicProposal"),
+    packet_snapshot: t("activityKinds.packetSnapshot"),
+    decision: t("activityKinds.decision"),
+    note: t("activityKinds.note"),
+    artifact: t("activityKinds.artifact"),
+    open_question: t("activityKinds.openQuestion"),
+  };
+  return labels[kind] ?? kind.replaceAll("_", " ");
 }
 
 function traceURL(projectId: string, traceId: string) {

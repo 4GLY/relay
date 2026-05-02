@@ -217,7 +217,17 @@
     "memoryPendingOne": "{count} proposal waiting",
     "memoryPendingMany": "{count} proposals waiting",
     "memoryApprovedOne": "{count} swan minted",
-    "memoryApprovedMany": "{count} swans minted"
+    "memoryApprovedMany": "{count} swans minted",
+    "activityKinds": {
+      "judgmentTrace": "judgment trace",
+      "approvedHeuristic": "approved heuristic",
+      "heuristicProposal": "heuristic proposal",
+      "packetSnapshot": "packet snapshot",
+      "decision": "decision",
+      "note": "note",
+      "artifact": "artifact",
+      "openQuestion": "open question"
+    }
   },
   "Traces": {
     "eyebrow": "{projectId} · Judgment Traces",
@@ -332,6 +342,17 @@
       "signedInFallback": "signed in",
       "title": "Couldn’t open graph",
       "fallbackMessage": "Decision Graph failed to load."
+    },
+    "nodeKinds": {
+      "project": "project",
+      "judgmentTrace": "judgment trace",
+      "heuristicProposal": "heuristic proposal",
+      "approvedHeuristic": "approved heuristic",
+      "decision": "decision",
+      "packetSnapshot": "packet snapshot",
+      "note": "note",
+      "artifact": "artifact",
+      "openQuestion": "open question"
     }
   },
   "PacketBuilder": {

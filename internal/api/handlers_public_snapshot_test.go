@@ -5,8 +5,10 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"relay/internal/app"
 	"relay/internal/config"
@@ -179,6 +181,28 @@ func TestPublicSnapshotPageKoreanEmptyBodyUsesLocalizedOGFallback(t *testing.T) 
 	}
 	assertBodyContains(t, rec.Body.Bytes(), `<meta property="og:description" content="판단과 맥락을 담은 공개 Relay 스냅샷입니다.">`)
 	assertBodyContains(t, rec.Body.Bytes(), `<meta name="twitter:description" content="판단과 맥락을 담은 공개 Relay 스냅샷입니다.">`)
+}
+
+func TestPublicSnapshotPageClipsNonASCIIOGDescriptionOnRuneBoundary(t *testing.T) {
+	token := "psnap_testtoken1234"
+	ogWriter := &fakeOGImageWriterHandler{}
+	renderedBody := strings.Repeat("가", 180) + "🙂"
+	handler := testPublicSnapshotHandlerWithContent(token, ogWriter, "relay", "test task", renderedBody)
+
+	req := httptest.NewRequest(http.MethodGet, "/p/"+token, nil)
+	rec := httptest.NewRecorder()
+
+	handler.handlePublicSnapshotPage(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
+	}
+	if !utf8.Valid(rec.Body.Bytes()) {
+		t.Fatalf("expected valid UTF-8 response body")
+	}
+	expectedDescription := strings.Repeat("가", 159) + "…"
+	assertBodyContains(t, rec.Body.Bytes(), `<meta property="og:description" content="`+expectedDescription+`">`)
+	assertBodyContains(t, rec.Body.Bytes(), `<meta name="twitter:description" content="`+expectedDescription+`">`)
 }
 
 func TestPublicSnapshotPageEscapesUserContentWithoutMutatingIt(t *testing.T) {

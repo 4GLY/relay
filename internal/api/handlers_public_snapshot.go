@@ -241,13 +241,17 @@ func publicSnapshotOGDescription(renderedBody string, fallback string) string {
 // clipForOG produces a single-line meta description from the rendered body.
 func clipForOG(input string, limit int) string {
 	cleaned := strings.Join(strings.Fields(strings.TrimSpace(input)), " ")
-	if len(cleaned) <= limit {
+	runes := []rune(cleaned)
+	if len(runes) <= limit {
 		return cleaned
 	}
-	if limit <= 3 {
-		return cleaned[:limit]
+	if limit <= 0 {
+		return ""
 	}
-	return cleaned[:limit-1] + "…"
+	if limit <= 3 {
+		return string(runes[:limit])
+	}
+	return string(runes[:limit-1]) + "…"
 }
 
 // html escapes for inline HTML output. We use html/template for the main

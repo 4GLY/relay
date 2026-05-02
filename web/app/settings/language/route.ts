@@ -7,7 +7,7 @@ function parseLocale(value: FormDataEntryValue | string | null): Locale | null {
   return isLocale(value) ? value : null;
 }
 
-function parseRedirectTo(value: FormDataEntryValue | null): string {
+function parseRedirectTo(value: FormDataEntryValue | string | null | undefined): string {
   if (typeof value !== "string") return "/";
   return value.startsWith("/") && !value.startsWith("//") ? value : "/";
 }
@@ -20,7 +20,7 @@ export async function POST(request: Request) {
   if (contentType.includes("application/json")) {
     const body = (await request.json()) as { locale?: string; redirectTo?: string };
     locale = parseLocale(body.locale ?? null);
-    redirectTo = body.redirectTo || redirectTo;
+    redirectTo = parseRedirectTo(body.redirectTo);
   } else {
     const formData = await request.formData();
     locale = parseLocale(formData.get("locale"));

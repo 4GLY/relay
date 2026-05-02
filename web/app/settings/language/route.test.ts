@@ -38,6 +38,19 @@ describe("POST /settings/language", () => {
     expect(response.status).toBe(400);
   });
 
+  it("stores a valid JSON locale and returns the updated locale", async () => {
+    const response = await POST(
+      new Request("https://relay.test/settings/language", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ locale: "ko", redirectTo: "/projects/proj_1" }),
+      }),
+    );
+
+    await expect(response.json()).resolves.toEqual({ ok: true, locale: "ko" });
+    expect(response.cookies.get(RELAY_LOCALE_COOKIE)?.value).toBe("ko");
+  });
+
   it("rejects an external form redirect and redirects to root", async () => {
     const formData = new FormData();
     formData.set("locale", "ko");

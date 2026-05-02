@@ -35,7 +35,7 @@ describe("<APIKeySettingsClient>", () => {
     });
 
     const user = userEvent.setup();
-    render(<APIKeySettingsClient initialKeys={[]} locale="en" />);
+    render(<APIKeySettingsClient initialKeys={[]} />);
 
     await user.type(screen.getByLabelText(/key name/i), "CLI");
     await user.click(screen.getByTestId("issue-api-key"));
@@ -74,7 +74,6 @@ describe("<APIKeySettingsClient>", () => {
             revoked: false,
           },
         ]}
-        locale="en"
       />,
     );
 

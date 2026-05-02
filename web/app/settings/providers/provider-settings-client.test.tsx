@@ -34,7 +34,7 @@ describe("<ProviderSettingsClient>", () => {
     });
 
     const user = userEvent.setup();
-    render(<ProviderSettingsClient locale="en" />);
+    render(<ProviderSettingsClient />);
 
     await user.type(screen.getByLabelText(/anthropic api key/i), "sk-ant-settings-1234");
     await user.click(screen.getByTestId("connect-provider"));
@@ -58,7 +58,6 @@ describe("<ProviderSettingsClient>", () => {
           key_prefix: "sk-ant-settings...",
           key_last4: "1234",
         }}
-        locale="en"
       />,
     );
 

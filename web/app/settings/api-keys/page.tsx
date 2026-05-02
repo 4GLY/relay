@@ -1,9 +1,9 @@
-import { cookies, headers } from "next/headers";
+import { cookies } from "next/headers";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 
 import { RELAY_API_URL } from "@/lib/api";
-import { resolveLocale, translateKnownError } from "@/lib/i18n";
+import { translateKnownError } from "@/lib/i18n";
 import {
   listUserAPIKeys,
   RelayAPIError,
@@ -23,12 +23,7 @@ function signInURL() {
 
 export default async function APIKeySettingsPage() {
   const cookieStore = await cookies();
-  const headerStore = await headers();
   const cookieHeader = cookieStore.toString();
-  const locale = resolveLocale({
-    cookie: cookieHeader,
-    acceptLanguage: headerStore.get("accept-language") ?? undefined,
-  });
   const t = await getTranslations("Settings.ApiKeys.page");
   const common = await getTranslations("Common");
   const errors = await getTranslations("Settings.ApiKeys.errorMap");
@@ -74,10 +69,7 @@ export default async function APIKeySettingsPage() {
               />
             </RelayCard>
           ) : (
-            <APIKeySettingsClient
-              initialKeys={initialKeys}
-              locale={locale}
-            />
+            <APIKeySettingsClient initialKeys={initialKeys} />
           )
         ) : (
           <RelayCard className="relay-settings-fallback" variant="elevated">

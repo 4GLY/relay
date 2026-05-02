@@ -4,17 +4,15 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
-import type { Locale } from "@/lib/i18n";
 import { translateKnownError } from "@/lib/i18n";
 import { completeOnboarding } from "@/lib/onboarding";
 import { RelayButton, RelayCard, RelayFeedback, RelayPageHead } from "@/components/relay";
 
 type Props = {
-  locale: Locale;
   userDisplayName?: string;
 };
 
-export function OnboardingClient({ locale: _locale, userDisplayName }: Props) {
+export function OnboardingClient({ userDisplayName }: Props) {
   const router = useRouter();
   const t = useTranslations("Onboarding.client");
   const commonErrors = useTranslations("Errors");

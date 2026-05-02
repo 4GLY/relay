@@ -1,9 +1,8 @@
-import { cookies, headers } from "next/headers";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 
 import { RELAY_API_URL, relayFetch, type RelayEnvelope } from "@/lib/api";
-import { resolveLocale } from "@/lib/i18n";
 import type { AuthMe } from "@/lib/onboarding";
 import {
   RelayCard,
@@ -38,12 +37,7 @@ function authStartURL(provider: "github") {
 
 export default async function OnboardingPage() {
   const cookieStore = await cookies();
-  const headerStore = await headers();
   const me = await resolveSession(cookieStore.toString());
-  const locale = resolveLocale({
-    cookie: cookieStore.toString(),
-    acceptLanguage: headerStore.get("accept-language") ?? undefined,
-  });
   const t = await getTranslations("Onboarding.page");
   const common = await getTranslations("Common");
 
@@ -61,10 +55,7 @@ export default async function OnboardingPage() {
           copy={t("subtitle")}
         />
         {me ? (
-          <OnboardingClient
-            locale={locale}
-            userDisplayName={me.display_name ?? me.email}
-          />
+          <OnboardingClient userDisplayName={me.display_name ?? me.email} />
         ) : (
           <RelayCard className="relay-onboarding-signin" aria-labelledby="signin-title">
             <span className="relay-onboarding-glyph" aria-hidden="true">

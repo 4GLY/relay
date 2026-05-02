@@ -4,6 +4,7 @@ import {
   connectProviderCredential,
   disconnectProviderCredential,
   listProviderCredentials,
+  ProviderCredentialAPIError,
 } from "./provider-credentials";
 
 afterEach(() => {
@@ -35,6 +36,31 @@ describe("provider credential API client", () => {
         headers: { cookie: "relay_session=x" },
       }),
     );
+  });
+
+  it("preserves Relay error codes for provider credential failures", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          ok: false,
+          command: "relay provider credentials list",
+          error: { code: "UNAUTHENTICATED", message: "missing session", retryable: false },
+        }),
+        { status: 401, headers: { "content-type": "application/json" } },
+      ),
+    );
+
+    try {
+      await listProviderCredentials({ cookie: "relay_session=x" });
+      throw new Error("expected listProviderCredentials to reject");
+    } catch (error) {
+      expect(error).toBeInstanceOf(ProviderCredentialAPIError);
+      expect(error).toMatchObject({
+        name: "ProviderCredentialAPIError",
+        code: "UNAUTHENTICATED",
+        retryable: false,
+      });
+    }
   });
 
   it("connects and disconnects the Anthropic credential", async () => {

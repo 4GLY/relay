@@ -8,7 +8,6 @@ const mocks = vi.hoisted(() => ({
     throw new Error(`NEXT_REDIRECT:${path}`);
   }),
   cookies: vi.fn(),
-  headers: vi.fn(),
   relayFetch: vi.fn(),
   locale: "en",
   pathname: "/",
@@ -20,7 +19,7 @@ vi.mock("next/navigation", () => ({
   usePathname: () => mocks.pathname,
   useSearchParams: () => new URLSearchParams(mocks.search),
 }));
-vi.mock("next/headers", () => ({ cookies: mocks.cookies, headers: mocks.headers }));
+vi.mock("next/headers", () => ({ cookies: mocks.cookies }));
 vi.mock("@/lib/api", () => ({
   RELAY_API_URL: "https://relay.4gly.dev",
   relayFetch: mocks.relayFetch,
@@ -66,12 +65,6 @@ function cookieStore(value = "relay_session=test") {
   };
 }
 
-function headerStore(acceptLanguage = "en-US,en;q=0.9") {
-  return {
-    get: (name: string) => (name.toLowerCase() === "accept-language" ? acceptLanguage : null),
-  };
-}
-
 function authResponse(status: number, body: unknown, ok = status >= 200 && status < 300) {
   return {
     status,
@@ -87,7 +80,6 @@ describe("<HomePage>", () => {
     mocks.pathname = "/";
     mocks.search = "";
     mocks.cookies.mockResolvedValue(cookieStore());
-    mocks.headers.mockResolvedValue(headerStore());
   });
 
   it("shows the GitHub sign-in entry when there is no session", async () => {
@@ -173,7 +165,6 @@ describe("<HomePage>", () => {
   });
 
   it("renders korean root copy when locale resolves to ko", async () => {
-    mocks.headers.mockResolvedValueOnce(headerStore("ko-KR,ko;q=0.9,en;q=0.8"));
     mocks.locale = "ko";
     mocks.relayFetch.mockResolvedValueOnce(
       authResponse(401, {

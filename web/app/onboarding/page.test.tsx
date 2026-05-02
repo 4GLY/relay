@@ -8,7 +8,6 @@ const mocks = vi.hoisted(() => ({
     throw new Error(`NEXT_REDIRECT:${path}`);
   }),
   cookies: vi.fn(),
-  headers: vi.fn(),
   relayFetch: vi.fn(),
   locale: "en",
   pathname: "/onboarding",
@@ -22,7 +21,6 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("next/headers", () => ({
   cookies: mocks.cookies,
-  headers: mocks.headers,
 }));
 vi.mock("@/lib/api", () => ({
   RELAY_API_URL: "https://relay.4gly.dev",
@@ -70,12 +68,6 @@ function cookieStore(value = "relay_session=test") {
   };
 }
 
-function headerStore(acceptLanguage = "en-US,en;q=0.9") {
-  return {
-    get: (name: string) => (name.toLowerCase() === "accept-language" ? acceptLanguage : null),
-  };
-}
-
 function authResponse(status: number, body: unknown, ok = status >= 200 && status < 300) {
   return {
     status,
@@ -91,11 +83,9 @@ describe("<OnboardingPage>", () => {
     mocks.pathname = "/onboarding";
     mocks.search = "";
     mocks.cookies.mockResolvedValue(cookieStore());
-    mocks.headers.mockResolvedValue(headerStore());
   });
 
   it("renders localized sign-in copy for korean browsers", async () => {
-    mocks.headers.mockResolvedValueOnce(headerStore("ko-KR,ko;q=0.9,en;q=0.8"));
     mocks.locale = "ko";
     mocks.relayFetch.mockResolvedValueOnce(
       authResponse(401, {

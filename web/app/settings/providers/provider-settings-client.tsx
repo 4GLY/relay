@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
-import type { Locale } from "@/lib/i18n";
 import { translateKnownError } from "@/lib/i18n";
 import {
   RelayButton,
@@ -26,10 +25,9 @@ import {
 
 type Props = {
   initialCredential?: ProviderCredentialStatus;
-  locale: Locale;
 };
 
-export function ProviderSettingsClient({ initialCredential, locale: _locale }: Props) {
+export function ProviderSettingsClient({ initialCredential }: Props) {
   const router = useRouter();
   const t = useTranslations("Settings.ProviderCredentials.client");
   const errors = useTranslations("Settings.ProviderCredentials.errorMap");

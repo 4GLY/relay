@@ -5,7 +5,6 @@ import APIKeySettingsPage from "./page";
 
 const mocks = vi.hoisted(() => ({
   cookies: vi.fn(),
-  headers: vi.fn(),
   listUserAPIKeys: vi.fn(),
   locale: "en",
   RelayAPIError: class RelayAPIError extends Error {
@@ -20,7 +19,6 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("next/headers", () => ({
   cookies: mocks.cookies,
-  headers: mocks.headers,
 }));
 
 vi.mock("@/lib/api", () => ({
@@ -74,18 +72,11 @@ function cookieStore(value = "relay_session=test") {
   };
 }
 
-function headerStore(acceptLanguage = "en-US,en;q=0.9") {
-  return {
-    get: (name: string) => (name.toLowerCase() === "accept-language" ? acceptLanguage : null),
-  };
-}
-
 describe("<APIKeySettingsPage>", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.locale = "en";
     mocks.cookies.mockResolvedValue(cookieStore());
-    mocks.headers.mockResolvedValue(headerStore());
   });
 
   it("renders the authenticated API key settings client", async () => {
@@ -109,7 +100,6 @@ describe("<APIKeySettingsPage>", () => {
   });
 
   it("renders a korean sign-in panel when locale resolves to ko", async () => {
-    mocks.headers.mockResolvedValue(headerStore("ko-KR,ko;q=0.9,en;q=0.8"));
     mocks.locale = "ko";
     mocks.listUserAPIKeys.mockRejectedValueOnce(
       new mocks.RelayAPIError("UNAUTHENTICATED", "missing session"),

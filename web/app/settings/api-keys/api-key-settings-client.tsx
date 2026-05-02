@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 
-import type { Locale } from "@/lib/i18n";
 import { translateKnownError } from "@/lib/i18n";
 import {
   RelayButton,
@@ -27,7 +26,6 @@ import {
 
 type Props = {
   initialKeys: UserAPIKeySummary[];
-  locale: Locale;
 };
 
 type FeedbackState =
@@ -35,7 +33,7 @@ type FeedbackState =
   | { kind: "success"; message: string }
   | { kind: "error"; message: string };
 
-export function APIKeySettingsClient({ initialKeys, locale: _locale }: Props) {
+export function APIKeySettingsClient({ initialKeys }: Props) {
   const t = useTranslations("Settings.ApiKeys.client");
   const errors = useTranslations("Settings.ApiKeys.errorMap");
   const [keys, setKeys] = useState(initialKeys);

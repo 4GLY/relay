@@ -29,7 +29,7 @@ describe("<OnboardingClient>", () => {
     });
 
     const user = userEvent.setup();
-    render(<OnboardingClient locale="en" userDisplayName="Hoon" />);
+    render(<OnboardingClient userDisplayName="Hoon" />);
 
     await user.click(screen.getByTestId("complete-onboarding"));
 
@@ -44,7 +44,7 @@ describe("<OnboardingClient>", () => {
     vi.mocked(completeOnboarding).mockRejectedValueOnce(new Error("missing session cookie"));
 
     const user = userEvent.setup();
-    render(<OnboardingClient locale="en" />);
+    render(<OnboardingClient />);
 
     await user.click(screen.getByTestId("complete-onboarding"));
 

@@ -67,4 +67,21 @@ describe("POST /settings/language", () => {
     expect(response.headers.get("location")).toBe("https://relay.test/");
     expect(response.cookies.get(RELAY_LOCALE_COOKIE)?.value).toBe("ko");
   });
+
+  it("rejects a backslash-host redirect and redirects to root", async () => {
+    const formData = new FormData();
+    formData.set("locale", "ko");
+    formData.set("redirectTo", "/\\evil.com");
+
+    const response = await POST(
+      new Request("http://relay.test/settings/language", {
+        method: "POST",
+        body: formData,
+      }),
+    );
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe("http://relay.test/");
+    expect(response.cookies.get(RELAY_LOCALE_COOKIE)?.value).toBe("ko");
+  });
 });

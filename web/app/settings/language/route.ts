@@ -7,9 +7,21 @@ function parseLocale(value: FormDataEntryValue | string | null): Locale | null {
   return isLocale(value) ? value : null;
 }
 
-function parseRedirectTo(value: FormDataEntryValue | string | null | undefined): string {
+function parseRedirectTo(
+  value: FormDataEntryValue | string | null | undefined,
+  requestUrl: string,
+): string {
   if (typeof value !== "string") return "/";
-  return value.startsWith("/") && !value.startsWith("//") ? value : "/";
+
+  try {
+    const baseUrl = new URL(requestUrl);
+    const redirectUrl = new URL(value, baseUrl);
+    if (redirectUrl.origin !== baseUrl.origin) return "/";
+
+    return `${redirectUrl.pathname}${redirectUrl.search}${redirectUrl.hash}`;
+  } catch {
+    return "/";
+  }
 }
 
 export async function POST(request: Request) {
@@ -20,11 +32,11 @@ export async function POST(request: Request) {
   if (contentType.includes("application/json")) {
     const body = (await request.json()) as { locale?: string; redirectTo?: string };
     locale = parseLocale(body.locale ?? null);
-    redirectTo = parseRedirectTo(body.redirectTo);
+    redirectTo = parseRedirectTo(body.redirectTo, request.url);
   } else {
     const formData = await request.formData();
     locale = parseLocale(formData.get("locale"));
-    redirectTo = parseRedirectTo(formData.get("redirectTo"));
+    redirectTo = parseRedirectTo(formData.get("redirectTo"), request.url);
   }
 
   if (!locale) {

@@ -37,6 +37,11 @@ describe("resolveLocale", () => {
       }),
     ).toBe("en");
   });
+
+  it("ignores zero-quality Accept-Language values", () => {
+    expect(resolveLocale({ acceptLanguage: "fr, en;q=0, ko;q=0" })).toBe("en");
+    expect(resolveLocale({ acceptLanguage: "fr, en;q=0, ko;q=0.5" })).toBe("ko");
+  });
 });
 
 describe("messages", () => {
@@ -62,6 +67,14 @@ describe("messages", () => {
     expect(koKeys).toEqual(enKeys);
   });
 
+  it("keeps ICU-style placeholders aligned across locales", () => {
+    const enPlaceholders = getPlaceholdersByKey(getDictionary("en"));
+    const koPlaceholders = getPlaceholdersByKey(getDictionary("ko"));
+
+    expect(koPlaceholders).toEqual(enPlaceholders);
+    expect(enPlaceholders["Common.language.current"]).toEqual(["locale"]);
+  });
+
   it("keeps lowercase aliases for legacy callers", () => {
     expect(getDictionary("en").common.unknownError).toBe(getDictionary("en").Common.unknownError);
     expect(getDictionary("ko").root.subtitle).toBe(getDictionary("ko").Root.subtitle);
@@ -77,3 +90,28 @@ describe("messages", () => {
     ).toBe("입력값을 확인한 뒤 다시 시도하세요.");
   });
 });
+
+function getPlaceholdersByKey(dictionary: ReturnType<typeof getDictionary>) {
+  const placeholdersByKey: Record<string, string[]> = {};
+
+  function walk(value: unknown, prefix: string) {
+    if (typeof value === "string") {
+      const placeholders = [...value.matchAll(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g)].map(
+        (match) => match[1],
+      );
+      if (placeholders.length > 0) {
+        placeholdersByKey[prefix] = [...new Set(placeholders)].sort();
+      }
+      return;
+    }
+
+    if (!value || typeof value !== "object" || Array.isArray(value)) return;
+
+    for (const [key, child] of Object.entries(value)) {
+      walk(child, prefix ? `${prefix}.${key}` : key);
+    }
+  }
+
+  walk(dictionary, "");
+  return placeholdersByKey;
+}

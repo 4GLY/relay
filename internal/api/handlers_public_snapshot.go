@@ -97,7 +97,7 @@ func (h Handler) handlePublicSnapshotPage(w http.ResponseWriter, r *http.Request
 		HTMLLang:      messages.HTMLLang,
 		SnapshotLabel: messages.SnapshotLabel,
 		TitleSuffix:   messages.TitleSuffix,
-		OGDescription: messages.OGDescription,
+		OGDescription: publicSnapshotOGDescription(view.Snapshot.RenderedBody, messages.OGDescription),
 		OGImageURL:    ogImageURL,
 		PublicURL:     publicURL,
 		FooterText:    messages.FooterText,
@@ -111,6 +111,7 @@ func (h Handler) handlePublicSnapshotPage(w http.ResponseWriter, r *http.Request
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "public, max-age=300")
+	w.Header().Set("Vary", "Accept-Language, Cookie")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(buf.Bytes())
 }
@@ -228,6 +229,25 @@ func firstNonEmptyString(values ...string) string {
 		}
 	}
 	return ""
+}
+
+func publicSnapshotOGDescription(renderedBody string, fallback string) string {
+	if strings.TrimSpace(renderedBody) == "" {
+		return fallback
+	}
+	return clipForOG(renderedBody, 160)
+}
+
+// clipForOG produces a single-line meta description from the rendered body.
+func clipForOG(input string, limit int) string {
+	cleaned := strings.Join(strings.Fields(strings.TrimSpace(input)), " ")
+	if len(cleaned) <= limit {
+		return cleaned
+	}
+	if limit <= 3 {
+		return cleaned[:limit]
+	}
+	return cleaned[:limit-1] + "…"
 }
 
 // html escapes for inline HTML output. We use html/template for the main

@@ -1,15 +1,46 @@
-import { en } from "./i18n/dictionaries/en";
-import { ko } from "./i18n/dictionaries/ko";
-import type { Dictionary, Locale } from "./i18n/types";
+import enMessages from "../messages/en.json";
+import koMessages from "../messages/ko.json";
+import {
+  DEFAULT_LOCALE,
+  RELAY_LOCALE_COOKIE,
+  SUPPORTED_LOCALES,
+  type Locale,
+} from "../i18n/routing";
+import { en as legacyEn } from "./i18n/dictionaries/en";
+import { ko as legacyKo } from "./i18n/dictionaries/ko";
+import type { Dictionary as LegacyDictionary } from "./i18n/types";
 
-export type { Dictionary, Locale } from "./i18n/types";
+export { RELAY_LOCALE_COOKIE, SUPPORTED_LOCALES };
+export type { Locale };
 
-export const RELAY_LOCALE_COOKIE = "relay_locale";
-export const SUPPORTED_LOCALES: Locale[] = ["en", "ko"];
+type CoreMessages = typeof enMessages;
+
+export type Dictionary = LegacyDictionary &
+  CoreMessages & {
+    common: LegacyDictionary["common"] & CoreMessages["Common"];
+    root: LegacyDictionary["root"] & CoreMessages["Root"];
+    errors: CoreMessages["Errors"];
+  };
 
 const dictionaries: Record<Locale, Dictionary> = {
-  en,
-  ko,
+  en: {
+    ...legacyEn,
+    Common: enMessages.Common,
+    Root: enMessages.Root,
+    Errors: enMessages.Errors,
+    common: enMessages.Common,
+    root: enMessages.Root,
+    errors: enMessages.Errors,
+  },
+  ko: {
+    ...legacyKo,
+    Common: koMessages.Common,
+    Root: koMessages.Root,
+    Errors: koMessages.Errors,
+    common: koMessages.Common,
+    root: koMessages.Root,
+    errors: koMessages.Errors,
+  },
 };
 
 function parseCookieValue(cookieHeader: string | undefined, name: string): string | undefined {
@@ -57,7 +88,7 @@ export function resolveLocale(input: {
     if (locale) return locale;
   }
 
-  return "en";
+  return DEFAULT_LOCALE;
 }
 
 export function getDictionary(locale: Locale): Dictionary {
@@ -88,7 +119,8 @@ export function translateErrorMessage(options: {
   locale: Locale;
   knownErrors?: Record<string, string>;
 }): string {
-  const knownErrors = options.knownErrors ?? {};
+  const knownErrors: Record<string, string> =
+    options.knownErrors ?? getDictionary(options.locale).errors;
   const message =
     options.error instanceof Error
       ? options.error.message
@@ -106,5 +138,5 @@ export function translateErrorMessage(options: {
   if (code && knownErrors[code]) return knownErrors[code];
   if (message && knownErrors[message]) return knownErrors[message];
   if (message) return message;
-  return options.fallback || getDictionary(options.locale).common.unknownError;
+  return options.fallback || getDictionary(options.locale).Common.unknownError;
 }

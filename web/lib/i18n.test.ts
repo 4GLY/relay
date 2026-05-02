@@ -5,6 +5,7 @@ import {
   getDictionaryKeys,
   RELAY_LOCALE_COOKIE,
   resolveLocale,
+  translateErrorMessage,
 } from "./i18n";
 
 describe("resolveLocale", () => {
@@ -38,13 +39,41 @@ describe("resolveLocale", () => {
   });
 });
 
-describe("dictionaries", () => {
-  it("exposes both english and korean dictionaries", () => {
-    expect(getDictionary("en").root.title).toBe("Relay");
-    expect(getDictionary("ko").apiKeys.client.title).toBe("Relay API 키");
+describe("messages", () => {
+  it("exposes the initial next-intl message namespaces", () => {
+    expect(getDictionary("en").Common.unknownError).toBe("Something went wrong.");
+    expect(getDictionary("en").Root.title).toBe("Relay");
+    expect(getDictionary("en").Errors.UNAUTHENTICATED).toBe("Sign in again to continue.");
+    expect(getDictionary("ko").Common.language.current).toBe("현재 언어: {locale}");
+    expect(getDictionary("ko").Root.signInButton).toBe("GitHub로 계속하기");
+    expect(getDictionary("ko").Errors.API_KEY_NOT_FOUND_BY_ID).toBe(
+      "해당 API 키를 더 이상 찾을 수 없습니다.",
+    );
   });
 
-  it("keeps english and korean key shapes aligned", () => {
-    expect(getDictionaryKeys(getDictionary("ko"))).toEqual(getDictionaryKeys(getDictionary("en")));
+  it("keeps english and korean message shapes aligned", () => {
+    const enKeys = getDictionaryKeys(getDictionary("en")).filter((key) =>
+      /^(Common|Root|Errors)\./.test(key),
+    );
+    const koKeys = getDictionaryKeys(getDictionary("ko")).filter((key) =>
+      /^(Common|Root|Errors)\./.test(key),
+    );
+
+    expect(koKeys).toEqual(enKeys);
+  });
+
+  it("keeps lowercase aliases for legacy callers", () => {
+    expect(getDictionary("en").common.unknownError).toBe(getDictionary("en").Common.unknownError);
+    expect(getDictionary("ko").root.subtitle).toBe(getDictionary("ko").Root.subtitle);
+  });
+
+  it("translates known errors from the core message map by default", () => {
+    expect(
+      translateErrorMessage({
+        error: { code: "INVALID_INPUT" },
+        fallback: "",
+        locale: "ko",
+      }),
+    ).toBe("입력값을 확인한 뒤 다시 시도하세요.");
   });
 });

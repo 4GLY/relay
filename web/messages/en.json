@@ -1,0 +1,32 @@
+{
+  "Common": {
+    "unknownError": "Something went wrong.",
+    "continueWithGitHub": "Continue with GitHub",
+    "language": {
+      "label": "Language",
+      "english": "English",
+      "korean": "Korean",
+      "current": "Current language: {locale}"
+    },
+    "links": {
+      "backToOnboarding": "Back to onboarding",
+      "projectExplorer": "Project Explorer",
+      "providerSettings": "Provider settings",
+      "apiKeys": "API key settings",
+      "styleMemory": "Style Memory"
+    }
+  },
+  "Root": {
+    "eyebrow": "4gly Labs · Relay",
+    "title": "Relay",
+    "subtitle": "A quiet engine that turns chaos into swans.",
+    "panelTitle": "Sign in to start",
+    "panelCopy": "Relay creates a private workspace first. Provider keys stay in Settings, not in first-run setup.",
+    "signInButton": "Continue with GitHub"
+  },
+  "Errors": {
+    "UNAUTHENTICATED": "Sign in again to continue.",
+    "INVALID_INPUT": "Check the input and try again.",
+    "API_KEY_NOT_FOUND_BY_ID": "That API key no longer exists."
+  }
+}

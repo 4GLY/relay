@@ -24,6 +24,11 @@
     "panelCopy": "Relay creates a private workspace first. Provider keys stay in Settings, not in first-run setup.",
     "signInButton": "Continue with GitHub"
   },
+  "Shell": {
+    "globalNavigation": "Global navigation",
+    "settings": "Settings",
+    "signedInFallback": "signed in"
+  },
   "Errors": {
     "UNAUTHENTICATED": "Sign in again to continue.",
     "INVALID_INPUT": "Check the input and try again.",

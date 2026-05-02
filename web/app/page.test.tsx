@@ -10,13 +10,34 @@ const mocks = vi.hoisted(() => ({
   cookies: vi.fn(),
   headers: vi.fn(),
   relayFetch: vi.fn(),
+  locale: "en",
+  pathname: "/",
+  search: "",
 }));
 
-vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
+vi.mock("next/navigation", () => ({
+  redirect: mocks.redirect,
+  usePathname: () => mocks.pathname,
+  useSearchParams: () => new URLSearchParams(mocks.search),
+}));
 vi.mock("next/headers", () => ({ cookies: mocks.cookies, headers: mocks.headers }));
 vi.mock("@/lib/api", () => ({
   RELAY_API_URL: "https://relay.4gly.dev",
   relayFetch: mocks.relayFetch,
+}));
+vi.mock("next-intl", () => ({
+  useLocale: () => mocks.locale,
+  useTranslations: (namespace: string) => (key: string) => {
+    const messages: Record<string, string> = {
+      "Common.language.label": "Language",
+      "Common.language.english": "English",
+      "Common.language.korean": "Korean",
+      "Shell.globalNavigation": "Global navigation",
+      "Shell.settings": "Settings",
+      "Shell.signedInFallback": "signed in",
+    };
+    return messages[`${namespace}.${key}`] ?? key;
+  },
 }));
 
 function cookieStore(value = "relay_session=test") {
@@ -42,6 +63,9 @@ function authResponse(status: number, body: unknown, ok = status >= 200 && statu
 describe("<HomePage>", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.locale = "en";
+    mocks.pathname = "/";
+    mocks.search = "";
     mocks.cookies.mockResolvedValue(cookieStore());
     mocks.headers.mockResolvedValue(headerStore());
   });
@@ -62,6 +86,11 @@ describe("<HomePage>", () => {
     expect(screen.getByRole("link", { name: "Continue with GitHub" })).toHaveAttribute(
       "href",
       "https://relay.4gly.dev/v1/auth/github/start?redirect_to=%2Fonboarding",
+    );
+    expect(screen.getByLabelText("Language")).toHaveValue("en");
+    expect(screen.getByDisplayValue("English").closest("form")).toHaveAttribute(
+      "action",
+      "/settings/language",
     );
     expect(screen.queryByText("Sharable Snapshot")).not.toBeInTheDocument();
   });
@@ -105,6 +134,7 @@ describe("<HomePage>", () => {
 
   it("renders korean root copy when locale resolves to ko", async () => {
     mocks.headers.mockResolvedValueOnce(headerStore("ko-KR,ko;q=0.9,en;q=0.8"));
+    mocks.locale = "ko";
     mocks.relayFetch.mockResolvedValueOnce(
       authResponse(401, {
         ok: false,
@@ -117,5 +147,6 @@ describe("<HomePage>", () => {
 
     expect(screen.getByText("흩어진 작업을 조용히 백조처럼 정리하는 엔진.")).toBeVisible();
     expect(screen.getByRole("link", { name: "GitHub로 계속하기" })).toBeVisible();
+    expect(screen.getByLabelText("Language")).toHaveValue("ko");
   });
 });

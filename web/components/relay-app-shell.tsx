@@ -1,6 +1,9 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { useTranslations } from "next-intl";
+
+import { RelayLanguageSwitch } from "@/components/relay/language-switch";
 
 export type RelayStep = "Face" | "Dissect" | "Refine" | "Transform";
 
@@ -31,17 +34,20 @@ export function RelayTopRail({
   userLabel?: string;
   projectHref?: string;
 }) {
+  const t = useTranslations("Shell");
+
   return (
     <header className="relay-top-rail">
       <a className="relay-wordmark" href={projectHref}>
         Relay<span className="relay-wordmark-dot">.</span>
       </a>
       <TransformRibbon activeStep={activeStep} />
-      <nav className="relay-top-actions" aria-label="Global navigation">
+      <nav className="relay-top-actions" aria-label={t("globalNavigation")}>
+        <RelayLanguageSwitch />
         <a className="relay-top-link" href="/settings/providers">
-          Settings
+          {t("settings")}
         </a>
-        <span className="relay-user-chip">{userLabel ?? "signed in"}</span>
+        <span className="relay-user-chip">{userLabel ?? t("signedInFallback")}</span>
       </nav>
     </header>
   );

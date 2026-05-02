@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { RELAY_API_URL, relayFetch, type RelayEnvelope } from "@/lib/api";
 import { getDictionary, resolveLocale } from "@/lib/i18n";
 import type { AuthMe } from "@/lib/onboarding";
-import { RelayCard, RelayLinkButton } from "@/components/relay";
+import { RelayCard, RelayLanguageSwitch, RelayLinkButton } from "@/components/relay";
 
 export const dynamic = "force-dynamic";
 
@@ -59,6 +59,9 @@ export default async function HomePage() {
           {dictionary.root.signInButton}
         </RelayLinkButton>
       </RelayCard>
+      <div className="relay-auth-language">
+        <RelayLanguageSwitch />
+      </div>
     </main>
   );
 }

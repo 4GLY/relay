@@ -4,7 +4,13 @@ import { redirect } from "next/navigation";
 import { RELAY_API_URL, relayFetch, type RelayEnvelope } from "@/lib/api";
 import { getDictionary, resolveLocale } from "@/lib/i18n";
 import type { AuthMe } from "@/lib/onboarding";
-import { RelayCard, RelayLinkButton, RelayPageHead, RelayTopRail } from "@/components/relay";
+import {
+  RelayCard,
+  RelayLanguageSwitch,
+  RelayLinkButton,
+  RelayPageHead,
+  RelayTopRail,
+} from "@/components/relay";
 
 import { OnboardingClient } from "./onboarding-client";
 
@@ -72,6 +78,9 @@ export default async function OnboardingPage() {
                 <RelayLinkButton href={authStartURL("github")} variant="secondary">
                   {dictionary.common.continueWithGitHub}
                 </RelayLinkButton>
+              </div>
+              <div className="relay-auth-language">
+                <RelayLanguageSwitch />
               </div>
             </div>
           </RelayCard>

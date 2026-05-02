@@ -10,6 +10,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { useTranslations } from "next-intl";
 
 import {
   RelayButton,
@@ -65,14 +66,7 @@ type RejectDraft = {
   freeText: string;
 };
 
-const REASON_LABELS: Record<RejectReasonCode, string> = {
-  duplicate: "duplicate",
-  wrong: "factually wrong",
-  too_narrow: "too narrow",
-  too_broad: "too broad",
-  stale: "stale",
-  other: "other…",
-};
+type ProductT = ReturnType<typeof useTranslations>;
 
 function loadStoredView(): ViewMode {
   if (typeof window === "undefined") return "single";
@@ -127,6 +121,7 @@ export function Proposals({
   rejectedFetchFailed: initialRejectedFailed,
   userDisplayName,
 }: Props) {
+  const t = useTranslations("StyleMemory");
   const reduceMotion = useReducedMotion();
 
   const [pending, setPending] = useState<PendingProposal[]>(() => rankSorted(initialPending));
@@ -267,7 +262,7 @@ export function Proposals({
           return next;
         });
         setAnimatingApproveId((cur) => (cur === proposalId ? null : cur));
-        pushToast({ title: "Swan minted", sub: "Heuristic added to the gallery.", tone: "success" });
+        pushToast({ title: t("toast.swanMinted"), sub: t("toast.swanMintedSub"), tone: "success" });
       } catch (err) {
         setAnimatingApproveId((cur) => (cur === proposalId ? null : cur));
         if (err instanceof ProposalAlreadyResolvedError) {
@@ -277,14 +272,14 @@ export function Proposals({
             delete next[proposalId];
             return next;
           });
-          pushToast({ title: "Already resolved", sub: "Another session resolved this card.", tone: "danger" });
+          pushToast({ title: t("toast.alreadyResolved"), sub: t("toast.alreadyResolvedSub"), tone: "danger" });
           return;
         }
-        const message = err instanceof Error ? err.message : "Couldn’t save — retry?";
+        const message = err instanceof Error ? err.message : t("errors.saveFallback");
         setStatuses((s) => ({ ...s, [proposalId]: { kind: "error", message } }));
       }
     },
-    [projectId, pushToast, reduceMotion, refetchApproved],
+    [projectId, pushToast, reduceMotion, refetchApproved, t],
   );
 
   const submitReject = useCallback(
@@ -318,19 +313,19 @@ export function Proposals({
           return next;
         });
         setRejectDraft(null);
-        pushToast({ title: "Rejected", sub: `Reason: ${draft.selected}`, tone: "success" });
+        pushToast({ title: t("toast.rejected"), sub: t("toast.reason", { reason: draft.selected }), tone: "success" });
       } catch (err) {
         if (err instanceof ProposalAlreadyResolvedError) {
           setPending((cur) => cur.filter((p) => p.proposalId !== proposalId));
           setRejectDraft(null);
-          pushToast({ title: "Already resolved", sub: "Another session resolved this card.", tone: "danger" });
+          pushToast({ title: t("toast.alreadyResolved"), sub: t("toast.alreadyResolvedSub"), tone: "danger" });
           return;
         }
-        const message = err instanceof Error ? err.message : "Couldn’t reject — retry?";
+        const message = err instanceof Error ? err.message : t("errors.rejectFallback");
         setStatuses((s) => ({ ...s, [proposalId]: { kind: "error", message } }));
       }
     },
-    [projectId, pushToast, refetchRejected],
+    [projectId, pushToast, refetchRejected, t],
   );
 
   const cancelInflight = useCallback((proposalId: string) => {
@@ -401,10 +396,10 @@ export function Proposals({
   }
 
   const subTitle = useMemo(() => {
-    if (pending.length === 0) return "All quiet on the swan front.";
-    if (pending.length === 1) return "One proposal waiting for your judgment.";
-    return `${pending.length} proposals waiting for your judgment.`;
-  }, [pending.length]);
+    if (pending.length === 0) return t("subtitleEmpty");
+    if (pending.length === 1) return t("subtitleOne");
+    return t("subtitleMany", { count: pending.length });
+  }, [pending.length, t]);
 
   return (
     <div className="relay-style-memory-page">
@@ -414,14 +409,14 @@ export function Proposals({
         projectHref={`/style-memory?project=${encodeURIComponent(projectId)}`}
       />
 
-      <main className="relay-style-memory-workspace" aria-label="Style Memory workspace">
+      <main className="relay-style-memory-workspace" aria-label={t("workspaceLabel")}>
         <RelayPageHead
-          eyebrow={<>{projectId} · Style Memory</>}
+          eyebrow={<>{t("eyebrow", { projectId })}</>}
           title={subTitle}
           actions={
             <>
             <RelayLinkButton href={`/projects/${encodeURIComponent(projectId)}/packet-builder`} variant="secondary">
-              Compose handoff
+              {t("actions.composeHandoff")}
             </RelayLinkButton>
             <RelayButton
               type="button"
@@ -430,21 +425,21 @@ export function Proposals({
               aria-pressed={view === "batch"}
               data-testid="view-toggle"
             >
-              {view === "batch" ? "Single hero" : "View all queue"}
+              {view === "batch" ? t("actions.singleHero") : t("actions.viewAllQueue")}
             </RelayButton>
             </>
           }
         />
 
-        <nav className="relay-tabs relay-style-memory-tabs" role="tablist" aria-label="Style Memory views">
+        <nav className="relay-tabs relay-style-memory-tabs" role="tablist" aria-label={t("tabs.label")}>
           <TabButton active={tab === "proposals"} count={pending.length} onClick={() => setTab("proposals")}>
-            Proposals
+            {t("tabs.proposals")}
           </TabButton>
           <TabButton active={tab === "approved"} count={approved.length} onClick={() => setTab("approved")}>
-            Approved
+            {t("tabs.approved")}
           </TabButton>
           <TabButton active={tab === "rejected"} count={rejected.length} onClick={() => setTab("rejected")}>
-            Rejected
+            {t("tabs.rejected")}
           </TabButton>
         </nav>
 
@@ -464,6 +459,7 @@ export function Proposals({
             animatingApproveId={animatingApproveId}
             reduceMotion={!!reduceMotion}
             onFocusCard={setFocusedId}
+            t={t}
           />
         )}
 
@@ -478,6 +474,7 @@ export function Proposals({
                 /* keep failed state */
               }
             }}
+            t={t}
           />
         )}
 
@@ -492,6 +489,7 @@ export function Proposals({
                 /* keep failed state */
               }
             }}
+            t={t}
           />
         )}
       </main>
@@ -500,7 +498,7 @@ export function Proposals({
 
       {view === "batch" && showShortcutHint && (
         <div className="relay-style-memory-hint" role="status" aria-live="polite">
-          <kbd>j</kbd>/<kbd>k</kbd> navigate · <kbd>a</kbd> approve · <kbd>x</kbd> reject · <kbd>Esc</kbd> close
+          <kbd>j</kbd>/<kbd>k</kbd> {t("hint.navigate")} · <kbd>a</kbd> {t("hint.approve")} · <kbd>x</kbd> {t("hint.reject")} · <kbd>Esc</kbd> {t("hint.close")}
         </div>
       )}
     </div>
@@ -548,6 +546,7 @@ type ProposalListProps = {
   animatingApproveId: string | null;
   reduceMotion: boolean;
   onFocusCard: (id: string | null) => void;
+  t: ProductT;
 };
 
 function ProposalList({
@@ -565,13 +564,14 @@ function ProposalList({
   animatingApproveId,
   reduceMotion,
   onFocusCard,
+  t,
 }: ProposalListProps) {
   if (!hero && queue.length === 0) {
     return (
       <RelayEmptyState
         role="status"
-        title="All quiet on the swan front."
-        copy="No pending proposals. Capture some judgment traces and the curator will refill the queue."
+        title={t("empty.pendingTitle")}
+        copy={t("empty.pendingCopy")}
       />
     );
   }
@@ -595,13 +595,14 @@ function ProposalList({
             animating={animatingApproveId === hero.proposalId}
             reduceMotion={reduceMotion}
             onFocusCard={onFocusCard}
+            t={t}
           />
         )}
       </AnimatePresence>
 
       {view === "single" && queue.length > 0 && (
         <div className="relay-style-memory-queue-label">
-          <span>{queue.length} queued · resolve hero first</span>
+          <span>{t("labels.queued", { count: queue.length })}</span>
         </div>
       )}
 
@@ -622,6 +623,7 @@ function ProposalList({
             animating={animatingApproveId === p.proposalId}
             reduceMotion={reduceMotion}
             onFocusCard={onFocusCard}
+            t={t}
           />
         ))}
       </AnimatePresence>
@@ -645,6 +647,7 @@ type ProposalCardProps = {
   animating: boolean;
   reduceMotion: boolean;
   onFocusCard: (id: string | null) => void;
+  t: ProductT;
 };
 
 function ProposalCard({
@@ -661,6 +664,7 @@ function ProposalCard({
   animating,
   reduceMotion,
   onFocusCard,
+  t,
 }: ProposalCardProps) {
   const isQueued = mode === "queued";
   const inflight = status?.kind === "approving" || status?.kind === "rejecting";
@@ -700,7 +704,7 @@ function ProposalCard({
       <div className={cn("relay-style-memory-card-top", isQueued && "relay-style-memory-card-top-queued")}>
         <RelaySourceChip>
           <span className="relay-magic-text">◈</span>
-          {(proposal.workflow || "scope") + " × " + (proposal.artifactType || "any")}
+          {(proposal.workflow || t("labels.scopeFallback")) + " × " + (proposal.artifactType || t("labels.anyFallback"))}
         </RelaySourceChip>
         {isQueued && (
           <span className="relay-style-memory-peek" title={proposal.canonicalText}>
@@ -710,11 +714,11 @@ function ProposalCard({
         <span className="relay-style-memory-confidence">
           {conf !== null ? (
             <>
-              proposed <b className="relay-magic-text">{conf.toFixed(2)}</b> · from {proposal.sourceTraceIds.length} trace
-              {proposal.sourceTraceIds.length === 1 ? "" : "s"}
+              {t("labels.proposed")} <b className="relay-magic-text">{conf.toFixed(2)}</b> · {t("labels.from")} {proposal.sourceTraceIds.length}{" "}
+              {proposal.sourceTraceIds.length === 1 ? t("labels.traceSingular") : t("labels.tracePlural")}
             </>
           ) : (
-            <>proposed · from {proposal.sourceTraceIds.length} traces</>
+            <>{t("labels.proposed")} · {t("labels.from")} {proposal.sourceTraceIds.length} {t("labels.tracePlural")}</>
           )}
         </span>
       </div>
@@ -724,17 +728,17 @@ function ProposalCard({
           <div className="relay-style-memory-diff" style={diffStyle}>
             {proposal.normalizedText ? (
               <div style={diffSideStyle("before")}>
-                <span style={diffMetaStyle("before")}>Current heuristic</span>
+                <span style={diffMetaStyle("before")}>{t("labels.currentHeuristic")}</span>
                 {proposal.normalizedText}
               </div>
             ) : (
               <div style={diffSideStyle("before")}>
-                <span style={diffMetaStyle("before")}>Current heuristic</span>
-                <em style={{ opacity: 0.6 }}>none — first revision</em>
+                <span style={diffMetaStyle("before")}>{t("labels.currentHeuristic")}</span>
+                <em style={{ opacity: 0.6 }}>{t("labels.firstRevision")}</em>
               </div>
             )}
             <div style={diffSideStyle("after")}>
-              <span style={diffMetaStyle("after")}>Proposed refinement</span>
+              <span style={diffMetaStyle("after")}>{t("labels.proposedRefinement")}</span>
               {proposal.canonicalText}
             </div>
           </div>
@@ -746,13 +750,13 @@ function ProposalCard({
               {proposal.sourceTraceIds.map((tid) => (
                 <RelayStatusBadge key={tid}>
                   <span className="relay-style-memory-dot" data-variant="trace" />
-                  trace · {tid.slice(0, 10)}
+                  {t("labels.tracePrefix")} · {tid.slice(0, 10)}
                 </RelayStatusBadge>
               ))}
               {proposal.sourceRefs.map((ref) => (
                 <RelayStatusBadge key={ref}>
                   <span className="relay-style-memory-dot" data-variant="note" />
-                  ref · {ref.slice(0, 10)}
+                  {t("labels.refPrefix")} · {ref.slice(0, 10)}
                 </RelayStatusBadge>
               ))}
             </div>
@@ -767,7 +771,7 @@ function ProposalCard({
               }
               disabled={inflight}
             >
-              Reject
+              {t("actions.reject")}
             </RelayButton>
             <RelayButton
               type="button"
@@ -776,7 +780,7 @@ function ProposalCard({
               disabled={inflight}
               data-testid={`approve-${proposal.proposalId}`}
             >
-              Approve → Swan
+              {t("actions.approveSwan")}
             </RelayButton>
           </div>
 
@@ -786,6 +790,7 @@ function ProposalCard({
               onChange={setRejectDraft}
               onSubmit={() => void submitReject(rejectDraft)}
               onCancel={() => setRejectDraft(null)}
+              t={t}
             />
           )}
 
@@ -795,14 +800,16 @@ function ProposalCard({
                 <ErrorChip
                   message={status.message}
                   onRetry={() => void approveProposal(proposal.proposalId)}
+                  t={t}
                 />
               ) : showStillSaving ? (
                 <SavingChip
-                  label="Still saving…"
+                  label={t("labels.stillSaving")}
                   onCancel={() => cancelInflight(proposal.proposalId)}
+                  t={t}
                 />
               ) : (
-                <SavingChip label="Saving…" />
+                <SavingChip label={t("labels.saving")} />
               )}
             </div>
           )}
@@ -843,25 +850,25 @@ function useElapsed(startedAt: number, active: boolean) {
   return active ? now - startedAt : 0;
 }
 
-function SavingChip({ label, onCancel }: { label: string; onCancel?: () => void }) {
+function SavingChip({ label, onCancel, t }: { label: string; onCancel?: () => void; t?: ProductT }) {
   return (
     <div className="relay-style-memory-save-chip">
       <span>{label}</span>
       {onCancel && (
         <button type="button" onClick={onCancel} className="relay-link-reset relay-mono-link">
-          Cancel
+          {t ? t("actions.cancel") : "Cancel"}
         </button>
       )}
     </div>
   );
 }
 
-function ErrorChip({ message, onRetry }: { message: string; onRetry: () => void }) {
+function ErrorChip({ message, onRetry, t }: { message: string; onRetry: () => void; t: ProductT }) {
   return (
     <div className="relay-style-memory-save-chip" data-variant="danger">
-      <span>Couldn’t save — {message.length > 40 ? "retry?" : message}</span>
+      <span>{t("errors.saveInline", { message: message.length > 40 ? t("actions.retry").toLowerCase() + "?" : message })}</span>
       <button type="button" onClick={onRetry} className="relay-link-reset relay-mono-link">
-        Retry
+        {t("actions.retry")}
       </button>
     </div>
   );
@@ -872,11 +879,13 @@ function RejectOverlay({
   onChange,
   onSubmit,
   onCancel,
+  t,
 }: {
   draft: RejectDraft;
   onChange: (d: RejectDraft) => void;
   onSubmit: () => void;
   onCancel: () => void;
+  t: ProductT;
 }) {
   const submitDisabled =
     !draft.selected ||
@@ -894,11 +903,11 @@ function RejectOverlay({
     <div
       className="relay-style-memory-reject"
       role="region"
-      aria-label="Reject reason picker"
+      aria-label={t("labels.rejectPicker")}
       onKeyDown={handleKey}
       data-testid="reject-overlay"
     >
-      <p className="relay-style-memory-reject-label">Why reject?</p>
+      <p className="relay-style-memory-reject-label">{t("labels.whyReject")}</p>
       <div className="relay-chip-row">
         {REJECT_REASON_CODES.map((code) => (
           <button
@@ -910,7 +919,7 @@ function RejectOverlay({
             aria-pressed={draft.selected === code}
             data-testid={`reject-chip-${code}`}
           >
-            {REASON_LABELS[code]}
+            {t(`reasons.${code}`)}
           </button>
         ))}
       </div>
@@ -918,17 +927,17 @@ function RejectOverlay({
         <textarea
           value={draft.freeText}
           onChange={(e) => onChange({ ...draft, freeText: e.target.value })}
-          placeholder="Explain why (10–200 chars)"
+          placeholder={t("labels.explainWhy")}
           maxLength={200}
           rows={3}
           className="relay-style-memory-textarea"
-          aria-label="Reject reason free text"
+          aria-label={t("labels.explainWhy")}
           data-testid="reject-other-textarea"
         />
       )}
       <div className="relay-style-memory-actions">
         <RelayButton type="button" variant="secondary" onClick={onCancel}>
-          Cancel
+          {t("actions.cancel")}
         </RelayButton>
         <RelayButton
           type="button"
@@ -937,7 +946,7 @@ function RejectOverlay({
           disabled={submitDisabled}
           data-testid="reject-submit"
         >
-          Submit
+          {t("actions.submit")}
         </RelayButton>
       </div>
     </div>
@@ -948,23 +957,25 @@ function ApprovedList({
   items,
   failed,
   onRetry,
+  t,
 }: {
   items: ApprovedHeuristic[];
   failed: boolean;
   onRetry: () => void;
+  t: ProductT;
 }) {
   if (failed) {
     return (
-      <RelayEmptyState copy="Couldn’t load approved heuristics.">
+      <RelayEmptyState copy={t("empty.approvedFailed")}>
         <RelayButton type="button" variant="secondary" onClick={onRetry}>
-          Retry
+          {t("actions.retry")}
         </RelayButton>
       </RelayEmptyState>
     );
   }
   if (items.length === 0) {
     return (
-      <RelayEmptyState copy="No approved heuristics yet — approve a proposal and it will appear here." />
+      <RelayEmptyState copy={t("empty.approvedEmpty")} />
     );
   }
   return (
@@ -974,9 +985,9 @@ function ApprovedList({
           <div className="relay-list-header">
             <RelaySourceChip>
               <span className="relay-magic-text">◈</span>
-              {(h.workflow || "scope") + " × " + (h.artifactType || "any")}
+              {(h.workflow || t("labels.scopeFallback")) + " × " + (h.artifactType || t("labels.anyFallback"))}
             </RelaySourceChip>
-            <span className="relay-style-memory-muted">state: {h.state}</span>
+            <span className="relay-style-memory-muted">{t("labels.state")}: {h.state}</span>
           </div>
           <p className="relay-style-memory-list-copy">
             {h.canonicalText}
@@ -991,22 +1002,24 @@ function RejectedList({
   items,
   failed,
   onRetry,
+  t,
 }: {
   items: PendingProposal[];
   failed: boolean;
   onRetry: () => void;
+  t: ProductT;
 }) {
   if (failed) {
     return (
-      <RelayEmptyState copy="Couldn’t load rejected proposals.">
+      <RelayEmptyState copy={t("empty.rejectedFailed")}>
         <RelayButton type="button" variant="secondary" onClick={onRetry}>
-          Retry
+          {t("actions.retry")}
         </RelayButton>
       </RelayEmptyState>
     );
   }
   if (items.length === 0) {
-    return <RelayEmptyState copy="No rejected proposals yet." />;
+    return <RelayEmptyState copy={t("empty.rejectedEmpty")} />;
   }
   return (
     <ul className="relay-style-memory-list">
@@ -1015,9 +1028,9 @@ function RejectedList({
           <div className="relay-list-header">
             <RelaySourceChip>
               <span className="relay-danger-text">×</span>
-              {(p.workflow || "scope") + " × " + (p.artifactType || "any")}
+              {(p.workflow || t("labels.scopeFallback")) + " × " + (p.artifactType || t("labels.anyFallback"))}
             </RelaySourceChip>
-            <span className="relay-style-memory-muted">{p.reviewNotes || "rejected"}</span>
+            <span className="relay-style-memory-muted">{p.reviewNotes || t("labels.rejectedFallback")}</span>
           </div>
           <p className="relay-style-memory-list-copy">
             {p.canonicalText}

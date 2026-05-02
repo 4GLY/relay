@@ -4,7 +4,7 @@ import { cleanup } from "@testing-library/react";
 
 import enMessages from "./messages/en.json";
 
-function readMessage(namespace: string, key: string): string {
+function readMessage(namespace: string, key: string, values?: Record<string, unknown>): string {
   const path = `${namespace}.${key}`.split(".");
   let cursor: unknown = enMessages;
 
@@ -13,16 +13,21 @@ function readMessage(namespace: string, key: string): string {
     cursor = (cursor as Record<string, unknown>)[segment];
   }
 
-  return typeof cursor === "string" ? cursor : key;
+  if (typeof cursor !== "string") return key;
+  return cursor.replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (_match, name: string) =>
+    values && name in values ? String(values[name]) : `{${name}}`,
+  );
 }
 
 vi.mock("next-intl", () => ({
   useLocale: () => "en",
-  useTranslations: (namespace: string) => (key: string) => readMessage(namespace, key),
+  useTranslations: (namespace: string) => (key: string, values?: Record<string, unknown>) =>
+    readMessage(namespace, key, values),
 }));
 
 vi.mock("next-intl/server", () => ({
-  getTranslations: async (namespace: string) => (key: string) => readMessage(namespace, key),
+  getTranslations: async (namespace: string) => (key: string, values?: Record<string, unknown>) =>
+    readMessage(namespace, key, values),
 }));
 
 vi.mock("next/navigation", () => ({

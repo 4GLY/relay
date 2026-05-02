@@ -15,7 +15,8 @@
       "providerSettings": "Provider settings",
       "apiKeys": "API key settings",
       "styleMemory": "Style Memory"
-    }
+    },
+    "settingsNavigation": "Settings navigation"
   },
   "Root": {
     "eyebrow": "4gly Labs · Relay",
@@ -63,6 +64,8 @@
       "styleMemoryLink": "Skip to Style Memory",
       "providerSettingsLink": "Provider settings",
       "apiKeysLink": "API key settings",
+      "personalTitle": "Personal",
+      "projectExplorerTitle": "Project Explorer",
       "personalCopy": "Always-on. Notes that are not yet a project.",
       "projectExplorerCopy": "Relay creates this workspace before any provider keys.",
       "providerCallout": "Provider keys stay in Settings. Create the workspace first, then connect providers only when Claude-backed features need them.",
@@ -438,6 +441,15 @@
     }
   },
   "StyleMemory": {
+    "page": {
+      "signedInFallback": "signed in",
+      "missingProjectEyebrow": "Style Memory · {user}",
+      "missingProjectTitle": "Pick a project",
+      "missingProjectCopyPrefix": "Style Memory needs a project to read proposals from. Add",
+      "missingProjectCopySuffix": "to the URL, or finish onboarding to land here automatically.",
+      "loadErrorKicker": "Couldn’t load proposals",
+      "loadErrorTitle": "Something is wrong with the queue right now."
+    },
     "workspaceLabel": "Style Memory workspace",
     "eyebrow": "{projectId} · Style Memory",
     "subtitleEmpty": "All quiet on the swan front.",

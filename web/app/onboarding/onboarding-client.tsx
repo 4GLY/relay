@@ -47,7 +47,7 @@ export function OnboardingClient({ userDisplayName }: Props) {
         <div className="relay-onboarding-workspace-card">
           <span className="relay-onboarding-glyph">●</span>
           <div>
-            <h2 className="relay-onboarding-workspace-title">Personal</h2>
+            <h2 className="relay-onboarding-workspace-title">{t("personalTitle")}</h2>
             <p className="relay-onboarding-workspace-copy">{t("personalCopy")}</p>
           </div>
         </div>
@@ -56,7 +56,7 @@ export function OnboardingClient({ userDisplayName }: Props) {
             ◈
           </span>
           <div>
-            <h2 className="relay-onboarding-workspace-title">Project Explorer</h2>
+            <h2 className="relay-onboarding-workspace-title">{t("projectExplorerTitle")}</h2>
             <p className="relay-onboarding-workspace-copy">{t("projectExplorerCopy")}</p>
           </div>
         </div>

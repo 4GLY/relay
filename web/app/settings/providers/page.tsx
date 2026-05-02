@@ -48,7 +48,7 @@ export default async function ProviderSettingsPage() {
     <>
       <RelayTopRail activeStep="Transform" />
       <main className="relay-settings-page">
-        <nav className="relay-settings-nav" aria-label="Settings navigation">
+        <nav className="relay-settings-nav" aria-label={common("settingsNavigation")}>
           <a href="/onboarding" className="relay-settings-nav-link">
             {common("links.backToOnboarding")}
           </a>

@@ -51,7 +51,7 @@ export default async function APIKeySettingsPage() {
     <>
       <RelayTopRail activeStep="Transform" />
       <main className="relay-settings-page">
-        <nav className="relay-settings-nav" aria-label="Settings navigation">
+        <nav className="relay-settings-nav" aria-label={common("settingsNavigation")}>
           <Link href="/" className="relay-settings-nav-link">
             {common("links.projectExplorer")}
           </Link>

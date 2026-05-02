@@ -10,9 +10,15 @@ const mocks = vi.hoisted(() => ({
   cookies: vi.fn(),
   relayFetch: vi.fn(),
   getProjectExplorer: vi.fn(),
+  pathname: "/projects/proj_1",
+  search: "",
 }));
 
-vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
+vi.mock("next/navigation", () => ({
+  redirect: mocks.redirect,
+  usePathname: () => mocks.pathname,
+  useSearchParams: () => new URLSearchParams(mocks.search),
+}));
 vi.mock("next/headers", () => ({ cookies: mocks.cookies }));
 vi.mock("@/lib/api", () => ({
   RELAY_API_URL: "https://relay.4gly.dev",
@@ -87,6 +93,8 @@ const explorer = {
 describe("<ProjectExplorerPage>", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.pathname = "/projects/proj_1";
+    mocks.search = "";
     mocks.cookies.mockResolvedValue(cookieStore());
   });
 

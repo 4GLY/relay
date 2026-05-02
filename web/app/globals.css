@@ -219,9 +219,11 @@
   .relay-language-switch {
     display: inline-flex;
     align-items: center;
+    gap: 8px;
   }
 
-  .relay-language-switch select {
+  .relay-language-switch select,
+  .relay-language-switch button {
     min-height: 32px;
     border: 1px solid var(--border);
     border-radius: 8px;
@@ -231,6 +233,10 @@
     font-size: 11px;
     letter-spacing: 0.08em;
     text-transform: uppercase;
+  }
+
+  .relay-language-switch button {
+    cursor: pointer;
   }
 
   .relay-user-chip {

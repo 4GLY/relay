@@ -4,6 +4,7 @@
     "continueWithGitHub": "Continue with GitHub",
     "language": {
       "label": "Language",
+      "apply": "Apply",
       "english": "English",
       "korean": "Korean",
       "current": "Current language: {locale}"

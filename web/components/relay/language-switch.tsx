@@ -34,8 +34,8 @@ export function RelayLanguageSwitch() {
           </option>
         ))}
       </select>
-      <button className="relay-sr-only" type="submit">
-        {t("label")}
+      <button type="submit">
+        {t("apply")}
       </button>
     </form>
   );

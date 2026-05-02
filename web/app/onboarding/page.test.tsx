@@ -33,6 +33,7 @@ vi.mock("next-intl", () => ({
   useTranslations: (namespace: string) => (key: string) => {
     const messages: Record<string, string> = {
       "Common.language.label": "Language",
+      "Common.language.apply": "Apply",
       "Common.language.english": "English",
       "Common.language.korean": "Korean",
       "Shell.globalNavigation": "Global navigation",
@@ -95,5 +96,6 @@ describe("<OnboardingPage>", () => {
     expect(screen.getByRole("link", { name: "GitHub로 계속하기" })).toBeVisible();
     expect(screen.getAllByLabelText("Language")).toHaveLength(2);
     expect(screen.getAllByDisplayValue("Korean")).toHaveLength(2);
+    expect(screen.getAllByRole("button", { name: "Apply" })).toHaveLength(2);
   });
 });

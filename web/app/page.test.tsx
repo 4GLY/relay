@@ -30,6 +30,7 @@ vi.mock("next-intl", () => ({
   useTranslations: (namespace: string) => (key: string) => {
     const messages: Record<string, string> = {
       "Common.language.label": "Language",
+      "Common.language.apply": "Apply",
       "Common.language.english": "English",
       "Common.language.korean": "Korean",
       "Shell.globalNavigation": "Global navigation",
@@ -92,7 +93,27 @@ describe("<HomePage>", () => {
       "action",
       "/settings/language",
     );
+    expect(screen.getByRole("button", { name: "Apply" })).toBeVisible();
     expect(screen.queryByText("Sharable Snapshot")).not.toBeInTheDocument();
+  });
+
+  it("preserves the current path and query when switching language", async () => {
+    mocks.pathname = "/current";
+    mocks.search = "tab=files";
+    mocks.relayFetch.mockResolvedValueOnce(
+      authResponse(401, {
+        ok: false,
+        command: "relay auth me",
+        error: { code: "UNAUTHENTICATED", message: "missing session", retryable: false },
+      }),
+    );
+
+    const { container } = render(await HomePage());
+
+    expect(container.querySelector('input[name="redirectTo"]')).toHaveAttribute(
+      "value",
+      "/current?tab=files",
+    );
   });
 
   it("redirects authenticated users who still need onboarding to /onboarding", async () => {

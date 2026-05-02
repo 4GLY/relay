@@ -27,8 +27,18 @@
   },
   "Shell": {
     "globalNavigation": "Global navigation",
+    "transformationSteps": "Relay transformation steps",
+    "projectExplorer": "Project Explorer",
+    "ducklings": "Ducklings",
+    "swans": "Swans",
     "settings": "Settings",
-    "signedInFallback": "signed in"
+    "signedInFallback": "signed in",
+    "steps": {
+      "Face": "Face",
+      "Dissect": "Dissect",
+      "Refine": "Refine",
+      "Transform": "Transform"
+    }
   },
   "Errors": {
     "UNAUTHENTICATED": "Sign in again to continue.",

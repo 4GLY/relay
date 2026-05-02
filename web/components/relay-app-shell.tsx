@@ -79,12 +79,14 @@ export function RelayAppShell({
 }
 
 function TransformRibbon({ activeStep }: { activeStep: RelayStep }) {
+  const t = useTranslations("Shell");
+
   return (
-    <div className="relay-transform-ribbon" aria-label="Relay transformation steps">
+    <div className="relay-transform-ribbon" aria-label={t("transformationSteps")}>
       {steps.map((step, index) => (
         <span key={step} className="relay-contents">
           <span className="relay-transform-step" data-active={step === activeStep}>
-            {step}
+            {t(`steps.${step}`)}
           </span>
           {index < steps.length - 1 ? <span className="relay-transform-arrow">→</span> : null}
         </span>
@@ -94,9 +96,11 @@ function TransformRibbon({ activeStep }: { activeStep: RelayStep }) {
 }
 
 function ProjectRail({ items }: { items: RailItem[] }) {
+  const t = useTranslations("Shell");
+
   return (
-    <aside className="relay-project-rail" aria-label="Project Explorer">
-      <div className="relay-rail-section">Project Explorer</div>
+    <aside className="relay-project-rail" aria-label={t("projectExplorer")}>
+      <div className="relay-rail-section">{t("projectExplorer")}</div>
       {items.map((item) => {
         const kind = item.glyph ?? "empty";
         return (
@@ -112,12 +116,12 @@ function ProjectRail({ items }: { items: RailItem[] }) {
             <span className="relay-rail-name">{item.label}</span>
             <span className="relay-rail-badges">
               {item.ducklings ? (
-                <span className="relay-badge-duckling" title="Ducklings">
+                <span className="relay-badge-duckling" title={t("ducklings")}>
                   {item.ducklings}
                 </span>
               ) : null}
               {item.swans ? (
-                <span className="relay-badge-swan" title="Swans">
+                <span className="relay-badge-swan" title={t("swans")}>
                   {item.swans}
                 </span>
               ) : null}

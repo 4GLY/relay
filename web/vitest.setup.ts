@@ -7,7 +7,6 @@ import koMessages from "./messages/ko.json";
 
 declare global {
   // Provided for tests that need to exercise localized rendering.
-  // eslint-disable-next-line no-var
   var __setNextIntlLocale: (locale: "en" | "ko") => void;
 }
 

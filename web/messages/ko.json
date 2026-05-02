@@ -27,8 +27,18 @@
   },
   "Shell": {
     "globalNavigation": "전역 내비게이션",
+    "transformationSteps": "Relay 변환 단계",
+    "projectExplorer": "프로젝트 탐색기",
+    "ducklings": "미정리",
+    "swans": "정리됨",
     "settings": "설정",
-    "signedInFallback": "로그인됨"
+    "signedInFallback": "로그인됨",
+    "steps": {
+      "Face": "직면",
+      "Dissect": "분해",
+      "Refine": "정제",
+      "Transform": "변환"
+    }
   },
   "Errors": {
     "UNAUTHENTICATED": "계속하려면 다시 로그인하세요.",

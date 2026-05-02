@@ -82,6 +82,38 @@ describe("messages", () => {
     expect(enKeys.length).toBeGreaterThan(100);
   });
 
+  it("keeps Task 5 Korean product copy free of accidental mixed generic terms", () => {
+    const task5Namespaces = [
+      "ProjectExplorer",
+      "Traces",
+      "DecisionGraph",
+      "PacketBuilder",
+      "StyleMemory",
+    ];
+    const forbiddenFragments = [
+      "Heuristic",
+      "Packet 메타데이터",
+      "first revision",
+      "judgment trace",
+      "curator",
+      "scope",
+      "any",
+      "hero",
+    ];
+    const violations: string[] = [];
+
+    for (const namespace of task5Namespaces) {
+      collectForbiddenFragments(
+        getDictionary("ko")[namespace as keyof ReturnType<typeof getDictionary>],
+        namespace,
+        forbiddenFragments,
+        violations,
+      );
+    }
+
+    expect(violations).toEqual([]);
+  });
+
   it("keeps ICU-style placeholders aligned across locales", () => {
     const enPlaceholders = getPlaceholdersByKey(getDictionary("en"));
     const koPlaceholders = getPlaceholdersByKey(getDictionary("ko"));
@@ -139,4 +171,26 @@ function getPlaceholdersByKey(dictionary: ReturnType<typeof getDictionary>) {
 
   walk(dictionary, "");
   return placeholdersByKey;
+}
+
+function collectForbiddenFragments(
+  value: unknown,
+  path: string,
+  forbiddenFragments: string[],
+  violations: string[],
+) {
+  if (typeof value === "string") {
+    for (const fragment of forbiddenFragments) {
+      if (value.includes(fragment)) {
+        violations.push(`${path}: ${fragment}`);
+      }
+    }
+    return;
+  }
+
+  if (!value || typeof value !== "object" || Array.isArray(value)) return;
+
+  for (const [key, child] of Object.entries(value)) {
+    collectForbiddenFragments(child, `${path}.${key}`, forbiddenFragments, violations);
+  }
 }

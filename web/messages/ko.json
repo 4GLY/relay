@@ -148,17 +148,17 @@
     }
   },
   "ProjectExplorer": {
-    "title": "Project Explorer",
-    "eyebrow": "Project Explorer · {status}",
+    "title": "프로젝트 탐색기",
+    "eyebrow": "프로젝트 탐색기 · {status}",
     "actions": {
-      "styleMemory": "Style Memory",
+      "styleMemory": "스타일 메모리",
       "traceBrowser": "기록 브라우저",
-      "decisionGraph": "Decision Graph",
-      "packetBuilder": "Packet Builder",
+      "decisionGraph": "결정 그래프",
+      "packetBuilder": "패킷 빌더",
       "providerSettings": "Provider 설정",
       "apiKeySettings": "API 키 설정",
       "reviewProposal": "제안 검토",
-      "openPacketBuilder": "Packet Builder 열기",
+      "openPacketBuilder": "패킷 빌더 열기",
       "openPublicSnapshot": "공개 스냅샷 열기",
       "continueWithGitHub": "GitHub로 계속하기",
       "retry": "다시 시도"
@@ -189,7 +189,7 @@
       "scopeMatrix": "범위 매트릭스"
     },
     "panels": {
-      "styleMemory": "Style Memory",
+      "styleMemory": "스타일 메모리",
       "latestSnapshot": "최신 스냅샷",
       "recentActivity": "최근 활동",
       "pending": "대기 {count}개",
@@ -209,7 +209,7 @@
     "error": {
       "signedInFallback": "로그인됨",
       "title": "이 프로젝트를 열지 못했습니다",
-      "fallbackMessage": "Project Explorer를 불러오지 못했습니다."
+      "fallbackMessage": "프로젝트 탐색기를 불러오지 못했습니다."
     },
     "nav": {
       "judgmentTraces": "판단 기록"
@@ -260,22 +260,22 @@
       "duckling": "초안"
     },
     "actions": {
-      "projectExplorer": "Project Explorer",
-      "styleMemory": "Style Memory",
+      "projectExplorer": "프로젝트 탐색기",
+      "styleMemory": "스타일 메모리",
       "continueWithGitHub": "GitHub로 계속하기",
       "retry": "다시 시도"
     },
     "nav": {
-      "projectExplorer": "Project Explorer",
+      "projectExplorer": "프로젝트 탐색기",
       "traceBrowser": "기록 브라우저",
-      "decisionGraph": "Decision Graph",
-      "styleMemory": "Style Memory",
-      "packetBuilder": "Packet Builder",
+      "decisionGraph": "결정 그래프",
+      "styleMemory": "스타일 메모리",
+      "packetBuilder": "패킷 빌더",
       "settings": "설정"
     },
     "empty": {
       "title": "아직 캡처된 기록이 없습니다.",
-      "copy": "판단 기록을 캡처하면 Style Memory가 검토할 근거가 생깁니다."
+      "copy": "판단 기록을 캡처하면 스타일 메모리가 검토할 근거가 생깁니다."
     },
     "signIn": {
       "eyebrow": "기록 브라우저",
@@ -292,8 +292,8 @@
     "titleMany": "캡처된 기록 {count}개"
   },
   "DecisionGraph": {
-    "title": "Decision Graph",
-    "eyebrow": "{projectId} · Decision Graph",
+    "title": "결정 그래프",
+    "eyebrow": "{projectId} · 결정 그래프",
     "copyReady": "결정이 백조에 도달한 경로입니다.",
     "copyEmpty": "근거를 캡처하면 백조까지의 경로가 드러납니다.",
     "actions": {
@@ -304,7 +304,7 @@
     },
     "labels": {
       "graphSummary": "그래프 요약",
-      "decisionGraphMap": "Decision Graph 맵",
+      "decisionGraphMap": "결정 그래프 맵",
       "decisionEvidenceGraph": "결정 근거 그래프",
       "graphNodes": "그래프 노드",
       "decisions": "결정",
@@ -321,11 +321,11 @@
       "snapshot": "스냅샷"
     },
     "nav": {
-      "projectExplorer": "Project Explorer",
+      "projectExplorer": "프로젝트 탐색기",
       "traceBrowser": "기록 브라우저",
-      "decisionGraph": "Decision Graph",
-      "styleMemory": "Style Memory",
-      "packetBuilder": "Packet Builder",
+      "decisionGraph": "결정 그래프",
+      "styleMemory": "스타일 메모리",
+      "packetBuilder": "패킷 빌더",
       "settings": "설정"
     },
     "empty": {
@@ -333,15 +333,15 @@
       "copy": "노트, 기록, 결정, 휴리스틱, 스냅샷을 캡처하면 맵이 채워집니다."
     },
     "signIn": {
-      "eyebrow": "Decision Graph",
+      "eyebrow": "결정 그래프",
       "title": "먼저 로그인하세요",
       "copy": "결정 근거는 프로젝트 작업공간 안에서 비공개입니다."
     },
     "error": {
-      "eyebrow": "Decision Graph · {user}",
+      "eyebrow": "결정 그래프 · {user}",
       "signedInFallback": "로그인됨",
       "title": "그래프를 열지 못했습니다",
-      "fallbackMessage": "Decision Graph를 불러오지 못했습니다."
+      "fallbackMessage": "결정 그래프를 불러오지 못했습니다."
     },
     "nodeKinds": {
       "project": "프로젝트",
@@ -356,15 +356,15 @@
     }
   },
   "PacketBuilder": {
-    "eyebrow": "{projectId} · Packet Builder",
+    "eyebrow": "{projectId} · 패킷 빌더",
     "title": "인계 작성",
     "signedInFallback": "로그인됨",
     "actions": {
       "saveDraft": "초안 저장",
-      "decisionGraph": "Decision Graph",
+      "decisionGraph": "결정 그래프",
       "openPublicSnapshot": "공개 스냅샷 열기 →",
       "buildSnapshot": "스냅샷 만들기 →",
-      "projectExplorer": "Project Explorer",
+      "projectExplorer": "프로젝트 탐색기",
       "continueWithGitHub": "GitHub로 계속하기"
     },
     "labels": {
@@ -414,22 +414,22 @@
     },
     "publishCopy": "게시와 폐기는 이 범위에서는 관리자 스냅샷 API에 남아 있습니다. 이 빌더는 최신 스냅샷을 읽고, 이미 게시된 경우 공개 경로를 보여줍니다.",
     "signIn": {
-      "eyebrow": "Packet Builder",
+      "eyebrow": "패킷 빌더",
       "title": "먼저 로그인하세요",
       "copy": "패킷 스냅샷은 프로젝트 작업공간 안에서 비공개입니다."
     },
     "error": {
-      "eyebrow": "Packet Builder · {user}",
+      "eyebrow": "패킷 빌더 · {user}",
       "signedInFallback": "로그인됨",
       "noSnapshotTitle": "아직 패킷이 없습니다",
       "title": "패킷을 열지 못했습니다",
       "noSnapshotCopy": "먼저 패킷 스냅샷을 만든 뒤 여기로 돌아와 확인하세요.",
-      "fallbackMessage": "Packet Builder를 불러오지 못했습니다."
+      "fallbackMessage": "패킷 빌더를 불러오지 못했습니다."
     }
   },
   "StyleMemory": {
-    "workspaceLabel": "Style Memory 작업공간",
-    "eyebrow": "{projectId} · Style Memory",
+    "workspaceLabel": "스타일 메모리 작업공간",
+    "eyebrow": "{projectId} · 스타일 메모리",
     "subtitleEmpty": "백조 전선은 조용합니다.",
     "subtitleOne": "판단을 기다리는 제안 1개",
     "subtitleMany": "판단을 기다리는 제안 {count}개",
@@ -444,7 +444,7 @@
       "retry": "다시 시도"
     },
     "tabs": {
-      "label": "Style Memory 보기",
+      "label": "스타일 메모리 보기",
       "proposals": "제안",
       "approved": "승인됨",
       "rejected": "거절됨"

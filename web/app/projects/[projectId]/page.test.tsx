@@ -184,7 +184,8 @@ describe("<ProjectExplorerPage>", () => {
     render(await ProjectExplorerPage({ params: Promise.resolve({ projectId: "proj_1" }) }));
 
     expect(screen.getByText("작업공간 인스펙터 — 상세 카운트")).toBeVisible();
-    expect(screen.getByRole("link", { name: "Packet Builder 열기" })).toHaveAttribute(
+    expect(screen.getByText("프로젝트 탐색기 · active")).toBeVisible();
+    expect(screen.getByRole("link", { name: "패킷 빌더 열기" })).toHaveAttribute(
       "href",
       "/projects/proj_1/packet-builder",
     );

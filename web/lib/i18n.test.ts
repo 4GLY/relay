@@ -99,6 +99,10 @@ describe("messages", () => {
       "scope",
       "any",
       "hero",
+      "Project Explorer",
+      "Decision Graph",
+      "Packet Builder",
+      "Style Memory",
     ];
     const violations: string[] = [];
 

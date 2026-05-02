@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -64,6 +64,7 @@ export default async function TraceBrowserPage({
   const selectedTraceId = query?.trace;
   const cookieStore = await cookies();
   const cookieHeader = cookieStore.toString();
+  const locale = await getLocale();
   const t = await getTranslations("Traces");
   const me = await resolveSession(cookieHeader);
 
@@ -93,6 +94,7 @@ export default async function TraceBrowserPage({
       selectedTraceId={selectedTraceId}
       userDisplayName={me.display_name}
       t={t}
+      locale={locale}
     />
   );
 }
@@ -103,12 +105,14 @@ function TraceBrowser({
   selectedTraceId,
   userDisplayName,
   t,
+  locale,
 }: {
   projectId: string;
   traces: JudgmentTrace[];
   selectedTraceId?: string;
   userDisplayName?: string;
   t: ProductT;
+  locale: string;
 }) {
   const selectedTrace =
     traces.find((trace) => trace.traceId === selectedTraceId) ?? traces[0];
@@ -201,7 +205,7 @@ function TraceBrowser({
                 </div>
                 <RelayStatusBadge variant={traceStateVariant(trace)}>{traceState(trace, t)}</RelayStatusBadge>
                 <time dateTime={trace.createdAt} className="relay-trace-time">
-                  {formatDate(trace.createdAt)}
+                  {formatDate(trace.createdAt, locale)}
                 </time>
                 <span className="relay-trace-refs">
                   {trace.sourceRefs.length} {trace.sourceRefs.length === 1 ? t("labels.refSingular") : t("labels.refPlural")}
@@ -327,10 +331,10 @@ function firstNonEmpty(t: ProductT, ...values: Array<string | undefined>) {
   return t("labels.untitled");
 }
 
-function formatDate(value: string) {
+function formatDate(value: string, locale: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat("en", {
+  return new Intl.DateTimeFormat(locale, {
     month: "short",
     day: "numeric",
     hour: "2-digit",

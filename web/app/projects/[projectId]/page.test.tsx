@@ -164,6 +164,34 @@ describe("<ProjectExplorerPage>", () => {
     });
   });
 
+  it("renders Korean product chrome and locale-aware dates", async () => {
+    globalThis.__setNextIntlLocale("ko");
+    mocks.relayFetch.mockResolvedValueOnce(
+      authResponse(200, {
+        ok: true,
+        command: "relay auth me",
+        data: {
+          user_id: "user_1",
+          display_name: "Hoon",
+          onboarding_complete: true,
+          default_project_id: "proj_1",
+        },
+        warnings: [],
+      }),
+    );
+    mocks.getProjectExplorer.mockResolvedValueOnce(explorer);
+
+    render(await ProjectExplorerPage({ params: Promise.resolve({ projectId: "proj_1" }) }));
+
+    expect(screen.getByText("작업공간 인스펙터 — 상세 카운트")).toBeVisible();
+    expect(screen.getByRole("link", { name: "Packet Builder 열기" })).toHaveAttribute(
+      "href",
+      "/projects/proj_1/packet-builder",
+    );
+    expect(screen.getAllByText(/4월/).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/Apr/)).not.toBeInTheDocument();
+  });
+
   it("shows sign-in when there is no session", async () => {
     mocks.relayFetch.mockResolvedValueOnce(
       authResponse(401, {

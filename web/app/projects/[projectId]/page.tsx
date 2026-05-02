@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 
 import { RELAY_API_URL, relayFetch, type RelayEnvelope } from "@/lib/api";
@@ -55,6 +55,7 @@ export default async function ProjectExplorerPage({
   const { projectId } = await params;
   const cookieStore = await cookies();
   const cookieHeader = cookieStore.toString();
+  const locale = await getLocale();
   const t = await getTranslations("ProjectExplorer");
   const me = await resolveSession(cookieHeader);
 
@@ -75,17 +76,19 @@ export default async function ProjectExplorerPage({
     return <ExplorerError projectId={projectId} error={error} userDisplayName={me.display_name} t={t} />;
   }
 
-  return <Explorer explorer={explorer} userDisplayName={me.display_name} t={t} />;
+  return <Explorer explorer={explorer} userDisplayName={me.display_name} t={t} locale={locale} />;
 }
 
 function Explorer({
   explorer,
   userDisplayName,
   t,
+  locale,
 }: {
   explorer: ProjectExplorer;
   userDisplayName?: string;
   t: ProductT;
+  locale: string;
 }) {
   const c = explorer.counts;
   const memoryReady = c.pendingProposals > 0
@@ -168,7 +171,7 @@ function Explorer({
         <Panel title={t("panels.latestSnapshot")} kicker={t("panels.total", { count: c.packetSnapshots })}>
           {explorer.latestSnapshot ? (
             <>
-              <Snapshot snapshot={explorer.latestSnapshot} t={t} />
+              <Snapshot snapshot={explorer.latestSnapshot} t={t} locale={locale} />
               <RelayLinkButton
                 href={`/projects/${encodeURIComponent(explorer.project.projectId)}/packet-builder`}
                 variant="ghost"
@@ -198,7 +201,7 @@ function Explorer({
                     <span className="relay-activity-title">{item.title}</span>
                   )}
                   <time dateTime={item.createdAt} className="relay-activity-time">
-                    {formatDate(item.createdAt)}
+                    {formatDate(item.createdAt, locale)}
                   </time>
                 </li>
               ))}
@@ -319,7 +322,15 @@ function Panel({
   );
 }
 
-function Snapshot({ snapshot, t }: { snapshot: NonNullable<ProjectExplorer["latestSnapshot"]>; t: ProductT }) {
+function Snapshot({
+  snapshot,
+  t,
+  locale,
+}: {
+  snapshot: NonNullable<ProjectExplorer["latestSnapshot"]>;
+  t: ProductT;
+  locale: string;
+}) {
   return (
     <div>
       <p className="relay-snapshot-title">{snapshot.taskSummary || snapshot.target}</p>
@@ -334,7 +345,7 @@ function Snapshot({ snapshot, t }: { snapshot: NonNullable<ProjectExplorer["late
         </div>
         <div>
           <dt className="relay-meta-label">{t("labels.created")}</dt>
-          <dd className="relay-meta-value">{formatDate(snapshot.createdAt)}</dd>
+          <dd className="relay-meta-value">{formatDate(snapshot.createdAt, locale)}</dd>
         </div>
       </RelayMetaGrid>
       {snapshot.publicReadable && snapshot.publicToken ? (
@@ -400,10 +411,10 @@ function ExplorerError({
   );
 }
 
-function formatDate(value: string) {
+function formatDate(value: string, locale: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat("en", {
+  return new Intl.DateTimeFormat(locale, {
     month: "short",
     day: "numeric",
     hour: "2-digit",

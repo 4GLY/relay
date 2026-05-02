@@ -3,10 +3,19 @@ import { afterEach, vi } from "vitest";
 import { cleanup } from "@testing-library/react";
 
 import enMessages from "./messages/en.json";
+import koMessages from "./messages/ko.json";
+
+declare global {
+  // Provided for tests that need to exercise localized rendering.
+  // eslint-disable-next-line no-var
+  var __setNextIntlLocale: (locale: "en" | "ko") => void;
+}
+
+let testLocale: "en" | "ko" = "en";
 
 function readMessage(namespace: string, key: string, values?: Record<string, unknown>): string {
   const path = `${namespace}.${key}`.split(".");
-  let cursor: unknown = enMessages;
+  let cursor: unknown = testLocale === "ko" ? koMessages : enMessages;
 
   for (const segment of path) {
     if (!cursor || typeof cursor !== "object" || !(segment in cursor)) return key;
@@ -20,12 +29,13 @@ function readMessage(namespace: string, key: string, values?: Record<string, unk
 }
 
 vi.mock("next-intl", () => ({
-  useLocale: () => "en",
+  useLocale: () => testLocale,
   useTranslations: (namespace: string) => (key: string, values?: Record<string, unknown>) =>
     readMessage(namespace, key, values),
 }));
 
 vi.mock("next-intl/server", () => ({
+  getLocale: async () => testLocale,
   getTranslations: async (namespace: string) => (key: string, values?: Record<string, unknown>) =>
     readMessage(namespace, key, values),
 }));
@@ -39,5 +49,17 @@ vi.mock("next/navigation", () => ({
 }));
 
 afterEach(() => {
+  testLocale = "en";
   cleanup();
+});
+
+Object.assign(globalThis, {
+  __setNextIntlLocale: (locale: "en" | "ko") => {
+    testLocale = locale;
+  },
+});
+
+Object.defineProperty(window, "scrollTo", {
+  value: vi.fn(),
+  writable: true,
 });

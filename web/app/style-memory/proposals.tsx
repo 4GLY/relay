@@ -313,7 +313,11 @@ export function Proposals({
           return next;
         });
         setRejectDraft(null);
-        pushToast({ title: t("toast.rejected"), sub: t("toast.reason", { reason: draft.selected }), tone: "success" });
+        pushToast({
+          title: t("toast.rejected"),
+          sub: t("toast.reason", { reason: t(`reasons.${draft.selected}`) }),
+          tone: "success",
+        });
       } catch (err) {
         if (err instanceof ProposalAlreadyResolvedError) {
           setPending((cur) => cur.filter((p) => p.proposalId !== proposalId));

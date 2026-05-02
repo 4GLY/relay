@@ -63,14 +63,23 @@ describe("messages", () => {
   });
 
   it("keeps english and korean message shapes aligned", () => {
+    const enKeys = getDictionaryKeys(getDictionary("en"));
+    const koKeys = getDictionaryKeys(getDictionary("ko"));
+
+    expect(koKeys).toEqual(enKeys);
+  });
+
+  it("keeps Task 5 product namespace shapes aligned", () => {
+    const productNamespaces = /^(ProjectExplorer|Traces|DecisionGraph|PacketBuilder|StyleMemory)\./;
     const enKeys = getDictionaryKeys(getDictionary("en")).filter((key) =>
-      /^(Common|Root|Errors|Onboarding|Settings)\./.test(key),
+      productNamespaces.test(key),
     );
     const koKeys = getDictionaryKeys(getDictionary("ko")).filter((key) =>
-      /^(Common|Root|Errors|Onboarding|Settings)\./.test(key),
+      productNamespaces.test(key),
     );
 
     expect(koKeys).toEqual(enKeys);
+    expect(enKeys.length).toBeGreaterThan(100);
   });
 
   it("keeps ICU-style placeholders aligned across locales", () => {

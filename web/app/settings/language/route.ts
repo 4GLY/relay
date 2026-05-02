@@ -1,12 +1,15 @@
 import { NextResponse } from "next/server";
 
-import { RELAY_LOCALE_COOKIE, type Locale } from "@/lib/i18n";
-
-const supportedLocales = new Set<Locale>(["en", "ko"]);
+import { RELAY_LOCALE_COOKIE, type Locale, isLocale } from "@/i18n/routing";
 
 function parseLocale(value: FormDataEntryValue | string | null): Locale | null {
   if (typeof value !== "string") return null;
-  return supportedLocales.has(value as Locale) ? (value as Locale) : null;
+  return isLocale(value) ? value : null;
+}
+
+function parseRedirectTo(value: FormDataEntryValue | null): string {
+  if (typeof value !== "string") return "/";
+  return value.startsWith("/") && !value.startsWith("//") ? value : "/";
 }
 
 export async function POST(request: Request) {
@@ -21,10 +24,7 @@ export async function POST(request: Request) {
   } else {
     const formData = await request.formData();
     locale = parseLocale(formData.get("locale"));
-    const submittedRedirect = formData.get("redirectTo");
-    if (typeof submittedRedirect === "string" && submittedRedirect.startsWith("/")) {
-      redirectTo = submittedRedirect;
-    }
+    redirectTo = parseRedirectTo(formData.get("redirectTo"));
   }
 
   if (!locale) {

@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import { cookies, headers } from "next/headers";
 import localFont from "next/font/local";
+import { NextIntlClientProvider } from "next-intl";
 
-import { resolveLocale } from "@/lib/i18n";
+import { resolveRequestLocale } from "@/i18n/request";
 
 import "./globals.css";
 
@@ -78,12 +78,7 @@ export const metadata: Metadata = {
 export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  const cookieStore = await cookies();
-  const headerStore = await headers();
-  const locale = resolveLocale({
-    cookie: cookieStore.toString(),
-    acceptLanguage: headerStore.get("accept-language") ?? undefined,
-  });
+  const locale = await resolveRequestLocale();
 
   return (
     <html
@@ -97,7 +92,7 @@ export default async function RootLayout({
           fontFamily: "var(--font-sans)",
         }}
       >
-        {children}
+        <NextIntlClientProvider>{children}</NextIntlClientProvider>
       </body>
     </html>
   );

@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 
-import type { Dictionary, Locale } from "@/lib/i18n";
-import { translateErrorMessage } from "@/lib/i18n";
+import type { Locale } from "@/lib/i18n";
+import { translateKnownError } from "@/lib/i18n";
 import {
   RelayButton,
   RelayCard,
@@ -24,14 +25,14 @@ import {
 } from "@/lib/provider-credentials";
 
 type Props = {
-  copy: Dictionary["providers"]["client"];
-  errorMap: Record<string, string>;
   initialCredential?: ProviderCredentialStatus;
   locale: Locale;
 };
 
-export function ProviderSettingsClient({ copy, errorMap, initialCredential, locale }: Props) {
+export function ProviderSettingsClient({ initialCredential, locale: _locale }: Props) {
   const router = useRouter();
+  const t = useTranslations("Settings.ProviderCredentials.client");
+  const errors = useTranslations("Settings.ProviderCredentials.errorMap");
   const [credential, setCredential] = useState(initialCredential);
   const [apiKey, setAPIKey] = useState("");
   const [status, setStatus] = useState<"idle" | "saving" | "disconnecting" | "error">("idle");
@@ -49,11 +50,10 @@ export function ProviderSettingsClient({ copy, errorMap, initialCredential, loca
     } catch (err) {
       setStatus("error");
       setError(
-        translateErrorMessage({
+        translateKnownError({
           error: err,
-          fallback: copy.fallbackConnectError,
-          knownErrors: errorMap,
-          locale,
+          fallback: t("fallbackConnectError"),
+          knownErrors: providerErrorMap(errors),
         }),
       );
     }
@@ -70,11 +70,10 @@ export function ProviderSettingsClient({ copy, errorMap, initialCredential, loca
     } catch (err) {
       setStatus("error");
       setError(
-        translateErrorMessage({
+        translateKnownError({
           error: err,
-          fallback: copy.fallbackDisconnectError,
-          knownErrors: errorMap,
-          locale,
+          fallback: t("fallbackDisconnectError"),
+          knownErrors: providerErrorMap(errors),
         }),
       );
     }
@@ -84,28 +83,28 @@ export function ProviderSettingsClient({ copy, errorMap, initialCredential, loca
   const canSave = apiKey.trim().length > 0 && !busy;
   const statusMessage =
     status === "saving"
-      ? copy.savingStatus
+      ? t("savingStatus")
       : status === "disconnecting"
-        ? copy.disconnectingStatus
+        ? t("disconnectingStatus")
         : credential?.connected
-          ? copy.connectedHelp
-          : copy.disconnectedHelp;
+          ? t("connectedHelp")
+          : t("disconnectedHelp");
 
   return (
     <section className="relay-settings-surface" aria-labelledby="provider-title">
       <RelayPageHead
-        eyebrow={copy.eyebrow}
-        title={copy.title}
+        eyebrow={t("eyebrow")}
+        title={t("title")}
         titleId="provider-title"
-        copy={copy.copy}
-        actions={<RelayStatusBadge>{copy.settingsOnlyPill}</RelayStatusBadge>}
+        copy={t("copy")}
+        actions={<RelayStatusBadge>{t("settingsOnlyPill")}</RelayStatusBadge>}
       />
 
       <div className="relay-settings-grid">
         <RelayCard variant="elevated" aria-labelledby="provider-status-title">
           <RelayCardHeader>
-            <RelayCardKicker>{copy.eyebrow}</RelayCardKicker>
-            <RelayCardTitle id="provider-status-title">{copy.title}</RelayCardTitle>
+            <RelayCardKicker>{t("eyebrow")}</RelayCardKicker>
+            <RelayCardTitle id="provider-status-title">{t("title")}</RelayCardTitle>
           </RelayCardHeader>
 
           <div className="relay-credential-status" aria-live="polite">
@@ -115,12 +114,12 @@ export function ProviderSettingsClient({ copy, errorMap, initialCredential, loca
             />
             <div>
               <strong className="relay-status-title">
-                {credential?.connected ? copy.connected : copy.disconnected}
+                {credential?.connected ? t("connected") : t("disconnected")}
               </strong>
               <p className="relay-status-copy">
                 {credential?.connected
-                  ? `${credential.key_prefix ?? "sk-ant"} ${copy.maskedKeySeparator} ${credential.key_last4 ?? "••••"}`
-                  : copy.noStoredKey}
+                  ? `${credential.key_prefix ?? "sk-ant"} ${t("maskedKeySeparator")} ${credential.key_last4 ?? "••••"}`
+                  : t("noStoredKey")}
               </p>
               <p className="relay-status-help">{statusMessage}</p>
             </div>
@@ -133,26 +132,26 @@ export function ProviderSettingsClient({ copy, errorMap, initialCredential, loca
               variant="danger"
               data-testid="disconnect-provider"
             >
-              {status === "disconnecting" ? copy.disconnectingButton : copy.disconnectButton}
+              {status === "disconnecting" ? t("disconnectingButton") : t("disconnectButton")}
             </RelayButton>
           ) : null}
         </RelayCard>
 
         <RelayCard variant="elevated" aria-labelledby="provider-connect-title">
           <RelayCardHeader>
-            <RelayCardKicker>{copy.settingsOnlyPill}</RelayCardKicker>
+            <RelayCardKicker>{t("settingsOnlyPill")}</RelayCardKicker>
             <RelayCardTitle id="provider-connect-title">
-              {credential?.connected ? copy.replaceButton : copy.connectButton}
+              {credential?.connected ? t("replaceButton") : t("connectButton")}
             </RelayCardTitle>
           </RelayCardHeader>
 
-          <RelayField label={copy.apiKeyLabel} htmlFor="anthropic-key" help={copy.fieldHelp}>
+          <RelayField label={t("apiKeyLabel")} htmlFor="anthropic-key" help={t("fieldHelp")}>
             <RelayTextInput
               id="anthropic-key"
               type="password"
               value={apiKey}
               onChange={(event) => setAPIKey(event.target.value)}
-              placeholder={copy.apiKeyPlaceholder}
+              placeholder={t("apiKeyPlaceholder")}
               autoComplete="off"
             />
           </RelayField>
@@ -164,10 +163,10 @@ export function ProviderSettingsClient({ copy, errorMap, initialCredential, loca
               data-testid="connect-provider"
             >
               {status === "saving"
-                ? copy.savingButton
+                ? t("savingButton")
                 : credential?.connected
-                  ? copy.replaceButton
-                  : copy.connectButton}
+                  ? t("replaceButton")
+                  : t("connectButton")}
             </RelayButton>
           </div>
 
@@ -180,4 +179,11 @@ export function ProviderSettingsClient({ copy, errorMap, initialCredential, loca
       </div>
     </section>
   );
+}
+
+function providerErrorMap(t: ReturnType<typeof useTranslations>): Record<string, string> {
+  return {
+    UNAUTHENTICATED: t("UNAUTHENTICATED"),
+    INVALID_INPUT: t("INVALID_INPUT"),
+  };
 }

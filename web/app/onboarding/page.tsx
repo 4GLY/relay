@@ -1,8 +1,9 @@
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 
 import { RELAY_API_URL, relayFetch, type RelayEnvelope } from "@/lib/api";
-import { getDictionary, resolveLocale } from "@/lib/i18n";
+import { resolveLocale } from "@/lib/i18n";
 import type { AuthMe } from "@/lib/onboarding";
 import {
   RelayCard,
@@ -43,7 +44,8 @@ export default async function OnboardingPage() {
     cookie: cookieStore.toString(),
     acceptLanguage: headerStore.get("accept-language") ?? undefined,
   });
-  const dictionary = getDictionary(locale);
+  const t = await getTranslations("Onboarding.page");
+  const common = await getTranslations("Common");
 
   if (me?.onboarding_complete && me.default_project_id) {
     redirect(`/projects/${encodeURIComponent(me.default_project_id)}`);
@@ -54,13 +56,12 @@ export default async function OnboardingPage() {
       <RelayTopRail activeStep="Face" userLabel={me?.display_name ?? me?.email ?? "signed out"} />
       <main className="relay-onboarding-page">
         <RelayPageHead
-          eyebrow={dictionary.onboarding.page.eyebrow}
-          title={dictionary.onboarding.page.title}
-          copy={dictionary.onboarding.page.subtitle}
+          eyebrow={t("eyebrow")}
+          title={t("title")}
+          copy={t("subtitle")}
         />
         {me ? (
           <OnboardingClient
-            copy={dictionary.onboarding.client}
             locale={locale}
             userDisplayName={me.display_name ?? me.email}
           />
@@ -71,12 +72,12 @@ export default async function OnboardingPage() {
             </span>
             <div>
               <h2 id="signin-title" className="relay-auth-panel-title">
-                {dictionary.onboarding.page.signInTitle}
+                {t("signInTitle")}
               </h2>
-              <p className="relay-auth-panel-copy">{dictionary.onboarding.page.signInCopy}</p>
+              <p className="relay-auth-panel-copy">{t("signInCopy")}</p>
               <div className="relay-form-actions">
                 <RelayLinkButton href={authStartURL("github")} variant="secondary">
-                  {dictionary.common.continueWithGitHub}
+                  {common("continueWithGitHub")}
                 </RelayLinkButton>
               </div>
               <div className="relay-auth-language">

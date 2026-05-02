@@ -17,12 +17,7 @@ export type Dictionary = Messages & {
   root: Messages["Root"];
   errors: Record<string, string>;
   onboarding: Messages["Onboarding"];
-  providers: Omit<Messages["Providers"], "errorMap"> & {
-    errorMap: Record<string, string>;
-  };
-  apiKeys: Omit<Messages["ApiKeys"], "errorMap"> & {
-    errorMap: Record<string, string>;
-  };
+  settings: Messages["Settings"];
 };
 
 function createDictionary(messages: Messages): Dictionary {
@@ -32,8 +27,7 @@ function createDictionary(messages: Messages): Dictionary {
     root: messages.Root,
     errors: messages.Errors,
     onboarding: messages.Onboarding,
-    providers: messages.Providers,
-    apiKeys: messages.ApiKeys,
+    settings: messages.Settings,
   };
 }
 
@@ -97,4 +91,28 @@ export function translateErrorMessage(options: {
   if (message && knownErrors[message]) return knownErrors[message];
   if (message) return message;
   return options.fallback || getDictionary(options.locale).Common.unknownError;
+}
+
+export function translateKnownError(options: {
+  error: unknown;
+  fallback: string;
+  knownErrors: Record<string, string>;
+}): string {
+  const code =
+    options.error &&
+    typeof options.error === "object" &&
+    "code" in options.error &&
+    typeof options.error.code === "string"
+      ? options.error.code
+      : undefined;
+  const message =
+    options.error instanceof Error
+      ? options.error.message
+      : typeof options.error === "string"
+        ? options.error
+        : "";
+
+  if (code && options.knownErrors[code]) return options.knownErrors[code];
+  if (message && options.knownErrors[message]) return options.knownErrors[message];
+  return options.fallback;
 }

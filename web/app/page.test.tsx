@@ -40,6 +40,25 @@ vi.mock("next-intl", () => ({
     return messages[`${namespace}.${key}`] ?? key;
   },
 }));
+vi.mock("next-intl/server", () => ({
+  getTranslations: async (namespace: string) => (key: string) => {
+    const messages: Record<string, string> = {
+      "Root.eyebrow": "4gly Labs · Relay",
+      "Root.title": "Relay",
+      "Root.subtitle":
+        mocks.locale === "ko"
+          ? "흩어진 작업을 조용히 백조처럼 정리하는 엔진."
+          : "A quiet engine that turns chaos into swans.",
+      "Root.panelTitle": mocks.locale === "ko" ? "시작하려면 로그인하세요" : "Sign in to start",
+      "Root.panelCopy":
+        mocks.locale === "ko"
+          ? "Relay는 먼저 개인 작업공간을 만듭니다. provider 키는 첫 실행 설정이 아니라 Settings에서 관리합니다."
+          : "Relay creates a private workspace first. Provider keys stay in Settings, not in first-run setup.",
+      "Root.signInButton": mocks.locale === "ko" ? "GitHub로 계속하기" : "Continue with GitHub",
+    };
+    return messages[`${namespace}.${key}`] ?? key;
+  },
+}));
 
 function cookieStore(value = "relay_session=test") {
   return {

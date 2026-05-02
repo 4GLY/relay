@@ -1,7 +1,8 @@
 import { cookies, headers } from "next/headers";
+import { getTranslations } from "next-intl/server";
 
 import { RELAY_API_URL } from "@/lib/api";
-import { getDictionary, resolveLocale } from "@/lib/i18n";
+import { resolveLocale } from "@/lib/i18n";
 import { listProviderCredentials } from "@/lib/provider-credentials";
 import { RelayCard, RelayLinkButton, RelayPageHead, RelayTopRail } from "@/components/relay";
 
@@ -23,7 +24,8 @@ export default async function ProviderSettingsPage() {
     cookie: cookieHeader,
     acceptLanguage: headerStore.get("accept-language") ?? undefined,
   });
-  const dictionary = getDictionary(locale);
+  const t = await getTranslations("Settings.ProviderCredentials.page");
+  const common = await getTranslations("Common");
   let initialCredential;
   let authenticated = true;
 
@@ -40,28 +42,26 @@ export default async function ProviderSettingsPage() {
       <main className="relay-settings-page">
         <nav className="relay-settings-nav" aria-label="Settings navigation">
           <a href="/onboarding" className="relay-settings-nav-link">
-            {dictionary.common.links.backToOnboarding}
+            {common("links.backToOnboarding")}
           </a>
           <a href="/settings/api-keys" className="relay-settings-nav-link">
-            {dictionary.common.links.apiKeys}
+            {common("links.apiKeys")}
           </a>
         </nav>
         {authenticated ? (
           <ProviderSettingsClient
-            copy={dictionary.providers.client}
-            errorMap={dictionary.providers.errorMap}
             initialCredential={initialCredential}
             locale={locale}
           />
         ) : (
           <RelayCard className="relay-settings-fallback" variant="elevated">
             <RelayPageHead
-              eyebrow={dictionary.providers.page.eyebrow}
-              title={dictionary.providers.page.signInTitle}
-              copy={dictionary.providers.page.signInCopy}
+              eyebrow={t("eyebrow")}
+              title={t("signInTitle")}
+              copy={t("signInCopy")}
               actions={
                 <RelayLinkButton href={signInURL()} variant="primary">
-                  {dictionary.common.continueWithGitHub}
+                  {common("continueWithGitHub")}
                 </RelayLinkButton>
               }
             />

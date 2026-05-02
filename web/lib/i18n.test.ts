@@ -6,6 +6,7 @@ import {
   RELAY_LOCALE_COOKIE,
   resolveLocale,
   translateErrorMessage,
+  translateKnownError,
 } from "./i18n";
 
 describe("resolveLocale", () => {
@@ -48,9 +49,14 @@ describe("messages", () => {
   it("exposes the initial next-intl message namespaces", () => {
     expect(getDictionary("en").Common.unknownError).toBe("Something went wrong.");
     expect(getDictionary("en").Root.title).toBe("Relay");
+    expect(getDictionary("en").Settings.ProviderCredentials.client.title).toBe("Claude provider");
+    expect(getDictionary("en").Settings.ApiKeys.client.title).toBe("Relay API keys");
     expect(getDictionary("en").Errors.UNAUTHENTICATED).toBe("Sign in again to continue.");
     expect(getDictionary("ko").Common.language.current).toBe("현재 언어: {locale}");
     expect(getDictionary("ko").Root.signInButton).toBe("GitHub로 계속하기");
+    expect(getDictionary("ko").Settings.ProviderCredentials.page.signInTitle).toBe(
+      "먼저 로그인하세요",
+    );
     expect(getDictionary("ko").Errors.API_KEY_NOT_FOUND_BY_ID).toBe(
       "해당 API 키를 더 이상 찾을 수 없습니다.",
     );
@@ -58,10 +64,10 @@ describe("messages", () => {
 
   it("keeps english and korean message shapes aligned", () => {
     const enKeys = getDictionaryKeys(getDictionary("en")).filter((key) =>
-      /^(Common|Root|Errors)\./.test(key),
+      /^(Common|Root|Errors|Onboarding|Settings)\./.test(key),
     );
     const koKeys = getDictionaryKeys(getDictionary("ko")).filter((key) =>
-      /^(Common|Root|Errors)\./.test(key),
+      /^(Common|Root|Errors|Onboarding|Settings)\./.test(key),
     );
 
     expect(koKeys).toEqual(enKeys);
@@ -88,6 +94,16 @@ describe("messages", () => {
         locale: "ko",
       }),
     ).toBe("입력값을 확인한 뒤 다시 시도하세요.");
+  });
+
+  it("falls back instead of leaking unknown server error messages", () => {
+    expect(
+      translateKnownError({
+        error: new Error("raw english server detail"),
+        fallback: "Could not finish.",
+        knownErrors: { INVALID_INPUT: "Check the input." },
+      }),
+    ).toBe("Could not finish.");
   });
 });
 

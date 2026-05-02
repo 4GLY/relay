@@ -2,7 +2,6 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getDictionary } from "@/lib/i18n";
 import { completeOnboarding } from "@/lib/onboarding";
 
 import { OnboardingClient } from "./onboarding-client";
@@ -19,8 +18,6 @@ vi.mock("@/lib/onboarding", () => ({
 }));
 
 describe("<OnboardingClient>", () => {
-  const copy = getDictionary("en").onboarding.client;
-
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -32,7 +29,7 @@ describe("<OnboardingClient>", () => {
     });
 
     const user = userEvent.setup();
-    render(<OnboardingClient copy={copy} locale="en" userDisplayName="Hoon" />);
+    render(<OnboardingClient locale="en" userDisplayName="Hoon" />);
 
     await user.click(screen.getByTestId("complete-onboarding"));
 
@@ -47,10 +44,10 @@ describe("<OnboardingClient>", () => {
     vi.mocked(completeOnboarding).mockRejectedValueOnce(new Error("missing session cookie"));
 
     const user = userEvent.setup();
-    render(<OnboardingClient copy={copy} locale="en" />);
+    render(<OnboardingClient locale="en" />);
 
     await user.click(screen.getByTestId("complete-onboarding"));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("missing session cookie");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Could not finish onboarding.");
   });
 });

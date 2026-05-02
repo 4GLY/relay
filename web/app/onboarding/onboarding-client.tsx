@@ -2,23 +2,24 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 
-import type { Dictionary, Locale } from "@/lib/i18n";
-import { translateErrorMessage } from "@/lib/i18n";
+import type { Locale } from "@/lib/i18n";
+import { translateKnownError } from "@/lib/i18n";
 import { completeOnboarding } from "@/lib/onboarding";
 import { RelayButton, RelayCard, RelayFeedback, RelayPageHead } from "@/components/relay";
 
 type Props = {
-  copy: Dictionary["onboarding"]["client"];
   locale: Locale;
   userDisplayName?: string;
 };
 
-export function OnboardingClient({ copy, locale, userDisplayName }: Props) {
+export function OnboardingClient({ locale: _locale, userDisplayName }: Props) {
   const router = useRouter();
+  const t = useTranslations("Onboarding.client");
+  const commonErrors = useTranslations("Errors");
   const [status, setStatus] = useState<"idle" | "submitting" | "error">("idle");
   const [error, setError] = useState<string>("");
-  const localCopy = onboardingLocalCopy(locale);
 
   async function startOnboarding() {
     setStatus("submitting");
@@ -30,10 +31,13 @@ export function OnboardingClient({ copy, locale, userDisplayName }: Props) {
     } catch (err) {
       setStatus("error");
       setError(
-        translateErrorMessage({
+        translateKnownError({
           error: err,
-          fallback: copy.fallbackError,
-          locale,
+          fallback: t("fallbackError"),
+          knownErrors: {
+            UNAUTHENTICATED: commonErrors("UNAUTHENTICATED"),
+            INVALID_INPUT: commonErrors("INVALID_INPUT"),
+          },
         }),
       );
     }
@@ -46,7 +50,7 @@ export function OnboardingClient({ copy, locale, userDisplayName }: Props) {
           <span className="relay-onboarding-glyph">●</span>
           <div>
             <h2 className="relay-onboarding-workspace-title">Personal</h2>
-            <p className="relay-onboarding-workspace-copy">{localCopy.personal}</p>
+            <p className="relay-onboarding-workspace-copy">{t("personalCopy")}</p>
           </div>
         </div>
         <div className="relay-onboarding-workspace-card">
@@ -55,19 +59,17 @@ export function OnboardingClient({ copy, locale, userDisplayName }: Props) {
           </span>
           <div>
             <h2 className="relay-onboarding-workspace-title">Project Explorer</h2>
-            <p className="relay-onboarding-workspace-copy">{localCopy.projectExplorer}</p>
+            <p className="relay-onboarding-workspace-copy">{t("projectExplorerCopy")}</p>
           </div>
         </div>
       </div>
-      <div className="relay-onboarding-callout">
-        {localCopy.providerCallout}
-      </div>
+      <div className="relay-onboarding-callout">{t("providerCallout")}</div>
       <div>
         <RelayPageHead
-          eyebrow={`${copy.signedInEyebrowPrefix} · ${userDisplayName ?? copy.fallbackUser}`}
-          title={copy.title}
+          eyebrow={`${t("signedInEyebrowPrefix")} · ${userDisplayName ?? t("fallbackUser")}`}
+          title={t("title")}
           titleId="onboarding-title"
-          copy={copy.copy}
+          copy={t("copy")}
         />
         <div className="relay-form-actions">
           <RelayButton
@@ -75,10 +77,10 @@ export function OnboardingClient({ copy, locale, userDisplayName }: Props) {
             disabled={status === "submitting"}
             data-testid="complete-onboarding"
           >
-            {status === "submitting" ? copy.startingButton : copy.startButton}
+            {status === "submitting" ? t("startingButton") : t("startButton")}
           </RelayButton>
           <span className="relay-onboarding-note">
-            {copy.providerSettingsLink} · {localCopy.afterWorkspace}
+            {t("providerSettingsLink")} · {t("afterWorkspace")}
           </span>
         </div>
         {status === "error" && (
@@ -89,24 +91,4 @@ export function OnboardingClient({ copy, locale, userDisplayName }: Props) {
       </div>
     </RelayCard>
   );
-}
-
-function onboardingLocalCopy(locale: Locale) {
-  if (locale === "ko") {
-    return {
-      personal: "항상 켜져 있는 개인 작업공간입니다.",
-      projectExplorer: "provider 키 없이 먼저 작업공간을 만듭니다.",
-      providerCallout:
-        "Provider 키는 Settings에 남겨둡니다. 먼저 작업공간을 만들고, Claude 기반 기능이 필요할 때만 연결하세요.",
-      afterWorkspace: "작업공간 생성 후",
-    };
-  }
-
-  return {
-    personal: "Always-on. Notes that are not yet a project.",
-    projectExplorer: "Relay creates this workspace before any provider keys.",
-    providerCallout:
-      "Provider keys stay in Settings. Create the workspace first, then connect providers only when Claude-backed features need them.",
-    afterWorkspace: "after workspace creation",
-  };
 }

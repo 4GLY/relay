@@ -2,7 +2,6 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getDictionary } from "@/lib/i18n";
 import { issueUserAPIKey, revokeUserAPIKey } from "@/lib/user-api-keys";
 
 import { APIKeySettingsClient } from "./api-key-settings-client";
@@ -13,8 +12,6 @@ vi.mock("@/lib/user-api-keys", () => ({
 }));
 
 describe("<APIKeySettingsClient>", () => {
-  const copy = getDictionary("en").apiKeys.client;
-  const errorMap = getDictionary("en").apiKeys.errorMap;
   let clipboardWriteText: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
@@ -38,9 +35,7 @@ describe("<APIKeySettingsClient>", () => {
     });
 
     const user = userEvent.setup();
-    render(
-      <APIKeySettingsClient copy={copy} errorMap={errorMap} initialKeys={[]} locale="en" />,
-    );
+    render(<APIKeySettingsClient initialKeys={[]} locale="en" />);
 
     await user.type(screen.getByLabelText(/key name/i), "CLI");
     await user.click(screen.getByTestId("issue-api-key"));
@@ -70,8 +65,6 @@ describe("<APIKeySettingsClient>", () => {
     const user = userEvent.setup();
     render(
       <APIKeySettingsClient
-        copy={copy}
-        errorMap={errorMap}
         initialKeys={[
           {
             key_id: "key_1",

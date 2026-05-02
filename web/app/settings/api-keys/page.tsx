@@ -1,8 +1,9 @@
 import { cookies, headers } from "next/headers";
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 
 import { RELAY_API_URL } from "@/lib/api";
-import { getDictionary, resolveLocale, translateErrorMessage } from "@/lib/i18n";
+import { resolveLocale, translateKnownError } from "@/lib/i18n";
 import {
   listUserAPIKeys,
   RelayAPIError,
@@ -28,7 +29,9 @@ export default async function APIKeySettingsPage() {
     cookie: cookieHeader,
     acceptLanguage: headerStore.get("accept-language") ?? undefined,
   });
-  const dictionary = getDictionary(locale);
+  const t = await getTranslations("Settings.ApiKeys.page");
+  const common = await getTranslations("Common");
+  const errors = await getTranslations("Settings.ApiKeys.errorMap");
 
   let authenticated = true;
   let initialKeys: UserAPIKeySummary[] = [];
@@ -41,11 +44,10 @@ export default async function APIKeySettingsPage() {
     if (error instanceof RelayAPIError && error.code === "UNAUTHENTICATED") {
       authenticated = false;
     } else {
-      loadError = translateErrorMessage({
+      loadError = translateKnownError({
         error,
-        fallback: dictionary.apiKeys.page.loadErrorCopy,
-        knownErrors: dictionary.apiKeys.errorMap,
-        locale,
+        fallback: t("loadErrorCopy"),
+        knownErrors: apiKeyErrorMap(errors),
       });
     }
   }
@@ -56,25 +58,23 @@ export default async function APIKeySettingsPage() {
       <main className="relay-settings-page">
         <nav className="relay-settings-nav" aria-label="Settings navigation">
           <Link href="/" className="relay-settings-nav-link">
-            {dictionary.common.links.projectExplorer}
+            {common("links.projectExplorer")}
           </Link>
           <a href="/settings/providers" className="relay-settings-nav-link">
-            {dictionary.common.links.providerSettings}
+            {common("links.providerSettings")}
           </a>
         </nav>
         {authenticated ? (
           loadError ? (
             <RelayCard className="relay-settings-fallback" variant="elevated">
               <RelayPageHead
-                eyebrow={dictionary.apiKeys.page.eyebrow}
-                title={dictionary.apiKeys.page.loadErrorTitle}
+                eyebrow={t("eyebrow")}
+                title={t("loadErrorTitle")}
                 copy={loadError}
               />
             </RelayCard>
           ) : (
             <APIKeySettingsClient
-              copy={dictionary.apiKeys.client}
-              errorMap={dictionary.apiKeys.errorMap}
               initialKeys={initialKeys}
               locale={locale}
             />
@@ -82,12 +82,12 @@ export default async function APIKeySettingsPage() {
         ) : (
           <RelayCard className="relay-settings-fallback" variant="elevated">
             <RelayPageHead
-              eyebrow={dictionary.apiKeys.page.eyebrow}
-              title={dictionary.apiKeys.page.signInTitle}
-              copy={dictionary.apiKeys.page.signInCopy}
+              eyebrow={t("eyebrow")}
+              title={t("signInTitle")}
+              copy={t("signInCopy")}
               actions={
                 <RelayLinkButton href={signInURL()} variant="primary">
-                  {dictionary.common.continueWithGitHub}
+                  {common("continueWithGitHub")}
                 </RelayLinkButton>
               }
             />
@@ -96,4 +96,12 @@ export default async function APIKeySettingsPage() {
       </main>
     </>
   );
+}
+
+function apiKeyErrorMap(t: Awaited<ReturnType<typeof getTranslations>>): Record<string, string> {
+  return {
+    UNAUTHENTICATED: t("UNAUTHENTICATED"),
+    INVALID_INPUT: t("INVALID_INPUT"),
+    API_KEY_NOT_FOUND_BY_ID: t("API_KEY_NOT_FOUND_BY_ID"),
+  };
 }

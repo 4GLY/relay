@@ -2,21 +2,27 @@ import "@testing-library/jest-dom/vitest";
 import { afterEach, vi } from "vitest";
 import { cleanup } from "@testing-library/react";
 
+import enMessages from "./messages/en.json";
+
+function readMessage(namespace: string, key: string): string {
+  const path = `${namespace}.${key}`.split(".");
+  let cursor: unknown = enMessages;
+
+  for (const segment of path) {
+    if (!cursor || typeof cursor !== "object" || !(segment in cursor)) return key;
+    cursor = (cursor as Record<string, unknown>)[segment];
+  }
+
+  return typeof cursor === "string" ? cursor : key;
+}
+
 vi.mock("next-intl", () => ({
   useLocale: () => "en",
-  useTranslations: (namespace: string) => (key: string) => {
-    const messages: Record<string, string> = {
-      "Common.language.label": "Language",
-      "Common.language.apply": "Apply",
-      "Common.language.english": "English",
-      "Common.language.korean": "Korean",
-      "Shell.globalNavigation": "Global navigation",
-      "Shell.settings": "Settings",
-      "Shell.signedInFallback": "signed in",
-    };
+  useTranslations: (namespace: string) => (key: string) => readMessage(namespace, key),
+}));
 
-    return messages[`${namespace}.${key}`] ?? key;
-  },
+vi.mock("next-intl/server", () => ({
+  getTranslations: async (namespace: string) => (key: string) => readMessage(namespace, key),
 }));
 
 vi.mock("next/navigation", () => ({

@@ -1,8 +1,8 @@
-import { cookies, headers } from "next/headers";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 
 import { RELAY_API_URL, relayFetch, type RelayEnvelope } from "@/lib/api";
-import { getDictionary, resolveLocale } from "@/lib/i18n";
 import type { AuthMe } from "@/lib/onboarding";
 import { RelayCard, RelayLanguageSwitch, RelayLinkButton } from "@/components/relay";
 
@@ -29,13 +29,8 @@ function authStartURL() {
 
 export default async function HomePage() {
   const cookieStore = await cookies();
-  const headerStore = await headers();
   const me = await resolveSession(cookieStore.toString());
-  const locale = resolveLocale({
-    cookie: cookieStore.toString(),
-    acceptLanguage: headerStore.get("accept-language") ?? undefined,
-  });
-  const dictionary = getDictionary(locale);
+  const t = await getTranslations("Root");
 
   if (me?.onboarding_complete && me.default_project_id) {
     redirect(`/projects/${encodeURIComponent(me.default_project_id)}`);
@@ -47,16 +42,16 @@ export default async function HomePage() {
 
   return (
     <main className="relay-auth-entry">
-      <p className="relay-auth-eyebrow">{dictionary.root.eyebrow}</p>
-      <h1 className="relay-auth-title">{dictionary.root.title}</h1>
-      <p className="relay-auth-subtitle">{dictionary.root.subtitle}</p>
+      <p className="relay-auth-eyebrow">{t("eyebrow")}</p>
+      <h1 className="relay-auth-title">{t("title")}</h1>
+      <p className="relay-auth-subtitle">{t("subtitle")}</p>
       <RelayCard className="relay-auth-panel" aria-labelledby="entry-title">
         <h2 id="entry-title" className="relay-auth-panel-title">
-          {dictionary.root.panelTitle}
+          {t("panelTitle")}
         </h2>
-        <p className="relay-auth-panel-copy">{dictionary.root.panelCopy}</p>
+        <p className="relay-auth-panel-copy">{t("panelCopy")}</p>
         <RelayLinkButton href={authStartURL()} variant="primary">
-          {dictionary.root.signInButton}
+          {t("signInButton")}
         </RelayLinkButton>
       </RelayCard>
       <div className="relay-auth-language">

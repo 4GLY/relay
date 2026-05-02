@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import enMessages from "../messages/en.json";
+import koMessages from "../messages/ko.json";
 import {
   getDictionary,
   getDictionaryKeys,
@@ -67,6 +69,14 @@ describe("messages", () => {
     const koKeys = getDictionaryKeys(getDictionary("ko"));
 
     expect(koKeys).toEqual(enKeys);
+  });
+
+  it("keeps raw locale catalog leaf shapes and value types aligned", () => {
+    const enLeaves = getCatalogLeafTypes(enMessages);
+    const koLeaves = getCatalogLeafTypes(koMessages);
+
+    expect(koLeaves).toEqual(enLeaves);
+    expect(Object.values(enLeaves).every((type) => type === "string")).toBe(true);
   });
 
   it("keeps Task 5 product namespace shapes aligned", () => {
@@ -151,6 +161,24 @@ describe("messages", () => {
     ).toBe("Could not finish.");
   });
 });
+
+function getCatalogLeafTypes(messages: unknown) {
+  const leafTypes: Record<string, string> = {};
+
+  function walk(value: unknown, prefix: string) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      leafTypes[prefix] = typeof value;
+      return;
+    }
+
+    for (const [key, child] of Object.entries(value)) {
+      walk(child, prefix ? `${prefix}.${key}` : key);
+    }
+  }
+
+  walk(messages, "");
+  return leafTypes;
+}
 
 function getPlaceholdersByKey(dictionary: ReturnType<typeof getDictionary>) {
   const placeholdersByKey: Record<string, string[]> = {};

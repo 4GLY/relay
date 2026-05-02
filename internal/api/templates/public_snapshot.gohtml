@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{.HTMLLang}}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{.ProjectName}} — Relay snapshot</title>
-<meta property="og:title" content="{{.ProjectName}} — Relay snapshot">
+<title>{{.ProjectName}} — {{.TitleSuffix}}</title>
+<meta property="og:title" content="{{.ProjectName}} — {{.TitleSuffix}}">
 <meta property="og:description" content="{{.OGDescription}}">
 <meta property="og:image" content="{{.OGImageURL}}">
 <meta property="og:image:width" content="1200">
@@ -12,7 +12,7 @@
 <meta property="og:type" content="article">
 <meta property="og:url" content="{{.PublicURL}}">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="{{.ProjectName}} — Relay snapshot">
+<meta name="twitter:title" content="{{.ProjectName}} — {{.TitleSuffix}}">
 <meta name="twitter:description" content="{{.OGDescription}}">
 <meta name="twitter:image" content="{{.OGImageURL}}">
 <style>
@@ -131,13 +131,13 @@
 </head>
 <body>
 <div class="frame">
-  <div class="meta">Snapshot · {{.SchemaVersion}} · {{.CreatedAt}}</div>
+  <div class="meta">{{.SnapshotLabel}} · {{.SchemaVersion}} · {{.CreatedAt}}</div>
   <h1>{{.ProjectName}}</h1>
   <p class="subhead">{{.TaskSummary}}</p>
   <pre class="body-pre">{{.RenderedBody}}</pre>
   <footer>
-    <span>A Relay snapshot — captured judgment, kept honest.</span>
-    <a href="https://relay.4gly.dev" rel="noopener">Make your own at relay.4gly.dev →</a>
+    <span>{{.FooterText}}</span>
+    <a href="https://relay.4gly.dev" rel="noopener">{{.FooterCTA}}</a>
   </footer>
 </div>
 <div class="stamp" aria-hidden="true">R</div>

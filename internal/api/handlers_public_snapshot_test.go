@@ -72,11 +72,11 @@ func testPublicSnapshotHandler(token string, ogWriter services.OGImageWriter) Ha
 					"relay": {ID: projectID, Name: "relay"},
 				},
 			},
-			Notes:         &fakeNoteStore{},
-			Artifacts:     &fakeArtifactStore{},
-			Decisions:     &fakeDecisionStore{},
-			OpenQuestions: &fakeOpenQuestionStore{},
-			Packets:       &fakePacketStore{},
+			Notes:           &fakeNoteStore{},
+			Artifacts:       &fakeArtifactStore{},
+			Decisions:       &fakeDecisionStore{},
+			OpenQuestions:   &fakeOpenQuestionStore{},
+			Packets:         &fakePacketStore{},
 			PacketSnapshots: store,
 			OGImages:        ogWriter,
 			PublicBaseURL:   "https://relay.example.com",
@@ -129,6 +129,32 @@ func TestPublicSnapshotPageValidTokenReturns200WithOGMeta(t *testing.T) {
 	}
 }
 
+func TestPublicSnapshotPageKoreanRequestLocalizesChromeOnly(t *testing.T) {
+	token := "psnap_testtoken1234"
+	ogWriter := &fakeOGImageWriterHandler{
+		Images: map[string][]byte{
+			"psnap_pub1.png": {0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a},
+		},
+	}
+	handler := testPublicSnapshotHandler(token, ogWriter)
+
+	req := httptest.NewRequest(http.MethodGet, "/p/"+token, nil)
+	req.Header.Set("Accept-Language", "ko-KR,ko;q=0.9,en;q=0.8")
+	rec := httptest.NewRecorder()
+
+	handler.handlePublicSnapshotPage(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
+	}
+	assertBodyContains(t, rec.Body.Bytes(), `<html lang="ko">`)
+	assertBodyContains(t, rec.Body.Bytes(), `<title>relay — Relay 스냅샷</title>`)
+	assertBodyContains(t, rec.Body.Bytes(), `content="판단과 맥락을 담은 공개 Relay 스냅샷입니다."`)
+	assertBodyContains(t, rec.Body.Bytes(), `Relay 스냅샷 — 판단을 기록하고 맥락을 지킵니다.`)
+	assertBodyContains(t, rec.Body.Bytes(), `relay.4gly.dev에서 직접 만들기 →`)
+	assertBodyContains(t, rec.Body.Bytes(), `snapshot body text`)
+}
+
 func TestPublicSnapshotOGImageValidTokenReturnsPNG(t *testing.T) {
 	token := "psnap_testtoken1234"
 	fakePNG := []byte{0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x01, 0x02}
@@ -152,6 +178,13 @@ func TestPublicSnapshotOGImageValidTokenReturnsPNG(t *testing.T) {
 	}
 	if !bytes.Equal(rec.Body.Bytes(), fakePNG) {
 		t.Fatalf("expected fake PNG bytes, got %v", rec.Body.Bytes())
+	}
+}
+
+func assertBodyContains(t *testing.T, body []byte, want string) {
+	t.Helper()
+	if !bytes.Contains(body, []byte(want)) {
+		t.Fatalf("expected body to contain %q, got %s", want, string(body))
 	}
 }
 

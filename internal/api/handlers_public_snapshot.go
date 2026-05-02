@@ -38,9 +38,14 @@ type publicSnapshotPageData struct {
 	RenderedBody  string
 	SchemaVersion string
 	CreatedAt     string
+	HTMLLang      string
+	SnapshotLabel string
+	TitleSuffix   string
 	OGDescription string
 	OGImageURL    string
 	PublicURL     string
+	FooterText    string
+	FooterCTA     string
 }
 
 // handlePublicSnapshotPage handles GET /p/{token} (and GET /p/{token}/og.png
@@ -82,15 +87,21 @@ func (h Handler) handlePublicSnapshotPage(w http.ResponseWriter, r *http.Request
 
 	publicURL := h.services.PublicURL("/p/" + token)
 	ogImageURL := h.services.PublicURL("/p/" + token + "/og.png")
+	messages := resolvePublicSnapshotMessages(r)
 	data := publicSnapshotPageData{
 		ProjectName:   view.Project.Name,
-		TaskSummary:   firstNonEmptyString(view.Snapshot.TaskSummary, "Snapshot from Relay"),
+		TaskSummary:   firstNonEmptyString(view.Snapshot.TaskSummary, messages.DefaultTaskSummary),
 		RenderedBody:  view.Snapshot.RenderedBody,
 		SchemaVersion: view.Snapshot.SchemaVersion,
 		CreatedAt:     view.Snapshot.CreatedAt.UTC().Format(time.RFC3339),
-		OGDescription: clipForOG(view.Snapshot.RenderedBody, 160),
+		HTMLLang:      messages.HTMLLang,
+		SnapshotLabel: messages.SnapshotLabel,
+		TitleSuffix:   messages.TitleSuffix,
+		OGDescription: messages.OGDescription,
 		OGImageURL:    ogImageURL,
 		PublicURL:     publicURL,
+		FooterText:    messages.FooterText,
+		FooterCTA:     messages.FooterCTA,
 	}
 
 	var buf bytes.Buffer
@@ -219,21 +230,8 @@ func firstNonEmptyString(values ...string) string {
 	return ""
 }
 
-// clipForOG produces a single-line meta description from the rendered body.
-func clipForOG(input string, limit int) string {
-	cleaned := strings.Join(strings.Fields(strings.TrimSpace(input)), " ")
-	if len(cleaned) <= limit {
-		return cleaned
-	}
-	if limit <= 3 {
-		return cleaned[:limit]
-	}
-	return cleaned[:limit-1] + "…"
-}
-
 // html escapes for inline HTML output. We use html/template for the main
 // page; this small helper is for the static 410 page string only.
 func html(s string) string {
 	return template.HTMLEscapeString(s)
 }
-

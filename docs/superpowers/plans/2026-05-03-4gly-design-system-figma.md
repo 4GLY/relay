@@ -303,6 +303,10 @@ Expected: `{ count: 1, nodeIds: [...] }`.
 **Files:**
 - Modify: Figma pages `Overview`, `————    Guideline    ————`, `Ⓜ Makers’ Principle`
 
+Note: Task 2 only mutates `Overview` and `Ⓜ Makers’ Principle`. The Guideline
+page is part of the governance area, but its concrete absorption guide is added
+in Task 5.
+
 - [ ] **Step 1: Add Start Here frame to `Overview`**
 
 Use `mcp__codex_apps__figma._use_figma`:

@@ -111,9 +111,9 @@
   }
 
   html:lang(ko) {
-    --font-display: var(--font-lxgw-wenkai-kr), var(--font-nunito), ui-sans-serif, system-ui, sans-serif;
-    --font-sans: var(--font-lxgw-wenkai-kr), var(--font-nunito), ui-sans-serif, system-ui, sans-serif;
-    --font-mono: var(--font-lxgw-wenkai-mono-kr), var(--font-jetbrains-mono), ui-monospace, monospace;
+    --font-display: var(--font-fraunces), var(--font-lxgw-wenkai-kr), serif;
+    --font-sans: var(--font-nunito), var(--font-lxgw-wenkai-kr), ui-sans-serif, system-ui, sans-serif;
+    --font-mono: var(--font-jetbrains-mono), var(--font-lxgw-wenkai-mono-kr), ui-monospace, monospace;
   }
 
   body {

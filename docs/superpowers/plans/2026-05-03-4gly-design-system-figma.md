@@ -881,7 +881,7 @@ return { createdStyleIds: created, mutatedStyleIds: mutated };
 
 Expected: 4gly paint styles exist under `4gly/Semantic/*`.
 
-- [ ] **Step 2: Create halo effect style**
+- [ ] **Step 2: Create halo effect styles and mark legacy shadows**
 
 Use `mcp__codex_apps__figma._use_figma`:
 
@@ -897,8 +897,27 @@ if (!style) {
 } else {
   mutated.push(style.id);
 }
-style.description = "4gly elevation model: pastel halo. Prefer over generic dark drop shadows.";
+style.description = "4gly elevation model: blurred pastel halo for elevated cards. Mirrors CSS box-shadow: 0 18px 48px var(--halo).";
 style.effects = [{
+  type: "DROP_SHADOW",
+  color: { r: 0.655, g: 0.769, b: 1.0, a: 0.35 },
+  offset: { x: 0, y: 18 },
+  radius: 48,
+  spread: 0,
+  visible: true,
+  blendMode: "NORMAL"
+}];
+
+let ring = effects.find((effect) => effect.name === "4gly/Halo/Ring");
+if (!ring) {
+  ring = figma.createEffectStyle();
+  ring.name = "4gly/Halo/Ring";
+  created.push(ring.id);
+} else {
+  mutated.push(ring.id);
+}
+ring.description = "4gly ring halo for focus, selected states, and toast rim-light; not the default elevation style.";
+ring.effects = [{
   type: "DROP_SHADOW",
   color: { r: 0.655, g: 0.769, b: 1.0, a: 0.35 },
   offset: { x: 0, y: 0 },
@@ -908,10 +927,26 @@ style.effects = [{
   blendMode: "NORMAL"
 }];
 
-return { createdStyleIds: created, mutatedStyleIds: mutated };
+const legacyPrefix = "Reference: imported scaffold shadow. Do not use for new 4gly work unless reviewed. Prefer 4gly/Halo/Default or 4gly/Halo/Ring.";
+for (const effect of effects) {
+  if (!effect.name.startsWith("Shadow/")) continue;
+  if (!effect.description.startsWith(legacyPrefix)) {
+    effect.description = effect.description
+      ? `${legacyPrefix}\n\n${effect.description}`
+      : legacyPrefix;
+    mutated.push(effect.id);
+  }
+}
+
+return {
+  createdStyleIds: created,
+  mutatedStyleIds: mutated,
+  legacyShadowCount: effects.filter((effect) => effect.name.startsWith("Shadow/")).length
+};
 ```
 
-Expected: effect style `4gly/Halo/Default` exists.
+Expected: effect styles `4gly/Halo/Default` and `4gly/Halo/Ring` exist. Imported
+`Shadow/*` styles are marked as reference-only in their descriptions.
 
 - [ ] **Step 3: Add decoration policy board**
 

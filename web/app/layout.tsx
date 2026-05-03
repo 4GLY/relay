@@ -57,6 +57,35 @@ const jetbrainsMono = localFont({
   variable: "--font-jetbrains-mono",
 });
 
+const lxgwWenKaiKr = localFont({
+  src: [
+    {
+      path: "./fonts/LXGWWenKaiKR-Regular.woff2",
+      style: "normal",
+      weight: "400",
+    },
+    {
+      path: "./fonts/LXGWWenKaiKR-Medium.woff2",
+      style: "normal",
+      weight: "500",
+    },
+  ],
+  display: "swap",
+  variable: "--font-lxgw-wenkai-kr",
+});
+
+const lxgwWenKaiMonoKr = localFont({
+  src: [
+    {
+      path: "./fonts/LXGWWenKaiMonoKR-Regular.woff2",
+      style: "normal",
+      weight: "400",
+    },
+  ],
+  display: "swap",
+  variable: "--font-lxgw-wenkai-mono-kr",
+});
+
 export const metadata: Metadata = {
   title: "Relay",
   description: "A quiet engine that turns chaos into swans.",
@@ -83,7 +112,7 @@ export default async function RootLayout({
   return (
     <html
       lang={locale}
-      className={`${fraunces.variable} ${nunito.variable} ${jetbrainsMono.variable}`}
+      className={`${fraunces.variable} ${nunito.variable} ${jetbrainsMono.variable} ${lxgwWenKaiKr.variable} ${lxgwWenKaiMonoKr.variable}`}
     >
       <body
         style={{

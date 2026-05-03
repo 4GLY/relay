@@ -659,7 +659,11 @@ for (const token of tokenNames) {
   let variable = existing[name];
   if (!variable) {
     variable = figma.variables.createVariable(name, collection, "COLOR");
-    variable.scopes = ["FRAME_FILL", "SHAPE_FILL", "TEXT_FILL", "STROKE_COLOR"];
+    /* Figma rejects mixing fill-specific scopes in this file with:
+       "If ALL_FILLS is set, other fill scopes cannot be set".
+       Use explicit fill picker coverage here; Task 4 paint/effect styles
+       cover designer-facing style discoverability for other uses. */
+    variable.scopes = ["ALL_FILLS"];
     created.push(variable.id);
   } else {
     mutated.push(variable.id);
@@ -687,6 +691,12 @@ Use `mcp__codex_apps__figma._use_figma`:
 const page = figma.root.children.find((p) => p.name === " ┗ Color - Semantic");
 if (!page) throw new Error("Color - Semantic page not found");
 await figma.setCurrentPageAsync(page);
+
+const existingBoard = page.findOne((node) => node.name === "4gly semantic tokens");
+if (existingBoard) {
+  return { createdNodeIds: [], mutatedNodeIds: [], existingNodeId: existingBoard.id };
+}
+
 await figma.loadFontAsync({ family: "Inter", style: "Regular" });
 await figma.loadFontAsync({ family: "Inter", style: "Semi Bold" });
 

@@ -23,12 +23,20 @@ function parseRedirectTo(
   }
 }
 
+function isLocalHost(host: string): boolean {
+  const hostname = host.split(":")[0]?.toLowerCase();
+  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "0.0.0.0" || hostname === "::1";
+}
+
 function publicOrigin(request: Request): URL {
   const requestUrl = new URL(request.url);
   const forwardedHost = request.headers.get("x-forwarded-host")?.split(",")[0]?.trim();
   const forwardedProto = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
   const host = forwardedHost || request.headers.get("host") || requestUrl.host;
-  const proto = forwardedProto || requestUrl.protocol.replace(":", "");
+  const requestProto = requestUrl.protocol.replace(":", "");
+  const proto = forwardedProto === "https" || (!!forwardedHost && !isLocalHost(host) && requestProto !== "https")
+    ? "https"
+    : forwardedProto || requestProto;
 
   return new URL(`${proto}://${host}`);
 }

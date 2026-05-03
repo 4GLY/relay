@@ -1,63 +1,46 @@
-import { en } from "./i18n/dictionaries/en";
-import { ko } from "./i18n/dictionaries/ko";
-import type { Dictionary, Locale } from "./i18n/types";
+import enMessages from "../messages/en.json";
+import koMessages from "../messages/ko.json";
+import {
+  RELAY_LOCALE_COOKIE,
+  SUPPORTED_LOCALES,
+  type Locale,
+} from "../i18n/routing";
+import { resolveLocaleFromHeaders } from "../i18n/locale";
 
-export type { Dictionary, Locale } from "./i18n/types";
+export { RELAY_LOCALE_COOKIE, SUPPORTED_LOCALES };
+export type { Locale };
 
-export const RELAY_LOCALE_COOKIE = "relay_locale";
-export const SUPPORTED_LOCALES: Locale[] = ["en", "ko"];
+type Messages = typeof enMessages;
 
-const dictionaries: Record<Locale, Dictionary> = {
-  en,
-  ko,
+export type Dictionary = Messages & {
+  common: Messages["Common"];
+  root: Messages["Root"];
+  errors: Record<string, string>;
+  onboarding: Messages["Onboarding"];
+  settings: Messages["Settings"];
 };
 
-function parseCookieValue(cookieHeader: string | undefined, name: string): string | undefined {
-  if (!cookieHeader) return undefined;
-  for (const segment of cookieHeader.split(";")) {
-    const [rawName, ...rawValue] = segment.trim().split("=");
-    if (rawName !== name) continue;
-    return decodeURIComponent(rawValue.join("="));
-  }
-  return undefined;
+function createDictionary(messages: Messages): Dictionary {
+  return {
+    ...messages,
+    common: messages.Common,
+    root: messages.Root,
+    errors: messages.Errors,
+    onboarding: messages.Onboarding,
+    settings: messages.Settings,
+  };
 }
 
-function normalizeLocale(value: string | undefined | null): Locale | null {
-  if (!value) return null;
-  const candidate = value.trim().toLowerCase();
-  if (candidate === "ko" || candidate.startsWith("ko-")) return "ko";
-  if (candidate === "en" || candidate.startsWith("en-")) return "en";
-  return null;
-}
-
-function parseAcceptLanguage(header: string | undefined): string[] {
-  if (!header) return [];
-  return header
-    .split(",")
-    .map((part) => {
-      const [tag, ...params] = part.trim().split(";");
-      const qValue = params.find((param) => param.trim().startsWith("q="));
-      const q = qValue ? Number.parseFloat(qValue.trim().slice(2)) : 1;
-      return { tag, q: Number.isFinite(q) ? q : 0 };
-    })
-    .filter((item) => item.tag.length > 0)
-    .sort((left, right) => right.q - left.q)
-    .map((item) => item.tag);
-}
+const dictionaries: Record<Locale, Dictionary> = {
+  en: createDictionary(enMessages),
+  ko: createDictionary(koMessages),
+};
 
 export function resolveLocale(input: {
   cookie?: string;
   acceptLanguage?: string;
 }): Locale {
-  const cookieLocale = normalizeLocale(parseCookieValue(input.cookie, RELAY_LOCALE_COOKIE));
-  if (cookieLocale) return cookieLocale;
-
-  for (const candidate of parseAcceptLanguage(input.acceptLanguage)) {
-    const locale = normalizeLocale(candidate);
-    if (locale) return locale;
-  }
-
-  return "en";
+  return resolveLocaleFromHeaders(input);
 }
 
 export function getDictionary(locale: Locale): Dictionary {
@@ -88,7 +71,8 @@ export function translateErrorMessage(options: {
   locale: Locale;
   knownErrors?: Record<string, string>;
 }): string {
-  const knownErrors = options.knownErrors ?? {};
+  const knownErrors: Record<string, string> =
+    options.knownErrors ?? getDictionary(options.locale).errors;
   const message =
     options.error instanceof Error
       ? options.error.message
@@ -106,5 +90,29 @@ export function translateErrorMessage(options: {
   if (code && knownErrors[code]) return knownErrors[code];
   if (message && knownErrors[message]) return knownErrors[message];
   if (message) return message;
-  return options.fallback || getDictionary(options.locale).common.unknownError;
+  return options.fallback || getDictionary(options.locale).Common.unknownError;
+}
+
+export function translateKnownError(options: {
+  error: unknown;
+  fallback: string;
+  knownErrors: Record<string, string>;
+}): string {
+  const code =
+    options.error &&
+    typeof options.error === "object" &&
+    "code" in options.error &&
+    typeof options.error.code === "string"
+      ? options.error.code
+      : undefined;
+  const message =
+    options.error instanceof Error
+      ? options.error.message
+      : typeof options.error === "string"
+        ? options.error
+        : "";
+
+  if (code && options.knownErrors[code]) return options.knownErrors[code];
+  if (message && options.knownErrors[message]) return options.knownErrors[message];
+  return options.fallback;
 }

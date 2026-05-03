@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { getLocale, getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 
 import { RELAY_API_URL, relayFetch, type RelayEnvelope } from "@/lib/api";
@@ -22,6 +23,8 @@ export const dynamic = "force-dynamic";
 type PageParams = {
   projectId: string;
 };
+
+type ProductT = Awaited<ReturnType<typeof getTranslations>>;
 
 async function resolveSession(cookieHeader: string): Promise<AuthMe | null> {
   const res = await relayFetch("/v1/auth/me", {
@@ -50,10 +53,12 @@ export default async function PacketBuilderPage({
   const { projectId } = await params;
   const cookieStore = await cookies();
   const cookieHeader = cookieStore.toString();
+  const locale = await getLocale();
+  const t = await getTranslations("PacketBuilder");
   const me = await resolveSession(cookieHeader);
 
   if (!me) {
-    return <SignInRequired projectId={projectId} />;
+    return <SignInRequired projectId={projectId} t={t} />;
   }
 
   if (!me.onboarding_complete) {
@@ -66,18 +71,22 @@ export default async function PacketBuilderPage({
       headers: { cookie: cookieHeader },
     });
   } catch (error) {
-    return <PacketBuilderFallback projectId={projectId} error={error} userDisplayName={me.display_name} />;
+    return <PacketBuilderFallback projectId={projectId} error={error} userDisplayName={me.display_name} t={t} />;
   }
 
-  return <PacketBuilder snapshot={snapshot} userDisplayName={me.display_name} />;
+  return <PacketBuilder snapshot={snapshot} userDisplayName={me.display_name} t={t} locale={locale} />;
 }
 
 function PacketBuilder({
   snapshot,
   userDisplayName,
+  t,
+  locale,
 }: {
   snapshot: PacketBuilderSnapshot;
   userDisplayName?: string;
+  t: ProductT;
+  locale: string;
 }) {
   const evidenceCount =
     snapshot.styleCues.length +
@@ -85,7 +94,7 @@ function PacketBuilder({
     snapshot.supportingDecisions.length +
     snapshot.supportingQuestions.length +
     snapshot.supportingArtifacts.length;
-  const sources = packetSources(snapshot);
+  const sources = packetSources(snapshot, t);
   const previewTitle = snapshot.taskSummary || `${snapshot.type} · ${snapshot.target}`;
   const publicSnapshotHref =
     snapshot.publicReadable && snapshot.publicToken ? `/p/${encodeURIComponent(snapshot.publicToken)}` : undefined;
@@ -94,112 +103,111 @@ function PacketBuilder({
     <>
       <RelayTopRail
         activeStep="Transform"
-        userLabel={userDisplayName ?? "signed in"}
+        userLabel={userDisplayName ?? t("signedInFallback")}
         projectHref={`/projects/${encodeURIComponent(snapshot.projectId)}`}
       />
       <main className="relay-packet-page">
         <RelayPageHead
-          eyebrow={`${snapshot.projectId} · Packet Builder`}
-          title="Compose a handoff."
+          eyebrow={t("eyebrow", { projectId: snapshot.projectId })}
+          title={t("title")}
           titleId="packet-title"
           actions={
             <>
               <button type="button" className="relay-action" data-variant="secondary" disabled>
-                Save draft
+                {t("actions.saveDraft")}
               </button>
               <RelayLinkButton href={`/projects/${encodeURIComponent(snapshot.projectId)}/graph`} variant="secondary">
-                Decision Graph
+                {t("actions.decisionGraph")}
               </RelayLinkButton>
               {publicSnapshotHref ? (
                 <RelayLinkButton href={publicSnapshotHref} variant="primary">
-                  Open public snapshot →
+                  {t("actions.openPublicSnapshot")}
                 </RelayLinkButton>
               ) : (
                 <span className="relay-action" data-variant="secondary" aria-disabled="true">
-                  Build snapshot →
+                  {t("actions.buildSnapshot")}
                 </span>
               )}
             </>
           }
         />
 
-        <section className="relay-summary-grid" aria-label="Packet metadata">
-          <RelayMetricTile label="Snapshot" value={snapshot.snapshotId} />
-          <RelayMetricTile label="Target" value={snapshot.target} />
-          <RelayMetricTile label="Evidence" value={`${evidenceCount}`} />
-          <RelayMetricTile label="Visibility" value={snapshot.publicReadable ? "public" : "private"} />
+        <section className="relay-summary-grid" aria-label={t("labels.packetMetadata")}>
+          <RelayMetricTile label={t("labels.snapshot")} value={snapshot.snapshotId} />
+          <RelayMetricTile label={t("labels.target")} value={snapshot.target} />
+          <RelayMetricTile label={t("labels.evidence")} value={`${evidenceCount}`} />
+          <RelayMetricTile label={t("labels.visibility")} value={snapshot.publicReadable ? t("labels.public") : t("labels.private")} />
         </section>
 
         <section className="relay-packet-builder-grid">
-          <RelayCard className="relay-packet-composition" aria-label="Packet composition">
-            <span className="relay-card-kicker">cover note · Fraunces italic</span>
+          <RelayCard className="relay-packet-composition" aria-label={t("labels.packetComposition")}>
+            <span className="relay-card-kicker">{t("labels.coverNote")}</span>
             <textarea
               readOnly
               value={previewTitle}
-              aria-label="Packet cover note"
+              aria-label={t("labels.packetCoverNote")}
               className="relay-packet-cover-note"
             />
 
-            <section className="relay-packet-source-section" aria-label="Included sources">
-              <span className="relay-card-kicker">included sources · {sources.length}</span>
+            <section className="relay-packet-source-section" aria-label={t("labels.includedSources", { count: sources.length })}>
+              <span className="relay-card-kicker">{t("labels.includedSources", { count: sources.length })}</span>
               {sources.length > 0 ? (
                 <div className="relay-packet-source-list">
                   {sources.map((source) => (
-                    <SourceRow key={source.id} kind={source.kind} label={source.label} />
+                    <SourceRow key={source.id} kind={source.kind} label={source.label} t={t} />
                   ))}
                 </div>
               ) : (
-                <div className="relay-packet-dropzone">No sources were selected for this packet snapshot.</div>
+                <div className="relay-packet-dropzone">{t("empty.noSources")}</div>
               )}
             </section>
 
-            <div className="relay-packet-dropzone">Drop a trace, note, or artifact here. Or pick from the Inspector.</div>
+            <div className="relay-packet-dropzone">{t("empty.dropzone")}</div>
 
             <details open className="relay-packet-details">
-              <summary className="relay-details-summary">Rendered packet body</summary>
-              <pre className="relay-packet-body">{snapshot.renderedBody || "No rendered packet body."}</pre>
+              <summary className="relay-details-summary">{t("labels.renderedPacketBody")}</summary>
+              <pre className="relay-packet-body">{snapshot.renderedBody || t("empty.noRenderedBody")}</pre>
             </details>
           </RelayCard>
 
-          <aside className="relay-packet-preview-column" aria-label="Packet preview">
-            <span className="relay-card-kicker">snapshot preview</span>
+          <aside className="relay-packet-preview-column" aria-label={t("labels.packetPreview")}>
+            <span className="relay-card-kicker">{t("labels.snapshotPreview")}</span>
             <RelayCard className="relay-packet-preview-card">
               <div className="relay-packet-preview-header">
                 <div className="relay-card-kicker">{snapshot.snapshotId}</div>
                 <h2 className="relay-packet-preview-title">{previewTitle}</h2>
                 <p className="relay-packet-preview-meta">
-                  {snapshot.styleCues.length} heuristics ·{" "}
-                  {snapshot.supportingDecisions.length + snapshot.supportingQuestions.length} traces ·{" "}
-                  {snapshot.supportingNotes.length + snapshot.supportingArtifacts.length} sources
+                  {snapshot.styleCues.length} {t("labels.heuristics")} ·{" "}
+                  {snapshot.supportingDecisions.length + snapshot.supportingQuestions.length} {t("labels.traces")} ·{" "}
+                  {snapshot.supportingNotes.length + snapshot.supportingArtifacts.length} {t("labels.sources")}
                 </p>
               </div>
               <div className="relay-packet-preview-body">
-                <span className="relay-card-kicker">recipient</span>
+                <span className="relay-card-kicker">{t("labels.recipient")}</span>
                 <span className="relay-mono-value">{snapshot.target}</span>
-                <span className="relay-card-kicker relay-kicker-spaced">visibility</span>
+                <span className="relay-card-kicker relay-kicker-spaced">{t("labels.visibilityKicker")}</span>
                 <span className="relay-mono-value">
-                  {snapshot.publicReadable ? "Public link" : "Private workspace"}
+                  {snapshot.publicReadable ? t("labels.publicLink") : t("labels.privateWorkspace")}
                 </span>
-                <span className="relay-card-kicker relay-kicker-spaced">created</span>
-                <span className="relay-mono-value">{snapshot.createdAt}</span>
+                <span className="relay-card-kicker relay-kicker-spaced">{t("labels.created")}</span>
+                <span className="relay-mono-value">{formatDate(snapshot.createdAt, locale)}</span>
               </div>
             </RelayCard>
 
             <div className="relay-packet-inspector">
               <details>
-                <summary className="relay-details-summary">Source evidence</summary>
-                <EvidenceList title="Style cues" items={snapshot.styleCues.map((item) => item.canonicalText || item.heuristicId)} />
-                <EvidenceList title="Notes" items={snapshot.supportingNotes.map((item) => item.excerpt)} />
-                <EvidenceList title="Decisions" items={snapshot.supportingDecisions.map((item) => item.summary)} />
-                <EvidenceList title="Questions" items={snapshot.supportingQuestions.map((item) => item.summary)} />
-                <EvidenceList title="Artifacts" items={snapshot.supportingArtifacts.map((item) => item.sourcePath || item.artifactId)} />
+                <summary className="relay-details-summary">{t("labels.sourceEvidence")}</summary>
+                <EvidenceList title={t("labels.styleCues")} items={snapshot.styleCues.map((item) => item.canonicalText || item.heuristicId)} t={t} />
+                <EvidenceList title={t("labels.notes")} items={snapshot.supportingNotes.map((item) => item.excerpt)} t={t} />
+                <EvidenceList title={t("labels.decisions")} items={snapshot.supportingDecisions.map((item) => item.summary)} t={t} />
+                <EvidenceList title={t("labels.questions")} items={snapshot.supportingQuestions.map((item) => item.summary)} t={t} />
+                <EvidenceList title={t("labels.artifacts")} items={snapshot.supportingArtifacts.map((item) => item.sourcePath || item.artifactId)} t={t} />
               </details>
 
               <details>
-                <summary className="relay-details-summary">Publish controls</summary>
+                <summary className="relay-details-summary">{t("labels.publishControls")}</summary>
                 <p className="relay-quiet-copy">
-                  Publish and revoke remain on the admin snapshot API for this slice. This builder reads the
-                  latest snapshot and shows the public route when the snapshot is already published.
+                  {t("publishCopy")}
                 </p>
               </details>
             </div>
@@ -210,32 +218,32 @@ function PacketBuilder({
   );
 }
 
-function packetSources(snapshot: PacketBuilderSnapshot) {
+function packetSources(snapshot: PacketBuilderSnapshot, t: ProductT) {
   return [
     ...snapshot.styleCues.map((item) => ({
       id: `style:${item.heuristicId}`,
       kind: "swan" as const,
-      label: `Heuristic · ${item.canonicalText || item.heuristicKey || item.heuristicId}`,
+      label: `${t("sourceKind.heuristic")} · ${item.canonicalText || item.heuristicKey || item.heuristicId}`,
     })),
     ...snapshot.supportingDecisions.map((item) => ({
       id: `decision:${item.decisionId}`,
       kind: "trace" as const,
-      label: `Decision · ${item.summary}`,
+      label: `${t("sourceKind.decision")} · ${item.summary}`,
     })),
     ...snapshot.supportingQuestions.map((item) => ({
       id: `question:${item.questionId}`,
       kind: "trace" as const,
-      label: `Question · ${item.summary}`,
+      label: `${t("sourceKind.question")} · ${item.summary}`,
     })),
     ...snapshot.supportingNotes.map((item) => ({
       id: `note:${item.noteId}`,
       kind: "note" as const,
-      label: `Note · ${item.source || item.excerpt}`,
+      label: `${t("sourceKind.note")} · ${item.source || item.excerpt}`,
     })),
     ...snapshot.supportingArtifacts.map((item) => ({
       id: `artifact:${item.artifactId}`,
       kind: "artifact" as const,
-      label: `Artifact · ${item.sourcePath || item.artifactId}`,
+      label: `${t("sourceKind.artifact")} · ${item.sourcePath || item.artifactId}`,
     })),
   ];
 }
@@ -243,20 +251,22 @@ function packetSources(snapshot: PacketBuilderSnapshot) {
 function SourceRow({
   kind,
   label,
+  t,
 }: {
   kind: "swan" | "trace" | "note" | "artifact";
   label: string;
+  t: ProductT;
 }) {
   return (
     <div className="relay-packet-source-row">
       <span className="relay-packet-source-dot" data-kind={kind} />
       <span className="relay-packet-source-label">{label}</span>
-      <span className="relay-packet-source-remove">remove</span>
+      <span className="relay-packet-source-remove">{t("sourceKind.remove")}</span>
     </div>
   );
 }
 
-function EvidenceList({ title, items }: { title: string; items: string[] }) {
+function EvidenceList({ title, items, t }: { title: string; items: string[]; t: ProductT }) {
   return (
     <section className="relay-evidence-section">
       <h2 className="relay-evidence-title">{title}</h2>
@@ -269,22 +279,33 @@ function EvidenceList({ title, items }: { title: string; items: string[] }) {
           ))}
         </ul>
       ) : (
-        <p className="relay-quiet-copy">None.</p>
+        <p className="relay-quiet-copy">{t("empty.none")}</p>
       )}
     </section>
   );
 }
 
-function SignInRequired({ projectId }: { projectId: string }) {
+function formatDate(value: string, locale: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat(locale, {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
+function SignInRequired({ projectId, t }: { projectId: string; t: ProductT }) {
   return (
     <main className="relay-empty-page">
       <RelayPageHead
-        eyebrow="Packet Builder"
-        title="Sign in first"
-        copy="Packet snapshots are private to the project workspace."
+        eyebrow={t("signIn.eyebrow")}
+        title={t("signIn.title")}
+        copy={t("signIn.copy")}
         actions={
           <RelayLinkButton href={signInURL(projectId)} variant="primary">
-            Continue with GitHub
+            {t("actions.continueWithGitHub")}
           </RelayLinkButton>
         }
       />
@@ -296,23 +317,25 @@ function PacketBuilderFallback({
   projectId,
   error,
   userDisplayName,
+  t,
 }: {
   projectId: string;
   error: unknown;
   userDisplayName?: string;
+  t: ProductT;
 }) {
   const code = error instanceof PacketBuilderError ? error.code : "UNKNOWN";
-  const message = error instanceof Error ? error.message : "Packet Builder failed to load.";
+  const message = error instanceof Error ? error.message : t("error.fallbackMessage");
   const noSnapshot = code === "NOT_FOUND";
   return (
     <main className="relay-empty-page">
       <RelayPageHead
-        eyebrow={`Packet Builder · ${userDisplayName ?? "signed in"}`}
-        title={noSnapshot ? "No packet yet" : "Couldn’t open packet"}
-        copy={noSnapshot ? "Build a packet snapshot first, then return here to inspect it." : undefined}
+        eyebrow={t("error.eyebrow", { user: userDisplayName ?? t("error.signedInFallback") })}
+        title={noSnapshot ? t("error.noSnapshotTitle") : t("error.title")}
+        copy={noSnapshot ? t("error.noSnapshotCopy") : undefined}
         actions={
           <RelayLinkButton href={`/projects/${encodeURIComponent(projectId)}`} variant="primary">
-            Project Explorer
+            {t("actions.projectExplorer")}
           </RelayLinkButton>
         }
       />

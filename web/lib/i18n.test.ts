@@ -1,10 +1,14 @@
 import { describe, expect, it } from "vitest";
 
+import enMessages from "../messages/en.json";
+import koMessages from "../messages/ko.json";
 import {
   getDictionary,
   getDictionaryKeys,
   RELAY_LOCALE_COOKIE,
   resolveLocale,
+  translateErrorMessage,
+  translateKnownError,
 } from "./i18n";
 
 describe("resolveLocale", () => {
@@ -36,15 +40,189 @@ describe("resolveLocale", () => {
       }),
     ).toBe("en");
   });
-});
 
-describe("dictionaries", () => {
-  it("exposes both english and korean dictionaries", () => {
-    expect(getDictionary("en").root.title).toBe("Relay");
-    expect(getDictionary("ko").apiKeys.client.title).toBe("Relay API 키");
-  });
-
-  it("keeps english and korean key shapes aligned", () => {
-    expect(getDictionaryKeys(getDictionary("ko"))).toEqual(getDictionaryKeys(getDictionary("en")));
+  it("ignores zero-quality Accept-Language values", () => {
+    expect(resolveLocale({ acceptLanguage: "fr, en;q=0, ko;q=0" })).toBe("en");
+    expect(resolveLocale({ acceptLanguage: "fr, en;q=0, ko;q=0.5" })).toBe("ko");
   });
 });
+
+describe("messages", () => {
+  it("exposes the initial next-intl message namespaces", () => {
+    expect(getDictionary("en").Common.unknownError).toBe("Something went wrong.");
+    expect(getDictionary("en").Root.title).toBe("Relay");
+    expect(getDictionary("en").Settings.ProviderCredentials.client.title).toBe("Claude provider");
+    expect(getDictionary("en").Settings.ApiKeys.client.title).toBe("Relay API keys");
+    expect(getDictionary("en").Errors.UNAUTHENTICATED).toBe("Sign in again to continue.");
+    expect(getDictionary("ko").Common.language.current).toBe("현재 언어: {locale}");
+    expect(getDictionary("ko").Root.signInButton).toBe("GitHub로 계속하기");
+    expect(getDictionary("ko").Settings.ProviderCredentials.page.signInTitle).toBe(
+      "먼저 로그인하세요",
+    );
+    expect(getDictionary("ko").Errors.API_KEY_NOT_FOUND_BY_ID).toBe(
+      "해당 API 키를 더 이상 찾을 수 없습니다.",
+    );
+  });
+
+  it("keeps english and korean message shapes aligned", () => {
+    const enKeys = getDictionaryKeys(getDictionary("en"));
+    const koKeys = getDictionaryKeys(getDictionary("ko"));
+
+    expect(koKeys).toEqual(enKeys);
+  });
+
+  it("keeps raw locale catalog leaf shapes and value types aligned", () => {
+    const enLeaves = getCatalogLeafTypes(enMessages);
+    const koLeaves = getCatalogLeafTypes(koMessages);
+
+    expect(koLeaves).toEqual(enLeaves);
+    expect(Object.values(enLeaves).every((type) => type === "string")).toBe(true);
+  });
+
+  it("keeps Task 5 product namespace shapes aligned", () => {
+    const productNamespaces = /^(ProjectExplorer|Traces|DecisionGraph|PacketBuilder|StyleMemory)\./;
+    const enKeys = getDictionaryKeys(getDictionary("en")).filter((key) =>
+      productNamespaces.test(key),
+    );
+    const koKeys = getDictionaryKeys(getDictionary("ko")).filter((key) =>
+      productNamespaces.test(key),
+    );
+
+    expect(koKeys).toEqual(enKeys);
+    expect(enKeys.length).toBeGreaterThan(100);
+  });
+
+  it("keeps Task 5 Korean product copy free of accidental mixed generic terms", () => {
+    const task5Namespaces = [
+      "ProjectExplorer",
+      "Traces",
+      "DecisionGraph",
+      "PacketBuilder",
+      "StyleMemory",
+    ];
+    const forbiddenFragments = [
+      "Heuristic",
+      "Packet 메타데이터",
+      "first revision",
+      "judgment trace",
+      "curator",
+      "scope",
+      "any",
+      "hero",
+      "Project Explorer",
+      "Decision Graph",
+      "Packet Builder",
+      "Style Memory",
+    ];
+    const violations: string[] = [];
+
+    for (const namespace of task5Namespaces) {
+      collectForbiddenFragments(
+        getDictionary("ko")[namespace as keyof ReturnType<typeof getDictionary>],
+        namespace,
+        forbiddenFragments,
+        violations,
+      );
+    }
+
+    expect(violations).toEqual([]);
+  });
+
+  it("keeps ICU-style placeholders aligned across locales", () => {
+    const enPlaceholders = getPlaceholdersByKey(getDictionary("en"));
+    const koPlaceholders = getPlaceholdersByKey(getDictionary("ko"));
+
+    expect(koPlaceholders).toEqual(enPlaceholders);
+    expect(enPlaceholders["Common.language.current"]).toEqual(["locale"]);
+  });
+
+  it("keeps lowercase aliases for legacy callers", () => {
+    expect(getDictionary("en").common.unknownError).toBe(getDictionary("en").Common.unknownError);
+    expect(getDictionary("ko").root.subtitle).toBe(getDictionary("ko").Root.subtitle);
+  });
+
+  it("translates known errors from the core message map by default", () => {
+    expect(
+      translateErrorMessage({
+        error: { code: "INVALID_INPUT" },
+        fallback: "",
+        locale: "ko",
+      }),
+    ).toBe("입력값을 확인한 뒤 다시 시도하세요.");
+  });
+
+  it("falls back instead of leaking unknown server error messages", () => {
+    expect(
+      translateKnownError({
+        error: new Error("raw english server detail"),
+        fallback: "Could not finish.",
+        knownErrors: { INVALID_INPUT: "Check the input." },
+      }),
+    ).toBe("Could not finish.");
+  });
+});
+
+function getCatalogLeafTypes(messages: unknown) {
+  const leafTypes: Record<string, string> = {};
+
+  function walk(value: unknown, prefix: string) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      leafTypes[prefix] = typeof value;
+      return;
+    }
+
+    for (const [key, child] of Object.entries(value)) {
+      walk(child, prefix ? `${prefix}.${key}` : key);
+    }
+  }
+
+  walk(messages, "");
+  return leafTypes;
+}
+
+function getPlaceholdersByKey(dictionary: ReturnType<typeof getDictionary>) {
+  const placeholdersByKey: Record<string, string[]> = {};
+
+  function walk(value: unknown, prefix: string) {
+    if (typeof value === "string") {
+      const placeholders = [...value.matchAll(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g)].map(
+        (match) => match[1],
+      );
+      if (placeholders.length > 0) {
+        placeholdersByKey[prefix] = [...new Set(placeholders)].sort();
+      }
+      return;
+    }
+
+    if (!value || typeof value !== "object" || Array.isArray(value)) return;
+
+    for (const [key, child] of Object.entries(value)) {
+      walk(child, prefix ? `${prefix}.${key}` : key);
+    }
+  }
+
+  walk(dictionary, "");
+  return placeholdersByKey;
+}
+
+function collectForbiddenFragments(
+  value: unknown,
+  path: string,
+  forbiddenFragments: string[],
+  violations: string[],
+) {
+  if (typeof value === "string") {
+    for (const fragment of forbiddenFragments) {
+      if (value.includes(fragment)) {
+        violations.push(`${path}: ${fragment}`);
+      }
+    }
+    return;
+  }
+
+  if (!value || typeof value !== "object" || Array.isArray(value)) return;
+
+  for (const [key, child] of Object.entries(value)) {
+    collectForbiddenFragments(child, `${path}.${key}`, forbiddenFragments, violations);
+  }
+}

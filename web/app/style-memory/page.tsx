@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 
 import {
@@ -53,6 +54,8 @@ export default async function StyleMemoryPage({
   const params = await searchParams;
   const cookieStore = await cookies();
   const cookieHeader = cookieStore.toString();
+  const t = await getTranslations("StyleMemory.page");
+  const actions = await getTranslations("StyleMemory.actions");
 
   const me = await resolveSession(cookieHeader);
   if (!me) {
@@ -65,7 +68,7 @@ export default async function StyleMemoryPage({
   const projectId = (params.project ?? "").trim();
 
   if (!projectId) {
-    return <MissingProject userDisplayName={me.display_name} />;
+    return <MissingProject userDisplayName={me.display_name} t={t} />;
   }
 
   const headers: HeadersInit = { cookie: cookieHeader };
@@ -76,7 +79,14 @@ export default async function StyleMemoryPage({
   ]);
 
   if (pendingResult.status === "rejected") {
-    return <FullPageError reason={String(pendingResult.reason)} projectId={projectId} />;
+    return (
+      <FullPageError
+        reason={String(pendingResult.reason)}
+        projectId={projectId}
+        t={t}
+        retryLabel={actions("retry")}
+      />
+    );
   }
 
   const initialPending = pendingResult.value.items;
@@ -103,17 +113,23 @@ export default async function StyleMemoryPage({
   );
 }
 
-function MissingProject({ userDisplayName }: { userDisplayName?: string }) {
+function MissingProject({
+  userDisplayName,
+  t,
+}: {
+  userDisplayName?: string;
+  t: Awaited<ReturnType<typeof getTranslations>>;
+}) {
   return (
     <main className="relay-empty-page">
       <RelayPageHead
-        eyebrow={<>Style Memory · {userDisplayName ?? "signed in"}</>}
-        title="Pick a project"
+        eyebrow={t("missingProjectEyebrow", { user: userDisplayName ?? t("signedInFallback") })}
+        title={t("missingProjectTitle")}
         copy={
           <>
-            Style Memory needs a project to read proposals from. Add{" "}
-            <code className="relay-inline-code">?project=&lt;id&gt;</code> to the URL, or finish
-            onboarding to land here automatically.
+            {t("missingProjectCopyPrefix")}{" "}
+            <code className="relay-inline-code">?project=&lt;id&gt;</code>
+            {" "}{t("missingProjectCopySuffix")}
           </>
         }
       />
@@ -124,16 +140,20 @@ function MissingProject({ userDisplayName }: { userDisplayName?: string }) {
 function FullPageError({
   reason,
   projectId,
+  t,
+  retryLabel,
 }: {
   reason: string;
   projectId: string;
+  t: Awaited<ReturnType<typeof getTranslations>>;
+  retryLabel: string;
 }) {
   return (
     <main className="relay-empty-page">
       <RelayPageKicker className="relay-danger-text">
-        Couldn’t load proposals
+        {t("loadErrorKicker")}
       </RelayPageKicker>
-      <RelayEmptyState title="Something is wrong with the queue right now." glyph="!">
+      <RelayEmptyState title={t("loadErrorTitle")} glyph="!">
       <p className="relay-error-pre">
         {reason}
       </p>
@@ -141,7 +161,7 @@ function FullPageError({
         href={`/style-memory?project=${encodeURIComponent(projectId)}`}
         variant="primary"
       >
-        Retry
+        {retryLabel}
       </RelayLinkButton>
       </RelayEmptyState>
     </main>

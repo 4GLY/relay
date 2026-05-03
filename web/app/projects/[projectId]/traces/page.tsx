@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { getLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -29,6 +30,8 @@ type PageParams = {
 type PageSearchParams = {
   trace?: string;
 };
+
+type ProductT = Awaited<ReturnType<typeof getTranslations>>;
 
 async function resolveSession(cookieHeader: string): Promise<AuthMe | null> {
   const res = await relayFetch("/v1/auth/me", {
@@ -61,10 +64,12 @@ export default async function TraceBrowserPage({
   const selectedTraceId = query?.trace;
   const cookieStore = await cookies();
   const cookieHeader = cookieStore.toString();
+  const locale = await getLocale();
+  const t = await getTranslations("Traces");
   const me = await resolveSession(cookieHeader);
 
   if (!me) {
-    return <SignInRequired projectId={projectId} />;
+    return <SignInRequired projectId={projectId} t={t} />;
   }
 
   if (!me.onboarding_complete) {
@@ -79,7 +84,7 @@ export default async function TraceBrowserPage({
     });
     traces = result.items;
   } catch (error) {
-    return <TraceBrowserError projectId={projectId} error={error} userDisplayName={me.display_name} />;
+    return <TraceBrowserError projectId={projectId} error={error} userDisplayName={me.display_name} t={t} />;
   }
 
   return (
@@ -88,6 +93,8 @@ export default async function TraceBrowserPage({
       traces={traces}
       selectedTraceId={selectedTraceId}
       userDisplayName={me.display_name}
+      t={t}
+      locale={locale}
     />
   );
 }
@@ -97,19 +104,23 @@ function TraceBrowser({
   traces,
   selectedTraceId,
   userDisplayName,
+  t,
+  locale,
 }: {
   projectId: string;
   traces: JudgmentTrace[];
   selectedTraceId?: string;
   userDisplayName?: string;
+  t: ProductT;
+  locale: string;
 }) {
   const selectedTrace =
     traces.find((trace) => trace.traceId === selectedTraceId) ?? traces[0];
   const tabs = [
-    { label: "All", count: traces.length, active: true },
-    { label: "Decisions", count: countByArtifact(traces, ["decision", "style_memory", "heuristic"]) },
-    { label: "Open questions", count: countByArtifact(traces, ["question", "open_question"]) },
-    { label: "Notes", count: countByArtifact(traces, ["note", "design_doc", "doc"]) },
+    { label: t("tabs.all"), count: traces.length, active: true },
+    { label: t("tabs.decisions"), count: countByArtifact(traces, ["decision", "style_memory", "heuristic"]) },
+    { label: t("tabs.openQuestions"), count: countByArtifact(traces, ["question", "open_question"]) },
+    { label: t("tabs.notes"), count: countByArtifact(traces, ["note", "design_doc", "doc"]) },
   ];
 
   return (
@@ -117,34 +128,34 @@ function TraceBrowser({
       activeStep="Dissect"
       userLabel={userDisplayName}
       projectHref={`/projects/${encodeURIComponent(projectId)}`}
-      railItems={projectRailItems(projectId, "traces", traces.length)}
+      railItems={projectRailItems(projectId, "traces", t, traces.length)}
     >
       <RelayPageHead
-        title={`${traces.length} trace${traces.length === 1 ? "" : "s"} captured.`}
+        title={t(traces.length === 1 ? "titleOne" : "titleMany", { count: traces.length })}
         titleId="trace-title"
-        eyebrow={`${projectId} · Judgment Traces`}
+        eyebrow={t("eyebrow", { projectId })}
         actions={
           <>
             <RelayLinkButton href={`/projects/${encodeURIComponent(projectId)}`} variant="secondary">
-              Project Explorer
+              {t("actions.projectExplorer")}
             </RelayLinkButton>
             <RelayLinkButton href={`/style-memory?project=${encodeURIComponent(projectId)}`} variant="primary">
-              Style Memory
+              {t("actions.styleMemory")}
             </RelayLinkButton>
           </>
         }
       />
 
-      <RelayTabs aria-label="Trace filters" items={tabs} />
+      <RelayTabs aria-label={t("filtersLabel")} items={tabs} />
 
       {selectedTrace ? (
-        <RelayCard className="relay-trace-table" aria-label="Judgment trace list">
+        <RelayCard className="relay-trace-table" aria-label={t("listLabel")}>
           <div className="relay-trace-header-row" aria-hidden="true">
-            <span>Trace</span>
-            <span>Decision</span>
-            <span>State</span>
-            <span>Captured</span>
-            <span>Refs</span>
+            <span>{t("columns.trace")}</span>
+            <span>{t("columns.decision")}</span>
+            <span>{t("columns.state")}</span>
+            <span>{t("columns.captured")}</span>
+            <span>{t("columns.refs")}</span>
           </div>
           {traces.map((trace) => {
             const selected = trace.traceId === selectedTrace.traceId;
@@ -165,9 +176,9 @@ function TraceBrowser({
                   <h2 className="relay-trace-decision">{trace.decision}</h2>
                   {trace.rationale ? <p className="relay-trace-rationale">{trace.rationale}</p> : null}
                   <div className="relay-trace-meta-line">
-                    <span>{firstNonEmpty(trace.workflow, "workflow")}</span>
+                    <span>{firstNonEmpty(t, trace.workflow, t("labels.workflow"))}</span>
                     <span>·</span>
-                    <span>{firstNonEmpty(trace.artifactType, "artifact")}</span>
+                    <span>{firstNonEmpty(t, trace.artifactType, t("labels.artifact"))}</span>
                     {trace.taskId ? (
                       <>
                         <span>·</span>
@@ -182,7 +193,7 @@ function TraceBrowser({
                     ) : null}
                   </div>
                   {trace.sourceRefs.length > 0 ? (
-                    <ul aria-label={`Source refs for ${trace.traceId}`} className="relay-source-ref-list">
+                    <ul aria-label={t("sourceRefsLabel", { traceId: trace.traceId })} className="relay-source-ref-list">
                       {trace.sourceRefs.slice(0, 3).map((sourceRef) => (
                         <li key={sourceRef} className="relay-source-ref">
                           <span className="relay-source-ref-dot" aria-hidden="true" />
@@ -192,12 +203,12 @@ function TraceBrowser({
                     </ul>
                   ) : null}
                 </div>
-                <RelayStatusBadge variant={traceStateVariant(trace)}>{traceState(trace)}</RelayStatusBadge>
+                <RelayStatusBadge variant={traceStateVariant(trace)}>{traceState(trace, t)}</RelayStatusBadge>
                 <time dateTime={trace.createdAt} className="relay-trace-time">
-                  {formatDate(trace.createdAt)}
+                  {formatDate(trace.createdAt, locale)}
                 </time>
                 <span className="relay-trace-refs">
-                  {trace.sourceRefs.length} ref{trace.sourceRefs.length === 1 ? "" : "s"}
+                  {trace.sourceRefs.length} {trace.sourceRefs.length === 1 ? t("labels.refSingular") : t("labels.refPlural")}
                 </span>
               </article>
             );
@@ -205,34 +216,34 @@ function TraceBrowser({
         </RelayCard>
       ) : (
         <RelayEmptyState
-          title="No traces captured yet."
-          copy="Capture judgment traces to give Style Memory reviewable evidence."
+          title={t("empty.title")}
+          copy={t("empty.copy")}
         />
       )}
     </RelayAppShell>
   );
 }
 
-function projectRailItems(projectId: string, active: "traces" | "graph", traceCount = 0) {
+function projectRailItems(projectId: string, active: "traces" | "graph", t: ProductT, traceCount = 0) {
   const encoded = encodeURIComponent(projectId);
   return [
-    { href: `/projects/${encoded}`, label: "Project Explorer", glyph: "empty" as const },
+    { href: `/projects/${encoded}`, label: t("nav.projectExplorer"), glyph: "empty" as const },
     {
       href: `/projects/${encoded}/traces`,
-      label: "Trace Browser",
+      label: t("nav.traceBrowser"),
       glyph: "active" as const,
       active: active === "traces",
       ducklings: active === "traces" ? traceCount : undefined,
     },
     {
       href: `/projects/${encoded}/graph`,
-      label: "Decision Graph",
+      label: t("nav.decisionGraph"),
       glyph: "snapshot" as const,
       active: active === "graph",
     },
-    { href: `/style-memory?project=${encoded}`, label: "Style Memory", glyph: "pending" as const },
-    { href: `/projects/${encoded}/packet-builder`, label: "Packet Builder", glyph: "snapshot" as const },
-    { href: "/settings/providers", label: "Settings", glyph: "empty" as const },
+    { href: `/style-memory?project=${encoded}`, label: t("nav.styleMemory"), glyph: "pending" as const },
+    { href: `/projects/${encoded}/packet-builder`, label: t("nav.packetBuilder"), glyph: "snapshot" as const },
+    { href: "/settings/providers", label: t("nav.settings"), glyph: "empty" as const },
   ];
 }
 
@@ -243,20 +254,20 @@ function countByArtifact(traces: JudgmentTrace[], needles: string[]) {
   }).length;
 }
 
-function traceState(trace: JudgmentTrace) {
+function traceState(trace: JudgmentTrace, t: ProductT) {
   if (`${trace.decision} ${trace.rationale ?? ""}`.toLowerCase().includes("reject")) {
-    return "Rejected";
+    return t("state.rejected");
   }
   if (trace.rationale && trace.sourceRefs.length > 0) {
-    return "Swan";
+    return t("state.swan");
   }
-  return "Duckling";
+  return t("state.duckling");
 }
 
 function traceStateVariant(trace: JudgmentTrace): "magic" | "danger" | "pending" {
-  const state = traceState(trace);
-  if (state === "Swan") return "magic";
-  if (state === "Rejected") return "danger";
+  const rejected = `${trace.decision} ${trace.rationale ?? ""}`.toLowerCase().includes("reject");
+  if (trace.rationale && trace.sourceRefs.length > 0) return "magic";
+  if (rejected) return "danger";
   return "pending";
 }
 
@@ -265,16 +276,16 @@ function truncateId(value: string) {
   return `${value.slice(0, 14)}…`;
 }
 
-function SignInRequired({ projectId }: { projectId: string }) {
+function SignInRequired({ projectId, t }: { projectId: string; t: ProductT }) {
   return (
     <main className="relay-empty-page">
       <RelayPageHead
-        eyebrow="Trace Browser"
-        title="Sign in first"
-        copy="Trace history is private to the project workspace."
+        eyebrow={t("signIn.eyebrow")}
+        title={t("signIn.title")}
+        copy={t("signIn.copy")}
         actions={
           <RelayLinkButton href={signInURL(projectId)} variant="primary">
-            Continue with GitHub
+            {t("actions.continueWithGitHub")}
           </RelayLinkButton>
         }
       />
@@ -286,21 +297,23 @@ function TraceBrowserError({
   projectId,
   error,
   userDisplayName,
+  t,
 }: {
   projectId: string;
   error: unknown;
   userDisplayName?: string;
+  t: ProductT;
 }) {
   const code = error instanceof ProjectTracesError ? error.code : "UNKNOWN";
-  const message = error instanceof Error ? error.message : "Trace Browser failed to load.";
+  const message = error instanceof Error ? error.message : t("error.fallbackMessage");
   return (
     <main className="relay-empty-page">
       <RelayPageHead
-        eyebrow={`Trace Browser · ${userDisplayName ?? "signed in"}`}
-        title="Couldn’t open traces"
+        eyebrow={t("error.eyebrow", { user: userDisplayName ?? t("error.signedInFallback") })}
+        title={t("error.title")}
         actions={
           <RelayLinkButton href={`/projects/${encodeURIComponent(projectId)}/traces`} variant="primary">
-            Retry
+            {t("actions.retry")}
           </RelayLinkButton>
         }
       />
@@ -311,17 +324,17 @@ function TraceBrowserError({
   );
 }
 
-function firstNonEmpty(...values: Array<string | undefined>) {
+function firstNonEmpty(t: ProductT, ...values: Array<string | undefined>) {
   for (const value of values) {
     if (value?.trim()) return value;
   }
-  return "untitled";
+  return t("labels.untitled");
 }
 
-function formatDate(value: string) {
+function formatDate(value: string, locale: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat("en", {
+  return new Intl.DateTimeFormat(locale, {
     month: "short",
     day: "numeric",
     hour: "2-digit",

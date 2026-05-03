@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { getLocale, getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 
 import { RELAY_API_URL, relayFetch, type RelayEnvelope } from "@/lib/api";
@@ -24,6 +25,8 @@ export const dynamic = "force-dynamic";
 type PageParams = {
   projectId: string;
 };
+
+type ProductT = Awaited<ReturnType<typeof getTranslations>>;
 
 async function resolveSession(cookieHeader: string): Promise<AuthMe | null> {
   const res = await relayFetch("/v1/auth/me", {
@@ -52,10 +55,12 @@ export default async function ProjectExplorerPage({
   const { projectId } = await params;
   const cookieStore = await cookies();
   const cookieHeader = cookieStore.toString();
+  const locale = await getLocale();
+  const t = await getTranslations("ProjectExplorer");
   const me = await resolveSession(cookieHeader);
 
   if (!me) {
-    return <SignInRequired projectId={projectId} />;
+    return <SignInRequired projectId={projectId} t={t} />;
   }
 
   if (!me.onboarding_complete) {
@@ -68,23 +73,27 @@ export default async function ProjectExplorerPage({
       headers: { cookie: cookieHeader },
     });
   } catch (error) {
-    return <ExplorerError projectId={projectId} error={error} userDisplayName={me.display_name} />;
+    return <ExplorerError projectId={projectId} error={error} userDisplayName={me.display_name} t={t} />;
   }
 
-  return <Explorer explorer={explorer} userDisplayName={me.display_name} />;
+  return <Explorer explorer={explorer} userDisplayName={me.display_name} t={t} locale={locale} />;
 }
 
 function Explorer({
   explorer,
   userDisplayName,
+  t,
+  locale,
 }: {
   explorer: ProjectExplorer;
   userDisplayName?: string;
+  t: ProductT;
+  locale: string;
 }) {
   const c = explorer.counts;
   const memoryReady = c.pendingProposals > 0
-    ? `${c.pendingProposals} proposal${c.pendingProposals === 1 ? "" : "s"} waiting`
-    : `${c.approvedHeuristics} swan${c.approvedHeuristics === 1 ? "" : "s"} minted`;
+    ? t(c.pendingProposals === 1 ? "memoryPendingOne" : "memoryPendingMany", { count: c.pendingProposals })
+    : t(c.approvedHeuristics === 1 ? "memoryApprovedOne" : "memoryApprovedMany", { count: c.approvedHeuristics });
   const projectHref = `/projects/${encodeURIComponent(explorer.project.projectId)}`;
 
   return (
@@ -92,58 +101,58 @@ function Explorer({
       activeStep="Face"
       userLabel={userDisplayName}
       projectHref={projectHref}
-      railItems={projectRailItems(explorer)}
-      inspector={<ProjectInspector explorer={explorer} />}
+      railItems={projectRailItems(explorer, t)}
+      inspector={<ProjectInspector explorer={explorer} t={t} />}
     >
       <RelayPageHead
-        eyebrow={`Project Explorer · ${explorer.project.status}`}
+        eyebrow={t("eyebrow", { status: explorer.project.status })}
         title={explorer.project.name}
         titleId="project-title"
         copy={memoryReady}
         actions={
           <>
             <RelayLinkButton href={`/style-memory?project=${encodeURIComponent(explorer.project.projectId)}`} variant="primary">
-              Style Memory
+              {t("actions.styleMemory")}
             </RelayLinkButton>
             <RelayLinkButton href={`/projects/${encodeURIComponent(explorer.project.projectId)}/traces`} variant="secondary">
-              Trace Browser
+              {t("actions.traceBrowser")}
             </RelayLinkButton>
             <RelayLinkButton href={`/projects/${encodeURIComponent(explorer.project.projectId)}/graph`} variant="secondary">
-              Decision Graph
+              {t("actions.decisionGraph")}
             </RelayLinkButton>
             <RelayLinkButton href={`/projects/${encodeURIComponent(explorer.project.projectId)}/packet-builder`} variant="secondary">
-              Packet Builder
+              {t("actions.packetBuilder")}
             </RelayLinkButton>
             <RelayLinkButton href="/settings/providers" variant="secondary">
-              Provider Settings
+              {t("actions.providerSettings")}
             </RelayLinkButton>
             <RelayLinkButton href="/settings/api-keys" variant="secondary">
-              API Key Settings
+              {t("actions.apiKeySettings")}
             </RelayLinkButton>
           </>
         }
       />
 
-      <section className="relay-summary-grid" aria-label="Project summary">
-        <RelayMetricTile label="Notes" value={c.notes} />
-        <RelayMetricTile label="Decisions" value={c.decisions} />
-        <RelayMetricTile label="Snapshots" value={c.packetSnapshots} />
+      <section className="relay-summary-grid" aria-label={t("labels.projectSummary")}>
+        <RelayMetricTile label={t("labels.notes")} value={c.notes} />
+        <RelayMetricTile label={t("labels.decisions")} value={c.decisions} />
+        <RelayMetricTile label={t("labels.snapshots")} value={c.packetSnapshots} />
       </section>
 
       <details className="relay-workspace-inspector">
-        <summary className="relay-details-summary">Workspace inspector — detailed counts</summary>
-        <RelayMetaGrid className="relay-workspace-inspector-grid" aria-label="Workspace inspector counts">
-          <InspectorMetric label="Artifacts" value={c.artifacts} />
-          <InspectorMetric label="Questions" value={c.openQuestions} />
-          <InspectorMetric label="Traces" value={c.judgmentTraces} />
-          <InspectorMetric label="Pending proposals" value={c.pendingProposals} />
-          <InspectorMetric label="Approved heuristics" value={c.approvedHeuristics} />
-          <InspectorMetric label="Rejected proposals" value={c.rejectedProposals} />
+        <summary className="relay-details-summary">{t("inspector.summary")}</summary>
+        <RelayMetaGrid className="relay-workspace-inspector-grid" aria-label={t("inspector.counts")}>
+          <InspectorMetric label={t("labels.artifacts")} value={c.artifacts} />
+          <InspectorMetric label={t("labels.questions")} value={c.openQuestions} />
+          <InspectorMetric label={t("labels.traces")} value={c.judgmentTraces} />
+          <InspectorMetric label={t("labels.pendingProposals")} value={c.pendingProposals} />
+          <InspectorMetric label={t("labels.approvedHeuristics")} value={c.approvedHeuristics} />
+          <InspectorMetric label={t("labels.rejectedProposals")} value={c.rejectedProposals} />
         </RelayMetaGrid>
       </details>
 
       <section className="relay-work-grid">
-        <Panel title="Style Memory" kicker={`${c.pendingProposals} pending`}>
+        <Panel title={t("panels.styleMemory")} kicker={t("panels.pending", { count: c.pendingProposals })}>
           {explorer.styleMemory.nextProposalText ? (
             <>
               <p className="relay-proposal-text">{explorer.styleMemory.nextProposalText}</p>
@@ -151,36 +160,36 @@ function Explorer({
                 href={`/style-memory?project=${encodeURIComponent(explorer.project.projectId)}`}
                 variant="ghost"
               >
-                Review proposal
+                {t("actions.reviewProposal")}
               </RelayLinkButton>
             </>
           ) : (
-            <p className="relay-quiet-copy">No pending proposals.</p>
+            <p className="relay-quiet-copy">{t("empty.noPendingProposals")}</p>
           )}
         </Panel>
 
-        <Panel title="Latest Snapshot" kicker={`${c.packetSnapshots} total`}>
+        <Panel title={t("panels.latestSnapshot")} kicker={t("panels.total", { count: c.packetSnapshots })}>
           {explorer.latestSnapshot ? (
             <>
-              <Snapshot snapshot={explorer.latestSnapshot} />
+              <Snapshot snapshot={explorer.latestSnapshot} t={t} locale={locale} />
               <RelayLinkButton
                 href={`/projects/${encodeURIComponent(explorer.project.projectId)}/packet-builder`}
                 variant="ghost"
               >
-                Open Packet Builder
+                {t("actions.openPacketBuilder")}
               </RelayLinkButton>
             </>
           ) : (
-            <p className="relay-quiet-copy">No packet snapshots yet.</p>
+            <p className="relay-quiet-copy">{t("empty.noPacketSnapshots")}</p>
           )}
         </Panel>
 
-        <Panel title="Recent Activity" kicker={`${explorer.recentActivity.length} latest`}>
+        <Panel title={t("panels.recentActivity")} kicker={t("panels.latest", { count: explorer.recentActivity.length })}>
           {explorer.recentActivity.length > 0 ? (
             <ol className="relay-activity-list">
               {explorer.recentActivity.map((item) => (
                 <li key={`${item.kind}:${item.id}`} className="relay-activity-item">
-                  <span className="relay-activity-kind">{formatKind(item.kind)}</span>
+                  <span className="relay-activity-kind">{activityKindLabel(item.kind, t)}</span>
                   {item.kind === "judgment_trace" ? (
                     <a
                       href={traceURL(explorer.project.projectId, item.id)}
@@ -192,13 +201,13 @@ function Explorer({
                     <span className="relay-activity-title">{item.title}</span>
                   )}
                   <time dateTime={item.createdAt} className="relay-activity-time">
-                    {formatDate(item.createdAt)}
+                    {formatDate(item.createdAt, locale)}
                   </time>
                 </li>
               ))}
             </ol>
           ) : (
-            <p className="relay-quiet-copy">No recent activity.</p>
+            <p className="relay-quiet-copy">{t("empty.noRecentActivity")}</p>
           )}
         </Panel>
       </section>
@@ -206,7 +215,7 @@ function Explorer({
   );
 }
 
-function projectRailItems(explorer: ProjectExplorer) {
+function projectRailItems(explorer: ProjectExplorer, t: ProductT) {
   const projectId = encodeURIComponent(explorer.project.projectId);
   const c = explorer.counts;
   return [
@@ -220,65 +229,65 @@ function projectRailItems(explorer: ProjectExplorer) {
     },
     {
       href: `/style-memory?project=${projectId}`,
-      label: "Style Memory",
+      label: t("actions.styleMemory"),
       glyph: c.pendingProposals > 0 ? ("pending" as const) : ("snapshot" as const),
       ducklings: c.pendingProposals,
       swans: c.approvedHeuristics,
     },
     {
       href: `/projects/${projectId}/traces`,
-      label: "Judgment Traces",
+      label: t("nav.judgmentTraces"),
       glyph: c.judgmentTraces > 0 ? ("snapshot" as const) : ("empty" as const),
       swans: c.judgmentTraces,
     },
     {
       href: `/projects/${projectId}/graph`,
-      label: "Decision Graph",
+      label: t("actions.decisionGraph"),
       glyph: c.decisions > 0 ? ("snapshot" as const) : ("empty" as const),
       swans: c.decisions,
     },
     {
       href: `/projects/${projectId}/packet-builder`,
-      label: "Packet Builder",
+      label: t("actions.packetBuilder"),
       glyph: c.packetSnapshots > 0 ? ("snapshot" as const) : ("empty" as const),
       swans: c.packetSnapshots,
     },
     {
       href: "/settings/providers",
-      label: "Provider settings",
+      label: t("actions.providerSettings"),
       glyph: "empty" as const,
     },
     {
       href: "/settings/api-keys",
-      label: "API key settings",
+      label: t("actions.apiKeySettings"),
       glyph: "empty" as const,
     },
   ];
 }
 
-function ProjectInspector({ explorer }: { explorer: ProjectExplorer }) {
+function ProjectInspector({ explorer, t }: { explorer: ProjectExplorer; t: ProductT }) {
   const c = explorer.counts;
   return (
     <div>
-      <p className="relay-page-kicker">Current Transform</p>
-      <h2 className="relay-inspector-title">Face → Project workspace</h2>
+      <p className="relay-page-kicker">{t("inspector.currentTransform")}</p>
+      <h2 className="relay-inspector-title">{t("inspector.title")}</h2>
       <RelayCard className="relay-inspector-card">
-        <p className="relay-meta-label relay-meta-heading">Scope Matrix</p>
+        <p className="relay-meta-label relay-meta-heading">{t("inspector.scopeMatrix")}</p>
         <RelayMetaGrid className="relay-inspector-rows">
-          <InspectorMetric label="Status" value={explorer.project.status} />
-          <InspectorMetric label="Artifacts" value={c.artifacts} />
-          <InspectorMetric label="Questions" value={c.openQuestions} />
-          <InspectorMetric label="Traces" value={c.judgmentTraces} />
-          <InspectorMetric label="Pending proposals" value={c.pendingProposals} />
-          <InspectorMetric label="Approved heuristics" value={c.approvedHeuristics} />
-          <InspectorMetric label="Rejected proposals" value={c.rejectedProposals} />
+          <InspectorMetric label={t("labels.status")} value={explorer.project.status} />
+          <InspectorMetric label={t("labels.artifacts")} value={c.artifacts} />
+          <InspectorMetric label={t("labels.questions")} value={c.openQuestions} />
+          <InspectorMetric label={t("labels.traces")} value={c.judgmentTraces} />
+          <InspectorMetric label={t("labels.pendingProposals")} value={c.pendingProposals} />
+          <InspectorMetric label={t("labels.approvedHeuristics")} value={c.approvedHeuristics} />
+          <InspectorMetric label={t("labels.rejectedProposals")} value={c.rejectedProposals} />
         </RelayMetaGrid>
       </RelayCard>
       <section className="relay-inspector-metrics">
-        <RelayMetricTile label="Notes" value={c.notes} />
-        <RelayMetricTile label="Decisions" value={c.decisions} />
-        <RelayMetricTile label="Snapshots" value={c.packetSnapshots} />
-        <RelayMetricTile label="Traces" value={c.judgmentTraces} />
+        <RelayMetricTile label={t("labels.notes")} value={c.notes} />
+        <RelayMetricTile label={t("labels.decisions")} value={c.decisions} />
+        <RelayMetricTile label={t("labels.snapshots")} value={c.packetSnapshots} />
+        <RelayMetricTile label={t("labels.traces")} value={c.judgmentTraces} />
       </section>
     </div>
   );
@@ -313,45 +322,53 @@ function Panel({
   );
 }
 
-function Snapshot({ snapshot }: { snapshot: NonNullable<ProjectExplorer["latestSnapshot"]> }) {
+function Snapshot({
+  snapshot,
+  t,
+  locale,
+}: {
+  snapshot: NonNullable<ProjectExplorer["latestSnapshot"]>;
+  t: ProductT;
+  locale: string;
+}) {
   return (
     <div>
       <p className="relay-snapshot-title">{snapshot.taskSummary || snapshot.target}</p>
       <RelayMetaGrid className="relay-snapshot-meta">
         <div>
-          <dt className="relay-meta-label">Kind</dt>
+          <dt className="relay-meta-label">{t("labels.kind")}</dt>
           <dd className="relay-meta-value">{snapshot.packetKind}</dd>
         </div>
         <div>
-          <dt className="relay-meta-label">Visibility</dt>
-          <dd className="relay-meta-value">{snapshot.publicReadable ? "public" : "private"}</dd>
+          <dt className="relay-meta-label">{t("labels.visibility")}</dt>
+          <dd className="relay-meta-value">{snapshot.publicReadable ? t("labels.public") : t("labels.private")}</dd>
         </div>
         <div>
-          <dt className="relay-meta-label">Created</dt>
-          <dd className="relay-meta-value">{formatDate(snapshot.createdAt)}</dd>
+          <dt className="relay-meta-label">{t("labels.created")}</dt>
+          <dd className="relay-meta-value">{formatDate(snapshot.createdAt, locale)}</dd>
         </div>
       </RelayMetaGrid>
       {snapshot.publicReadable && snapshot.publicToken ? (
         <RelayLinkButton href={`/p/${encodeURIComponent(snapshot.publicToken)}`} variant="ghost">
-          Open public snapshot
+          {t("actions.openPublicSnapshot")}
         </RelayLinkButton>
       ) : null}
     </div>
   );
 }
 
-function SignInRequired({ projectId }: { projectId: string }) {
+function SignInRequired({ projectId, t }: { projectId: string; t: ProductT }) {
   return (
     <>
-      <RelayTopRail activeStep="Face" userLabel="signed out" />
+      <RelayTopRail activeStep="Face" userLabel={t("signIn.userLabel")} />
       <main className="relay-empty-page">
         <RelayPageHead
-          eyebrow="Project Explorer"
-          title="Sign in first"
-          copy="Project workspaces are private."
+          eyebrow={t("title")}
+          title={t("signIn.title")}
+          copy={t("signIn.copy")}
           actions={
             <RelayLinkButton href={signInURL(projectId)} variant="primary">
-              Continue with GitHub
+              {t("actions.continueWithGitHub")}
             </RelayLinkButton>
           }
         />
@@ -364,23 +381,25 @@ function ExplorerError({
   projectId,
   error,
   userDisplayName,
+  t,
 }: {
   projectId: string;
   error: unknown;
   userDisplayName?: string;
+  t: ProductT;
 }) {
   const code = error instanceof ProjectExplorerError ? error.code : "UNKNOWN";
-  const message = error instanceof Error ? error.message : "Project Explorer failed to load.";
+  const message = error instanceof Error ? error.message : t("error.fallbackMessage");
   return (
     <>
       <RelayTopRail activeStep="Face" userLabel={userDisplayName} />
       <main className="relay-empty-page">
         <RelayPageHead
-          eyebrow={`Project Explorer · ${userDisplayName ?? "signed in"}`}
-          title="Couldn’t open this project"
+          eyebrow={t("eyebrow", { status: userDisplayName ?? t("error.signedInFallback") })}
+          title={t("error.title")}
           actions={
             <RelayLinkButton href={`/projects/${encodeURIComponent(projectId)}`} variant="primary">
-              Retry
+              {t("actions.retry")}
             </RelayLinkButton>
           }
         />
@@ -392,10 +411,10 @@ function ExplorerError({
   );
 }
 
-function formatDate(value: string) {
+function formatDate(value: string, locale: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat("en", {
+  return new Intl.DateTimeFormat(locale, {
     month: "short",
     day: "numeric",
     hour: "2-digit",
@@ -403,8 +422,18 @@ function formatDate(value: string) {
   }).format(date);
 }
 
-function formatKind(kind: string) {
-  return kind.replaceAll("_", " ");
+function activityKindLabel(kind: string, t: ProductT) {
+  const labels: Record<string, string> = {
+    judgment_trace: t("activityKinds.judgmentTrace"),
+    approved_heuristic: t("activityKinds.approvedHeuristic"),
+    heuristic_proposal: t("activityKinds.heuristicProposal"),
+    packet_snapshot: t("activityKinds.packetSnapshot"),
+    decision: t("activityKinds.decision"),
+    note: t("activityKinds.note"),
+    artifact: t("activityKinds.artifact"),
+    open_question: t("activityKinds.openQuestion"),
+  };
+  return labels[kind] ?? kind.replaceAll("_", " ");
 }
 
 function traceURL(projectId: string, traceId: string) {

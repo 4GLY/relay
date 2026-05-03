@@ -1,0 +1,531 @@
+{
+  "Common": {
+    "unknownError": "Something went wrong.",
+    "continueWithGitHub": "Continue with GitHub",
+    "language": {
+      "label": "Language",
+      "apply": "Apply",
+      "english": "English",
+      "korean": "Korean",
+      "current": "Current language: {locale}"
+    },
+    "links": {
+      "backToOnboarding": "Back to onboarding",
+      "projectExplorer": "Project Explorer",
+      "providerSettings": "Provider settings",
+      "apiKeys": "API key settings",
+      "styleMemory": "Style Memory"
+    },
+    "settingsNavigation": "Settings navigation"
+  },
+  "Root": {
+    "eyebrow": "4gly Labs · Relay",
+    "title": "Relay",
+    "subtitle": "A quiet engine that turns chaos into swans.",
+    "panelTitle": "Sign in to start",
+    "panelCopy": "Relay creates a private workspace first. Provider keys stay in Settings, not in first-run setup.",
+    "signInButton": "Continue with GitHub"
+  },
+  "Shell": {
+    "globalNavigation": "Global navigation",
+    "transformationSteps": "Relay transformation steps",
+    "projectExplorer": "Project Explorer",
+    "ducklings": "Ducklings",
+    "swans": "Swans",
+    "settings": "Settings",
+    "signedInFallback": "signed in",
+    "steps": {
+      "Face": "Face",
+      "Dissect": "Dissect",
+      "Refine": "Refine",
+      "Transform": "Transform"
+    }
+  },
+  "Errors": {
+    "UNAUTHENTICATED": "Sign in again to continue.",
+    "INVALID_INPUT": "Check the input and try again.",
+    "API_KEY_NOT_FOUND_BY_ID": "That API key no longer exists."
+  },
+  "Onboarding": {
+    "page": {
+      "eyebrow": "Slice 8 · 60 seconds",
+      "title": "First run, no keys",
+      "subtitle": "Relay starts by creating a private workspace. Provider keys are a Settings concern, not a gate on the first minute.",
+      "signInTitle": "Sign in to create your workspace",
+      "signInCopy": "Use an identity provider first. Relay will create your Personal project after you return here."
+    },
+    "client": {
+      "signedInEyebrowPrefix": "Signed in",
+      "fallbackUser": "Relay user",
+      "title": "Create your Relay workspace",
+      "copy": "Relay will create your Personal project and send you straight into Project Explorer. Claude provider keys stay out of first-run setup.",
+      "startButton": "Start in Relay",
+      "startingButton": "Creating workspace...",
+      "styleMemoryLink": "Skip to Style Memory",
+      "providerSettingsLink": "Provider settings",
+      "apiKeysLink": "API key settings",
+      "personalTitle": "Personal",
+      "projectExplorerTitle": "Project Explorer",
+      "personalCopy": "Always-on. Notes that are not yet a project.",
+      "projectExplorerCopy": "Relay creates this workspace before any provider keys.",
+      "providerCallout": "Provider keys stay in Settings. Create the workspace first, then connect providers only when Claude-backed features need them.",
+      "afterWorkspace": "after workspace creation",
+      "fallbackError": "Could not finish onboarding."
+    }
+  },
+  "Settings": {
+    "ProviderCredentials": {
+      "page": {
+        "eyebrow": "Settings · provider credentials",
+        "signInTitle": "Sign in first",
+        "signInCopy": "Provider credentials are user-owned settings.",
+        "loadErrorTitle": "Could not load provider settings",
+        "loadErrorCopy": "Try refreshing this page after the Relay API is reachable again."
+      },
+      "client": {
+        "eyebrow": "Settings · provider credentials",
+        "title": "Claude provider",
+        "copy": "Connect Anthropic only when Claude-backed features need it. This key is not part of first-run onboarding.",
+        "settingsOnlyPill": "Settings only · optional after onboarding",
+        "connected": "Connected",
+        "disconnected": "Not connected",
+        "noStoredKey": "No provider key is stored for this user.",
+        "maskedKeySeparator": "ending",
+        "savingStatus": "Encrypting and saving provider key.",
+        "disconnectingStatus": "Removing stored provider key.",
+        "connectedHelp": "Settings only. Your key is available to Claude-backed features but first-run onboarding stays keyless.",
+        "disconnectedHelp": "Settings only. Add a key later when Claude-backed features need one.",
+        "apiKeyLabel": "Anthropic API key",
+        "apiKeyPlaceholder": "sk-ant-...",
+        "fieldHelp": "The raw key is encrypted before storage. Relay returns only masked metadata here.",
+        "connectButton": "Connect key",
+        "replaceButton": "Replace key",
+        "savingButton": "Saving...",
+        "disconnectButton": "Disconnect",
+        "disconnectingButton": "Disconnecting...",
+        "fallbackConnectError": "Could not connect provider.",
+        "fallbackDisconnectError": "Could not disconnect provider."
+      },
+      "errorMap": {
+        "UNAUTHENTICATED": "Sign in again to manage provider credentials.",
+        "INVALID_INPUT": "Anthropic keys must start with sk-ant-"
+      }
+    },
+    "ApiKeys": {
+      "page": {
+        "eyebrow": "Settings · Relay API keys",
+        "signInTitle": "Sign in first",
+        "signInCopy": "Relay API keys are user-owned settings for API and MCP access.",
+        "loadErrorTitle": "Could not load API keys",
+        "loadErrorCopy": "Try refreshing this page after the Relay API is reachable again."
+      },
+      "client": {
+        "eyebrow": "Settings · Relay API keys",
+        "title": "Relay API keys",
+        "copy": "Issue keys here for external agents and tools that need Relay API or MCP access. Keep provider credentials separate.",
+        "settingsOnlyPill": "Settings only · user-owned access tokens",
+        "nameLabel": "Key name",
+        "namePlaceholder": "CLI on laptop",
+        "fieldHelp": "Relay shows the raw token only once. Copy it now and store it safely.",
+        "issueButton": "Issue key",
+        "issuingButton": "Issuing...",
+        "issuedSuccess": "Issued a new Relay API key.",
+        "revokedSuccess": "Revoked the Relay API key.",
+        "tokenPanelTitle": "Copy this token now",
+        "tokenPanelCopy": "This is the only time Relay will show the raw token.",
+        "tokenLabel": "Raw token",
+        "copyButton": "Copy token",
+        "copiedButton": "Copied",
+        "copyError": "Could not copy the token automatically.",
+        "listTitle": "Issued keys",
+        "emptyState": "No Relay API keys have been issued for this user yet.",
+        "scopeLabel": "Scope",
+        "projectLabel": "Project",
+        "activeStatus": "Active",
+        "revokedStatus": "Revoked",
+        "scopeGlobal": "Global",
+        "scopeProject": "Project",
+        "revokeButton": "Revoke",
+        "confirmRevokeButton": "Confirm revoke",
+        "cancelRevokeButton": "Cancel",
+        "revokeConfirmCopy": "This revokes the key immediately.",
+        "revokingButton": "Revoking...",
+        "fallbackIssueError": "Could not issue API key.",
+        "fallbackRevokeError": "Could not revoke API key."
+      },
+      "errorMap": {
+        "UNAUTHENTICATED": "Sign in again to manage Relay API keys.",
+        "INVALID_INPUT": "Enter a name before issuing a key.",
+        "API_KEY_NOT_FOUND_BY_ID": "That API key no longer exists."
+      }
+    }
+  },
+  "ProjectExplorer": {
+    "title": "Project Explorer",
+    "eyebrow": "Project Explorer · {status}",
+    "actions": {
+      "styleMemory": "Style Memory",
+      "traceBrowser": "Trace Browser",
+      "decisionGraph": "Decision Graph",
+      "packetBuilder": "Packet Builder",
+      "providerSettings": "Provider Settings",
+      "apiKeySettings": "API Key Settings",
+      "reviewProposal": "Review proposal",
+      "openPacketBuilder": "Open Packet Builder",
+      "openPublicSnapshot": "Open public snapshot",
+      "continueWithGitHub": "Continue with GitHub",
+      "retry": "Retry"
+    },
+    "labels": {
+      "projectSummary": "Project summary",
+      "notes": "Notes",
+      "decisions": "Decisions",
+      "snapshots": "Snapshots",
+      "artifacts": "Artifacts",
+      "questions": "Questions",
+      "traces": "Traces",
+      "pendingProposals": "Pending proposals",
+      "approvedHeuristics": "Approved heuristics",
+      "rejectedProposals": "Rejected proposals",
+      "status": "Status",
+      "kind": "Kind",
+      "visibility": "Visibility",
+      "created": "Created",
+      "public": "public",
+      "private": "private"
+    },
+    "inspector": {
+      "summary": "Workspace inspector — detailed counts",
+      "counts": "Workspace inspector counts",
+      "currentTransform": "Current Transform",
+      "title": "Face → Project workspace",
+      "scopeMatrix": "Scope Matrix"
+    },
+    "panels": {
+      "styleMemory": "Style Memory",
+      "latestSnapshot": "Latest Snapshot",
+      "recentActivity": "Recent Activity",
+      "pending": "{count} pending",
+      "total": "{count} total",
+      "latest": "{count} latest"
+    },
+    "empty": {
+      "noPendingProposals": "No pending proposals.",
+      "noPacketSnapshots": "No packet snapshots yet.",
+      "noRecentActivity": "No recent activity."
+    },
+    "signIn": {
+      "userLabel": "signed out",
+      "title": "Sign in first",
+      "copy": "Project workspaces are private."
+    },
+    "error": {
+      "signedInFallback": "signed in",
+      "title": "Couldn’t open this project",
+      "fallbackMessage": "Project Explorer failed to load."
+    },
+    "nav": {
+      "judgmentTraces": "Judgment Traces"
+    },
+    "memoryPendingOne": "{count} proposal waiting",
+    "memoryPendingMany": "{count} proposals waiting",
+    "memoryApprovedOne": "{count} swan minted",
+    "memoryApprovedMany": "{count} swans minted",
+    "activityKinds": {
+      "judgmentTrace": "judgment trace",
+      "approvedHeuristic": "approved heuristic",
+      "heuristicProposal": "heuristic proposal",
+      "packetSnapshot": "packet snapshot",
+      "decision": "decision",
+      "note": "note",
+      "artifact": "artifact",
+      "openQuestion": "open question"
+    }
+  },
+  "Traces": {
+    "eyebrow": "{projectId} · Judgment Traces",
+    "filtersLabel": "Trace filters",
+    "listLabel": "Judgment trace list",
+    "sourceRefsLabel": "Source refs for {traceId}",
+    "tabs": {
+      "all": "All",
+      "decisions": "Decisions",
+      "openQuestions": "Open questions",
+      "notes": "Notes"
+    },
+    "columns": {
+      "trace": "Trace",
+      "decision": "Decision",
+      "state": "State",
+      "captured": "Captured",
+      "refs": "Refs"
+    },
+    "labels": {
+      "workflow": "workflow",
+      "artifact": "artifact",
+      "refSingular": "ref",
+      "refPlural": "refs",
+      "untitled": "untitled"
+    },
+    "state": {
+      "rejected": "Rejected",
+      "swan": "Swan",
+      "duckling": "Duckling"
+    },
+    "actions": {
+      "projectExplorer": "Project Explorer",
+      "styleMemory": "Style Memory",
+      "continueWithGitHub": "Continue with GitHub",
+      "retry": "Retry"
+    },
+    "nav": {
+      "projectExplorer": "Project Explorer",
+      "traceBrowser": "Trace Browser",
+      "decisionGraph": "Decision Graph",
+      "styleMemory": "Style Memory",
+      "packetBuilder": "Packet Builder",
+      "settings": "Settings"
+    },
+    "empty": {
+      "title": "No traces captured yet.",
+      "copy": "Capture judgment traces to give Style Memory reviewable evidence."
+    },
+    "signIn": {
+      "eyebrow": "Trace Browser",
+      "title": "Sign in first",
+      "copy": "Trace history is private to the project workspace."
+    },
+    "error": {
+      "eyebrow": "Trace Browser · {user}",
+      "signedInFallback": "signed in",
+      "title": "Couldn’t open traces",
+      "fallbackMessage": "Trace Browser failed to load."
+    },
+    "titleOne": "{count} trace captured.",
+    "titleMany": "{count} traces captured."
+  },
+  "DecisionGraph": {
+    "title": "Decision Graph",
+    "eyebrow": "{projectId} · Decision Graph",
+    "copyReady": "How decisions reached swan.",
+    "copyEmpty": "Capture evidence to reveal the path to swan.",
+    "actions": {
+      "relayout": "Re-layout",
+      "composeHandoff": "Compose handoff",
+      "continueWithGitHub": "Continue with GitHub",
+      "retry": "Retry"
+    },
+    "labels": {
+      "graphSummary": "Graph summary",
+      "decisionGraphMap": "Decision Graph map",
+      "decisionEvidenceGraph": "Decision evidence graph",
+      "graphNodes": "Graph nodes",
+      "decisions": "Decisions",
+      "traces": "Traces",
+      "proposals": "Proposals",
+      "heuristics": "Heuristics",
+      "snapshots": "Snapshots"
+    },
+    "legend": {
+      "project": "Project",
+      "trace": "Trace",
+      "swan": "Swan",
+      "duckling": "Duckling",
+      "snapshot": "Snapshot"
+    },
+    "nav": {
+      "projectExplorer": "Project Explorer",
+      "traceBrowser": "Trace Browser",
+      "decisionGraph": "Decision Graph",
+      "styleMemory": "Style Memory",
+      "packetBuilder": "Packet Builder",
+      "settings": "Settings"
+    },
+    "empty": {
+      "title": "No graph evidence yet.",
+      "copy": "Capture notes, traces, decisions, heuristics, or snapshots to fill the map."
+    },
+    "signIn": {
+      "eyebrow": "Decision Graph",
+      "title": "Sign in first",
+      "copy": "Decision evidence is private to the project workspace."
+    },
+    "error": {
+      "eyebrow": "Decision Graph · {user}",
+      "signedInFallback": "signed in",
+      "title": "Couldn’t open graph",
+      "fallbackMessage": "Decision Graph failed to load."
+    },
+    "nodeKinds": {
+      "project": "project",
+      "judgmentTrace": "judgment trace",
+      "heuristicProposal": "heuristic proposal",
+      "approvedHeuristic": "approved heuristic",
+      "decision": "decision",
+      "packetSnapshot": "packet snapshot",
+      "note": "note",
+      "artifact": "artifact",
+      "openQuestion": "open question"
+    }
+  },
+  "PacketBuilder": {
+    "eyebrow": "{projectId} · Packet Builder",
+    "title": "Compose a handoff.",
+    "signedInFallback": "signed in",
+    "actions": {
+      "saveDraft": "Save draft",
+      "decisionGraph": "Decision Graph",
+      "openPublicSnapshot": "Open public snapshot →",
+      "buildSnapshot": "Build snapshot →",
+      "projectExplorer": "Project Explorer",
+      "continueWithGitHub": "Continue with GitHub"
+    },
+    "labels": {
+      "packetMetadata": "Packet metadata",
+      "snapshot": "Snapshot",
+      "target": "Target",
+      "evidence": "Evidence",
+      "visibility": "Visibility",
+      "public": "public",
+      "private": "private",
+      "packetComposition": "Packet composition",
+      "coverNote": "cover note · Fraunces italic",
+      "packetCoverNote": "Packet cover note",
+      "includedSources": "Included sources · {count}",
+      "renderedPacketBody": "Rendered packet body",
+      "packetPreview": "Packet preview",
+      "snapshotPreview": "snapshot preview",
+      "heuristics": "heuristics",
+      "traces": "traces",
+      "sources": "sources",
+      "recipient": "recipient",
+      "visibilityKicker": "visibility",
+      "created": "created",
+      "publicLink": "Public link",
+      "privateWorkspace": "Private workspace",
+      "sourceEvidence": "Source evidence",
+      "publishControls": "Publish controls",
+      "styleCues": "Style cues",
+      "notes": "Notes",
+      "decisions": "Decisions",
+      "questions": "Questions",
+      "artifacts": "Artifacts"
+    },
+    "empty": {
+      "noSources": "No sources were selected for this packet snapshot.",
+      "dropzone": "Drop a trace, note, or artifact here. Or pick from the Inspector.",
+      "noRenderedBody": "No rendered packet body.",
+      "none": "None."
+    },
+    "sourceKind": {
+      "heuristic": "Heuristic",
+      "decision": "Decision",
+      "question": "Question",
+      "note": "Note",
+      "artifact": "Artifact",
+      "remove": "remove"
+    },
+    "publishCopy": "Publish and revoke remain on the admin snapshot API for this slice. This builder reads the latest snapshot and shows the public route when the snapshot is already published.",
+    "signIn": {
+      "eyebrow": "Packet Builder",
+      "title": "Sign in first",
+      "copy": "Packet snapshots are private to the project workspace."
+    },
+    "error": {
+      "eyebrow": "Packet Builder · {user}",
+      "signedInFallback": "signed in",
+      "noSnapshotTitle": "No packet yet",
+      "title": "Couldn’t open packet",
+      "noSnapshotCopy": "Build a packet snapshot first, then return here to inspect it.",
+      "fallbackMessage": "Packet Builder failed to load."
+    }
+  },
+  "StyleMemory": {
+    "page": {
+      "signedInFallback": "signed in",
+      "missingProjectEyebrow": "Style Memory · {user}",
+      "missingProjectTitle": "Pick a project",
+      "missingProjectCopyPrefix": "Style Memory needs a project to read proposals from. Add",
+      "missingProjectCopySuffix": "to the URL, or finish onboarding to land here automatically.",
+      "loadErrorKicker": "Couldn’t load proposals",
+      "loadErrorTitle": "Something is wrong with the queue right now."
+    },
+    "workspaceLabel": "Style Memory workspace",
+    "eyebrow": "{projectId} · Style Memory",
+    "subtitleEmpty": "All quiet on the swan front.",
+    "subtitleOne": "One proposal waiting for your judgment.",
+    "subtitleMany": "{count} proposals waiting for your judgment.",
+    "actions": {
+      "composeHandoff": "Compose handoff",
+      "singleHero": "Single hero",
+      "viewAllQueue": "View all queue",
+      "reject": "Reject",
+      "approveSwan": "Approve → Swan",
+      "cancel": "Cancel",
+      "submit": "Submit",
+      "retry": "Retry"
+    },
+    "tabs": {
+      "label": "Style Memory views",
+      "proposals": "Proposals",
+      "approved": "Approved",
+      "rejected": "Rejected"
+    },
+    "toast": {
+      "swanMinted": "Swan minted",
+      "swanMintedSub": "Heuristic added to the gallery.",
+      "alreadyResolved": "Already resolved",
+      "alreadyResolvedSub": "Another session resolved this card.",
+      "rejected": "Rejected",
+      "reason": "Reason: {reason}"
+    },
+    "errors": {
+      "saveFallback": "Couldn’t save — retry?",
+      "rejectFallback": "Couldn’t reject — retry?",
+      "saveInline": "Couldn’t save — {message}"
+    },
+    "hint": {
+      "navigate": "navigate",
+      "approve": "approve",
+      "reject": "reject",
+      "close": "close"
+    },
+    "labels": {
+      "scopeFallback": "scope",
+      "anyFallback": "any",
+      "proposed": "proposed",
+      "from": "from",
+      "traceSingular": "trace",
+      "tracePlural": "traces",
+      "currentHeuristic": "Current heuristic",
+      "proposedRefinement": "Proposed refinement",
+      "firstRevision": "none — first revision",
+      "tracePrefix": "trace",
+      "refPrefix": "ref",
+      "queued": "{count} queued · resolve hero first",
+      "rejectPicker": "Reject reason picker",
+      "whyReject": "Why reject?",
+      "explainWhy": "Explain why (10–200 chars)",
+      "saving": "Saving…",
+      "stillSaving": "Still saving…",
+      "state": "state",
+      "rejectedFallback": "rejected"
+    },
+    "reasons": {
+      "duplicate": "duplicate",
+      "wrong": "factually wrong",
+      "too_narrow": "too narrow",
+      "too_broad": "too broad",
+      "stale": "stale",
+      "other": "other…"
+    },
+    "empty": {
+      "pendingTitle": "All quiet on the swan front.",
+      "pendingCopy": "No pending proposals. Capture some judgment traces and the curator will refill the queue.",
+      "approvedFailed": "Couldn’t load approved heuristics.",
+      "approvedEmpty": "No approved heuristics yet — approve a proposal and it will appear here.",
+      "rejectedFailed": "Couldn’t load rejected proposals.",
+      "rejectedEmpty": "No rejected proposals yet."
+    }
+  }
+}

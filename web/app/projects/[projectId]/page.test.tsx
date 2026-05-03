@@ -10,9 +10,15 @@ const mocks = vi.hoisted(() => ({
   cookies: vi.fn(),
   relayFetch: vi.fn(),
   getProjectExplorer: vi.fn(),
+  pathname: "/projects/proj_1",
+  search: "",
 }));
 
-vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
+vi.mock("next/navigation", () => ({
+  redirect: mocks.redirect,
+  usePathname: () => mocks.pathname,
+  useSearchParams: () => new URLSearchParams(mocks.search),
+}));
 vi.mock("next/headers", () => ({ cookies: mocks.cookies }));
 vi.mock("@/lib/api", () => ({
   RELAY_API_URL: "https://relay.4gly.dev",
@@ -87,6 +93,8 @@ const explorer = {
 describe("<ProjectExplorerPage>", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.pathname = "/projects/proj_1";
+    mocks.search = "";
     mocks.cookies.mockResolvedValue(cookieStore());
   });
 
@@ -154,6 +162,35 @@ describe("<ProjectExplorerPage>", () => {
     expect(mocks.getProjectExplorer).toHaveBeenCalledWith("proj_1", {
       headers: { cookie: "relay_session=test" },
     });
+  });
+
+  it("renders Korean product chrome and locale-aware dates", async () => {
+    globalThis.__setNextIntlLocale("ko");
+    mocks.relayFetch.mockResolvedValueOnce(
+      authResponse(200, {
+        ok: true,
+        command: "relay auth me",
+        data: {
+          user_id: "user_1",
+          display_name: "Hoon",
+          onboarding_complete: true,
+          default_project_id: "proj_1",
+        },
+        warnings: [],
+      }),
+    );
+    mocks.getProjectExplorer.mockResolvedValueOnce(explorer);
+
+    render(await ProjectExplorerPage({ params: Promise.resolve({ projectId: "proj_1" }) }));
+
+    expect(screen.getByText("작업공간 인스펙터 — 상세 카운트")).toBeVisible();
+    expect(screen.getByText("프로젝트 탐색기 · active")).toBeVisible();
+    expect(screen.getByRole("link", { name: "패킷 빌더 열기" })).toHaveAttribute(
+      "href",
+      "/projects/proj_1/packet-builder",
+    );
+    expect(screen.getAllByText(/4월/).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/Apr/)).not.toBeInTheDocument();
   });
 
   it("shows sign-in when there is no session", async () => {

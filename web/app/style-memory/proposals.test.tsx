@@ -310,6 +310,28 @@ describe("reject overlay", () => {
     expect(await screen.findByText("rejected from refetch")).toBeInTheDocument();
     expect(screen.getByText("reason:stale")).toBeInTheDocument();
   });
+
+  it("renders Korean chrome and uses the localized reject reason in the toast", async () => {
+    globalThis.__setNextIntlLocale("ko");
+    const user = userEvent.setup();
+    mockFetchOk({
+      ok: true,
+      command: "relay heuristic-proposal review",
+      data: { proposal_id: "p-1", project_id: "proj", state: "rejected" },
+      warnings: [],
+    });
+    mockRejectedList([serverRejected()]);
+    renderProposals({ initialRejected: [] });
+
+    expect(screen.getByRole("tab", { name: /제안3/i })).toBeInTheDocument();
+    await user.click(screen.getAllByText("거절")[0]);
+    expect(screen.getByText("왜 거절하나요?")).toBeInTheDocument();
+    await user.click(screen.getByTestId("reject-chip-stale"));
+    await user.click(screen.getByTestId("reject-submit"));
+
+    await waitFor(() => expect(screen.getByText("사유: 오래됨")).toBeInTheDocument());
+    expect(screen.queryByText("Reason: stale")).not.toBeInTheDocument();
+  });
 });
 
 describe("view toggle persistence", () => {

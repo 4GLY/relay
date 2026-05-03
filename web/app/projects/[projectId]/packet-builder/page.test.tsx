@@ -10,9 +10,15 @@ const mocks = vi.hoisted(() => ({
   cookies: vi.fn(),
   relayFetch: vi.fn(),
   getLatestPacketSnapshot: vi.fn(),
+  pathname: "/projects/proj_1/packet-builder",
+  search: "",
 }));
 
-vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
+vi.mock("next/navigation", () => ({
+  redirect: mocks.redirect,
+  usePathname: () => mocks.pathname,
+  useSearchParams: () => new URLSearchParams(mocks.search),
+}));
 vi.mock("next/headers", () => ({ cookies: mocks.cookies }));
 vi.mock("@/lib/api", () => ({
   RELAY_API_URL: "https://relay.4gly.dev",
@@ -77,6 +83,8 @@ const snapshot = {
 describe("<PacketBuilderPage>", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.pathname = "/projects/proj_1/packet-builder";
+    mocks.search = "";
     mocks.cookies.mockResolvedValue(cookieStore());
   });
 
@@ -112,6 +120,30 @@ describe("<PacketBuilderPage>", () => {
     expect(mocks.getLatestPacketSnapshot).toHaveBeenCalledWith("proj_1", {
       headers: { cookie: "relay_session=test" },
     });
+  });
+
+  it("renders Korean packet chrome with a locale-formatted created time", async () => {
+    globalThis.__setNextIntlLocale("ko");
+    mocks.relayFetch.mockResolvedValueOnce(
+      authResponse(200, {
+        ok: true,
+        command: "relay auth me",
+        data: {
+          user_id: "user_1",
+          display_name: "Hoon",
+          onboarding_complete: true,
+          default_project_id: "proj_1",
+        },
+        warnings: [],
+      }),
+    );
+    mocks.getLatestPacketSnapshot.mockResolvedValueOnce(snapshot);
+
+    render(await PacketBuilderPage({ params: Promise.resolve({ projectId: "proj_1" }) }));
+
+    expect(screen.getByText("만든 시간")).toBeVisible();
+    expect(screen.getAllByText(/4월/).length).toBeGreaterThan(0);
+    expect(screen.queryByText("2026-04-30T00:00:00Z")).not.toBeInTheDocument();
   });
 
   it("shows sign-in when there is no session", async () => {

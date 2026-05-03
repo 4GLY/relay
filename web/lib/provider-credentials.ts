@@ -1,4 +1,4 @@
-import { relayFetch, type RelayEnvelope } from "@/lib/api";
+import { relayFetch, type RelayEnvelope, type RelayErrorPayload } from "@/lib/api";
 
 export type ProviderCredentialStatus = {
   provider: "anthropic";
@@ -12,6 +12,22 @@ export type ProviderCredentialListData = {
   credentials: ProviderCredentialStatus[];
 };
 
+export class ProviderCredentialAPIError extends Error {
+  code: string;
+  retryable: boolean;
+
+  constructor(payload: RelayErrorPayload) {
+    super(payload.message || payload.code);
+    this.name = "ProviderCredentialAPIError";
+    this.code = payload.code;
+    this.retryable = payload.retryable;
+  }
+}
+
+function throwRelayError(payload: RelayErrorPayload): never {
+  throw new ProviderCredentialAPIError(payload);
+}
+
 export async function listProviderCredentials(headers?: HeadersInit): Promise<ProviderCredentialListData> {
   const res = await relayFetch("/v1/settings/provider-credentials", {
     method: "GET",
@@ -20,7 +36,7 @@ export async function listProviderCredentials(headers?: HeadersInit): Promise<Pr
   });
   const body = (await res.json()) as RelayEnvelope<ProviderCredentialListData>;
   if (!body.ok) {
-    throw new Error(body.error.message || body.error.code);
+    throwRelayError(body.error);
   }
   return body.data;
 }
@@ -33,7 +49,7 @@ export async function connectProviderCredential(apiKey: string): Promise<Provide
   });
   const body = (await res.json()) as RelayEnvelope<ProviderCredentialStatus>;
   if (!body.ok) {
-    throw new Error(body.error.message || body.error.code);
+    throwRelayError(body.error);
   }
   return body.data;
 }
@@ -44,6 +60,6 @@ export async function disconnectProviderCredential(): Promise<void> {
   });
   const body = (await res.json()) as RelayEnvelope<{ status: "ok" }>;
   if (!body.ok) {
-    throw new Error(body.error.message || body.error.code);
+    throwRelayError(body.error);
   }
 }

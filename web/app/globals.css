@@ -216,6 +216,29 @@
     text-transform: uppercase;
   }
 
+  .relay-language-switch {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .relay-language-switch select,
+  .relay-language-switch button {
+    min-height: 32px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--canvas-raised);
+    color: var(--ink-muted);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .relay-language-switch button {
+    cursor: pointer;
+  }
+
   .relay-user-chip {
     max-width: 180px;
     overflow: hidden;
@@ -776,6 +799,10 @@
   .relay-auth-panel {
     max-width: 560px;
     padding: 28px;
+  }
+
+  .relay-auth-language {
+    margin-top: 18px;
   }
 
   .relay-auth-panel-title {
@@ -1802,6 +1829,18 @@
     flex-wrap: wrap;
     gap: 12px;
     margin-top: 16px;
+  }
+
+  .relay-sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
   }
 
   .relay-credential-status {

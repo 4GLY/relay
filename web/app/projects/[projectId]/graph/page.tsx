@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 
 import {
@@ -30,6 +31,8 @@ type GraphNodeView = ProjectGraphNode & {
   y: number;
 };
 
+type ProductT = Awaited<ReturnType<typeof getTranslations>>;
+
 async function resolveSession(cookieHeader: string): Promise<AuthMe | null> {
   const res = await relayFetch("/v1/auth/me", {
     method: "GET",
@@ -57,10 +60,11 @@ export default async function DecisionGraphPage({
   const { projectId } = await params;
   const cookieStore = await cookies();
   const cookieHeader = cookieStore.toString();
+  const t = await getTranslations("DecisionGraph");
   const me = await resolveSession(cookieHeader);
 
   if (!me) {
-    return <SignInRequired projectId={projectId} />;
+    return <SignInRequired projectId={projectId} t={t} />;
   }
 
   if (!me.onboarding_complete) {
@@ -73,18 +77,20 @@ export default async function DecisionGraphPage({
       headers: { cookie: cookieHeader },
     });
   } catch (error) {
-    return <DecisionGraphError projectId={projectId} error={error} userDisplayName={me.display_name} />;
+    return <DecisionGraphError projectId={projectId} error={error} userDisplayName={me.display_name} t={t} />;
   }
 
-  return <DecisionGraph graph={graph} userDisplayName={me.display_name} />;
+  return <DecisionGraph graph={graph} userDisplayName={me.display_name} t={t} />;
 }
 
 function DecisionGraph({
   graph,
   userDisplayName,
+  t,
 }: {
   graph: ProjectGraph;
   userDisplayName?: string;
+  t: ProductT;
 }) {
   const nodes = layoutNodes(graph.nodes);
   const byId = new Map(nodes.map((node) => [node.id, node]));
@@ -107,43 +113,43 @@ function DecisionGraph({
       activeStep="Dissect"
       userLabel={userDisplayName}
       projectHref={`/projects/${encodeURIComponent(graph.projectId)}`}
-      railItems={projectRailItems(graph.projectId, "graph")}
+      railItems={projectRailItems(graph.projectId, "graph", t)}
     >
       <RelayPageHead
-        eyebrow={`${graph.projectId} · Decision Graph`}
-        title="Decision Graph"
+        eyebrow={t("eyebrow", { projectId: graph.projectId })}
+        title={t("title")}
         titleId="graph-title"
         copy={
           nodes.length > 1
-            ? "How decisions reached swan."
-            : "Capture evidence to reveal the path to swan."
+            ? t("copyReady")
+            : t("copyEmpty")
         }
         actions={
           <>
             <button type="button" className="relay-action" data-variant="secondary">
-              Re-layout
+              {t("actions.relayout")}
             </button>
             <RelayLinkButton
               href={`/projects/${encodeURIComponent(graph.projectId)}/packet-builder`}
               variant="primary"
             >
-              Compose handoff
+              {t("actions.composeHandoff")}
             </RelayLinkButton>
           </>
         }
       />
 
-      <section className="relay-summary-grid" aria-label="Graph summary">
-        <RelayMetricTile label="Decisions" value={counts.decision ?? 0} />
-        <RelayMetricTile label="Traces" value={counts.judgment_trace ?? 0} />
-        <RelayMetricTile label="Proposals" value={counts.heuristic_proposal ?? 0} />
-        <RelayMetricTile label="Heuristics" value={counts.approved_heuristic ?? 0} />
-        <RelayMetricTile label="Snapshots" value={counts.packet_snapshot ?? 0} />
+      <section className="relay-summary-grid" aria-label={t("labels.graphSummary")}>
+        <RelayMetricTile label={t("labels.decisions")} value={counts.decision ?? 0} />
+        <RelayMetricTile label={t("labels.traces")} value={counts.judgment_trace ?? 0} />
+        <RelayMetricTile label={t("labels.proposals")} value={counts.heuristic_proposal ?? 0} />
+        <RelayMetricTile label={t("labels.heuristics")} value={counts.approved_heuristic ?? 0} />
+        <RelayMetricTile label={t("labels.snapshots")} value={counts.packet_snapshot ?? 0} />
       </section>
 
       {nodes.length > 1 ? (
-        <RelayCard className="relay-graph-shell" aria-label="Decision Graph map">
-          <svg viewBox="0 0 960 540" role="img" aria-label="Decision evidence graph" className="relay-graph-svg">
+        <RelayCard className="relay-graph-shell" aria-label={t("labels.decisionGraphMap")}>
+          <svg viewBox="0 0 960 540" role="img" aria-label={t("labels.decisionEvidenceGraph")} className="relay-graph-svg">
             <defs>
               <pattern id="relay-graph-dot" width="20" height="20" patternUnits="userSpaceOnUse">
                 <circle cx="1" cy="1" r="0.75" fill="var(--border-strong)" />
@@ -187,7 +193,7 @@ function DecisionGraph({
                     className="relay-graph-node-kind"
                     fill={swatch.text}
                   >
-                    {nodeGlyph(node.kind)} {formatKind(node.kind)}
+                    {nodeGlyph(node.kind)} {nodeKindLabel(node.kind, t)}
                   </text>
                   <text
                     x={node.x}
@@ -203,24 +209,24 @@ function DecisionGraph({
             })}
           </svg>
           <div className="relay-graph-legend">
-            <span>● Project</span>
-            <span>◇ Trace</span>
-            <span>◈ Swan</span>
-            <span>△ Duckling</span>
-            <span>■ Snapshot</span>
+            <span>● {t("legend.project")}</span>
+            <span>◇ {t("legend.trace")}</span>
+            <span>◈ {t("legend.swan")}</span>
+            <span>△ {t("legend.duckling")}</span>
+            <span>■ {t("legend.snapshot")}</span>
           </div>
         </RelayCard>
       ) : (
         <RelayEmptyState
-          title="No graph evidence yet."
-          copy="Capture notes, traces, decisions, heuristics, or snapshots to fill the map."
+          title={t("empty.title")}
+          copy={t("empty.copy")}
         />
       )}
 
-      <section className="relay-node-list" aria-label="Graph nodes">
+      <section className="relay-node-list" aria-label={t("labels.graphNodes")}>
         {nodes.map((node) => (
           <RelayCard key={node.id} className="relay-node-card">
-            <span className="relay-node-kind">{formatKind(node.kind)}</span>
+            <span className="relay-node-kind">{nodeKindLabel(node.kind, t)}</span>
             <h2 className="relay-node-title">{node.title || node.id}</h2>
             <p className="relay-node-meta">{node.workflow || node.packetKind || node.state || node.sourcePath || node.id}</p>
           </RelayCard>
@@ -230,38 +236,38 @@ function DecisionGraph({
   );
 }
 
-function projectRailItems(projectId: string, active: "traces" | "graph") {
+function projectRailItems(projectId: string, active: "traces" | "graph", t: ProductT) {
   const encoded = encodeURIComponent(projectId);
   return [
-    { href: `/projects/${encoded}`, label: "Project Explorer", glyph: "empty" as const },
+    { href: `/projects/${encoded}`, label: t("nav.projectExplorer"), glyph: "empty" as const },
     {
       href: `/projects/${encoded}/traces`,
-      label: "Trace Browser",
+      label: t("nav.traceBrowser"),
       glyph: "active" as const,
       active: active === "traces",
     },
     {
       href: `/projects/${encoded}/graph`,
-      label: "Decision Graph",
+      label: t("nav.decisionGraph"),
       glyph: "snapshot" as const,
       active: active === "graph",
     },
-    { href: `/style-memory?project=${encoded}`, label: "Style Memory", glyph: "pending" as const },
-    { href: `/projects/${encoded}/packet-builder`, label: "Packet Builder", glyph: "snapshot" as const },
-    { href: "/settings/providers", label: "Settings", glyph: "empty" as const },
+    { href: `/style-memory?project=${encoded}`, label: t("nav.styleMemory"), glyph: "pending" as const },
+    { href: `/projects/${encoded}/packet-builder`, label: t("nav.packetBuilder"), glyph: "snapshot" as const },
+    { href: "/settings/providers", label: t("nav.settings"), glyph: "empty" as const },
   ];
 }
 
-function SignInRequired({ projectId }: { projectId: string }) {
+function SignInRequired({ projectId, t }: { projectId: string; t: ProductT }) {
   return (
     <main className="relay-empty-page">
       <RelayPageHead
-        eyebrow="Decision Graph"
-        title="Sign in first"
-        copy="Decision evidence is private to the project workspace."
+        eyebrow={t("signIn.eyebrow")}
+        title={t("signIn.title")}
+        copy={t("signIn.copy")}
         actions={
           <RelayLinkButton href={signInURL(projectId)} variant="primary">
-            Continue with GitHub
+            {t("actions.continueWithGitHub")}
           </RelayLinkButton>
         }
       />
@@ -273,21 +279,23 @@ function DecisionGraphError({
   projectId,
   error,
   userDisplayName,
+  t,
 }: {
   projectId: string;
   error: unknown;
   userDisplayName?: string;
+  t: ProductT;
 }) {
   const code = error instanceof ProjectGraphError ? error.code : "UNKNOWN";
-  const message = error instanceof Error ? error.message : "Decision Graph failed to load.";
+  const message = error instanceof Error ? error.message : t("error.fallbackMessage");
   return (
     <main className="relay-empty-page">
       <RelayPageHead
-        eyebrow={`Decision Graph · ${userDisplayName ?? "signed in"}`}
-        title="Couldn’t open graph"
+        eyebrow={t("error.eyebrow", { user: userDisplayName ?? t("error.signedInFallback") })}
+        title={t("error.title")}
         actions={
           <RelayLinkButton href={`/projects/${encodeURIComponent(projectId)}/graph`} variant="primary">
-            Retry
+            {t("actions.retry")}
           </RelayLinkButton>
         }
       />
@@ -393,6 +401,17 @@ function compactNodeLabel(node: ProjectGraphNode) {
   return `${label.slice(0, 20)}…`;
 }
 
-function formatKind(kind: string) {
-  return kind.replaceAll("_", " ");
+function nodeKindLabel(kind: string, t: ProductT) {
+  const labels: Record<string, string> = {
+    project: t("nodeKinds.project"),
+    judgment_trace: t("nodeKinds.judgmentTrace"),
+    heuristic_proposal: t("nodeKinds.heuristicProposal"),
+    approved_heuristic: t("nodeKinds.approvedHeuristic"),
+    decision: t("nodeKinds.decision"),
+    packet_snapshot: t("nodeKinds.packetSnapshot"),
+    note: t("nodeKinds.note"),
+    artifact: t("nodeKinds.artifact"),
+    open_question: t("nodeKinds.openQuestion"),
+  };
+  return labels[kind] ?? kind.replaceAll("_", " ");
 }

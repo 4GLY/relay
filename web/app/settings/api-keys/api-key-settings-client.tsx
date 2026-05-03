@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 
-import type { Dictionary, Locale } from "@/lib/i18n";
-import { translateErrorMessage } from "@/lib/i18n";
+import { translateKnownError } from "@/lib/i18n";
 import {
   RelayButton,
   RelayCard,
@@ -25,10 +25,7 @@ import {
 } from "@/lib/user-api-keys";
 
 type Props = {
-  copy: Dictionary["apiKeys"]["client"];
-  errorMap: Record<string, string>;
   initialKeys: UserAPIKeySummary[];
-  locale: Locale;
 };
 
 type FeedbackState =
@@ -36,7 +33,9 @@ type FeedbackState =
   | { kind: "success"; message: string }
   | { kind: "error"; message: string };
 
-export function APIKeySettingsClient({ copy, errorMap, initialKeys, locale }: Props) {
+export function APIKeySettingsClient({ initialKeys }: Props) {
+  const t = useTranslations("Settings.ApiKeys.client");
+  const errors = useTranslations("Settings.ApiKeys.errorMap");
   const [keys, setKeys] = useState(initialKeys);
   const [name, setName] = useState("");
   const [confirmingKeyID, setConfirmingKeyID] = useState<string | null>(null);
@@ -74,15 +73,14 @@ export function APIKeySettingsClient({ copy, errorMap, initialKeys, locale }: Pr
         ...current,
       ]);
       setName("");
-      setFeedback({ kind: "success", message: copy.issuedSuccess });
+      setFeedback({ kind: "success", message: t("issuedSuccess") });
     } catch (error) {
       setFeedback({
         kind: "error",
-        message: translateErrorMessage({
+        message: translateKnownError({
           error,
-          fallback: copy.fallbackIssueError,
-          knownErrors: errorMap,
-          locale,
+          fallback: t("fallbackIssueError"),
+          knownErrors: apiKeyErrorMap(errors),
         }),
       });
     } finally {
@@ -107,15 +105,14 @@ export function APIKeySettingsClient({ copy, errorMap, initialKeys, locale }: Pr
         ),
       );
       setConfirmingKeyID(null);
-      setFeedback({ kind: "success", message: copy.revokedSuccess });
+      setFeedback({ kind: "success", message: t("revokedSuccess") });
     } catch (error) {
       setFeedback({
         kind: "error",
-        message: translateErrorMessage({
+        message: translateKnownError({
           error,
-          fallback: copy.fallbackRevokeError,
-          knownErrors: errorMap,
-          locale,
+          fallback: t("fallbackRevokeError"),
+          knownErrors: apiKeyErrorMap(errors),
         }),
       });
     } finally {
@@ -138,27 +135,27 @@ export function APIKeySettingsClient({ copy, errorMap, initialKeys, locale }: Pr
   return (
     <section className="relay-settings-surface" aria-labelledby="api-key-settings-title">
       <RelayPageHead
-        eyebrow={copy.eyebrow}
-        title={copy.title}
+        eyebrow={t("eyebrow")}
+        title={t("title")}
         titleId="api-key-settings-title"
-        copy={copy.copy}
-        actions={<RelayStatusBadge>{copy.settingsOnlyPill}</RelayStatusBadge>}
+        copy={t("copy")}
+        actions={<RelayStatusBadge>{t("settingsOnlyPill")}</RelayStatusBadge>}
       />
 
       <div className="relay-settings-grid">
         <RelayCard variant="elevated" aria-labelledby="issue-api-key-title">
           <RelayCardHeader>
-            <RelayCardKicker>{copy.settingsOnlyPill}</RelayCardKicker>
-            <RelayCardTitle id="issue-api-key-title">{copy.issueButton}</RelayCardTitle>
+            <RelayCardKicker>{t("settingsOnlyPill")}</RelayCardKicker>
+            <RelayCardTitle id="issue-api-key-title">{t("issueButton")}</RelayCardTitle>
           </RelayCardHeader>
 
-          <RelayField label={copy.nameLabel} htmlFor="api-key-name" help={copy.fieldHelp}>
+          <RelayField label={t("nameLabel")} htmlFor="api-key-name" help={t("fieldHelp")}>
             <RelayTextInput
               id="api-key-name"
               type="text"
               value={name}
               onChange={(event) => setName(event.target.value)}
-              placeholder={copy.namePlaceholder}
+              placeholder={t("namePlaceholder")}
               autoComplete="off"
             />
           </RelayField>
@@ -169,40 +166,40 @@ export function APIKeySettingsClient({ copy, errorMap, initialKeys, locale }: Pr
               onClick={issueKey}
               data-testid="issue-api-key"
             >
-              {isIssuing ? copy.issuingButton : copy.issueButton}
+              {isIssuing ? t("issuingButton") : t("issueButton")}
             </RelayButton>
           </div>
 
           {issuedToken && (
             <section className="relay-token-panel" aria-live="polite">
               <div>
-                <strong className="relay-token-title">{copy.tokenPanelTitle}</strong>
+                <strong className="relay-token-title">{t("tokenPanelTitle")}</strong>
                 <p className="relay-token-copy">
-                  {copy.tokenPanelCopy} {issuedToken.name} · {issuedToken.tokenPrefix}
+                  {t("tokenPanelCopy")} {issuedToken.name} · {issuedToken.tokenPrefix}
                 </p>
               </div>
-              <RelayField label={copy.tokenLabel} htmlFor="issued-api-key-token">
+              <RelayField label={t("tokenLabel")} htmlFor="issued-api-key-token">
                 <div className="relay-token-row">
                   <RelayTextInput
-                  id="issued-api-key-token"
-                  type="text"
-                  readOnly
-                  value={issuedToken.token}
-                  autoComplete="off"
-                  spellCheck={false}
-                />
+                    id="issued-api-key-token"
+                    type="text"
+                    readOnly
+                    value={issuedToken.token}
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
                   <RelayButton
                     onClick={copyIssuedToken}
                     variant="secondary"
                     data-testid="copy-issued-api-key"
                   >
-                    {copyStatus === "copied" ? copy.copiedButton : copy.copyButton}
+                    {copyStatus === "copied" ? t("copiedButton") : t("copyButton")}
                   </RelayButton>
                 </div>
               </RelayField>
               {copyStatus === "error" && (
                 <RelayFeedback role="alert" variant="error">
-                  {copy.copyError}
+                  {t("copyError")}
                 </RelayFeedback>
               )}
             </section>
@@ -222,21 +219,21 @@ export function APIKeySettingsClient({ copy, errorMap, initialKeys, locale }: Pr
         <RelayCard variant="elevated" aria-labelledby="issued-keys-title">
           <div className="relay-list-header">
             <div>
-              <RelayCardKicker>{copy.scopeLabel}</RelayCardKicker>
-              <RelayCardTitle id="issued-keys-title">{copy.listTitle}</RelayCardTitle>
+              <RelayCardKicker>{t("scopeLabel")}</RelayCardKicker>
+              <RelayCardTitle id="issued-keys-title">{t("listTitle")}</RelayCardTitle>
             </div>
             <RelayStatusBadge>{keys.length}</RelayStatusBadge>
           </div>
 
           {keys.length === 0 ? (
-            <RelayEmptyState copy={copy.emptyState} />
+            <RelayEmptyState copy={t("emptyState")} />
           ) : (
             <ul className="relay-key-list">
               {keys.map((item) => {
                 const isRevoking = revokingKeyID === item.key_id;
                 const isConfirming = confirmingKeyID === item.key_id;
                 const scopeLabel =
-                  item.scope === "project" ? copy.scopeProject : copy.scopeGlobal;
+                  item.scope === "project" ? t("scopeProject") : t("scopeGlobal");
 
                 return (
                   <li key={item.key_id} className="relay-key-row">
@@ -246,18 +243,18 @@ export function APIKeySettingsClient({ copy, errorMap, initialKeys, locale }: Pr
                         <p className="relay-key-meta">{item.token_prefix}</p>
                       </div>
                       <RelayStatusBadge variant={item.revoked ? "neutral" : "success"}>
-                        {item.revoked ? copy.revokedStatus : copy.activeStatus}
+                        {item.revoked ? t("revokedStatus") : t("activeStatus")}
                       </RelayStatusBadge>
                     </div>
 
                     <RelayMetaGrid>
                       <div>
-                        <dt className="relay-meta-label">{copy.scopeLabel}</dt>
+                        <dt className="relay-meta-label">{t("scopeLabel")}</dt>
                         <dd className="relay-meta-value">{scopeLabel}</dd>
                       </div>
                       {item.project_id ? (
                         <div>
-                          <dt className="relay-meta-label">{copy.projectLabel}</dt>
+                          <dt className="relay-meta-label">{t("projectLabel")}</dt>
                           <dd className="relay-meta-value">{item.project_id}</dd>
                         </div>
                       ) : null}
@@ -267,7 +264,7 @@ export function APIKeySettingsClient({ copy, errorMap, initialKeys, locale }: Pr
                       <div className="relay-row-actions">
                         {isConfirming ? (
                           <>
-                            <p className="relay-confirm-copy">{copy.revokeConfirmCopy}</p>
+                            <p className="relay-confirm-copy">{t("revokeConfirmCopy")}</p>
                             <div className="relay-form-actions">
                               <RelayButton
                                 onClick={() => revokeKey(item.key_id)}
@@ -275,14 +272,14 @@ export function APIKeySettingsClient({ copy, errorMap, initialKeys, locale }: Pr
                                 variant="danger"
                                 data-testid={`confirm-revoke-${item.key_id}`}
                               >
-                                {isRevoking ? copy.revokingButton : copy.confirmRevokeButton}
+                                {isRevoking ? t("revokingButton") : t("confirmRevokeButton")}
                               </RelayButton>
                               <RelayButton
                                 onClick={() => setConfirmingKeyID(null)}
                                 disabled={Boolean(revokingKeyID)}
                                 variant="secondary"
                               >
-                                {copy.cancelRevokeButton}
+                                {t("cancelRevokeButton")}
                               </RelayButton>
                             </div>
                           </>
@@ -292,7 +289,7 @@ export function APIKeySettingsClient({ copy, errorMap, initialKeys, locale }: Pr
                             variant="secondary"
                             data-testid={`revoke-api-key-${item.key_id}`}
                           >
-                            {copy.revokeButton}
+                            {t("revokeButton")}
                           </RelayButton>
                         )}
                       </div>
@@ -306,4 +303,12 @@ export function APIKeySettingsClient({ copy, errorMap, initialKeys, locale }: Pr
       </div>
     </section>
   );
+}
+
+function apiKeyErrorMap(t: ReturnType<typeof useTranslations>): Record<string, string> {
+  return {
+    UNAUTHENTICATED: t("UNAUTHENTICATED"),
+    INVALID_INPUT: t("INVALID_INPUT"),
+    API_KEY_NOT_FOUND_BY_ID: t("API_KEY_NOT_FOUND_BY_ID"),
+  };
 }

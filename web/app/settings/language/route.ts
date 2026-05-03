@@ -1,12 +1,27 @@
 import { NextResponse } from "next/server";
 
-import { RELAY_LOCALE_COOKIE, type Locale } from "@/lib/i18n";
-
-const supportedLocales = new Set<Locale>(["en", "ko"]);
+import { RELAY_LOCALE_COOKIE, type Locale, isLocale } from "@/i18n/routing";
 
 function parseLocale(value: FormDataEntryValue | string | null): Locale | null {
   if (typeof value !== "string") return null;
-  return supportedLocales.has(value as Locale) ? (value as Locale) : null;
+  return isLocale(value) ? value : null;
+}
+
+function parseRedirectTo(
+  value: FormDataEntryValue | string | null | undefined,
+  requestUrl: string,
+): string {
+  if (typeof value !== "string") return "/";
+
+  try {
+    const baseUrl = new URL(requestUrl);
+    const redirectUrl = new URL(value, baseUrl);
+    if (redirectUrl.origin !== baseUrl.origin) return "/";
+
+    return `${redirectUrl.pathname}${redirectUrl.search}${redirectUrl.hash}`;
+  } catch {
+    return "/";
+  }
 }
 
 export async function POST(request: Request) {
@@ -17,14 +32,11 @@ export async function POST(request: Request) {
   if (contentType.includes("application/json")) {
     const body = (await request.json()) as { locale?: string; redirectTo?: string };
     locale = parseLocale(body.locale ?? null);
-    redirectTo = body.redirectTo || redirectTo;
+    redirectTo = parseRedirectTo(body.redirectTo, request.url);
   } else {
     const formData = await request.formData();
     locale = parseLocale(formData.get("locale"));
-    const submittedRedirect = formData.get("redirectTo");
-    if (typeof submittedRedirect === "string" && submittedRedirect.startsWith("/")) {
-      redirectTo = submittedRedirect;
-    }
+    redirectTo = parseRedirectTo(formData.get("redirectTo"), request.url);
   }
 
   if (!locale) {

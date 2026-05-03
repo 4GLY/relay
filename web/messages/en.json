@@ -108,7 +108,8 @@
       },
       "errorMap": {
         "UNAUTHENTICATED": "Sign in again to manage provider credentials.",
-        "INVALID_INPUT": "Anthropic keys must start with sk-ant-"
+        "INVALID_INPUT": "Anthropic keys must start with sk-ant-",
+        "INVALID_PROVIDER_CREDENTIAL": "Anthropic keys must start with sk-ant-"
       }
     },
     "ApiKeys": {

@@ -108,7 +108,8 @@
       },
       "errorMap": {
         "UNAUTHENTICATED": "provider 인증 정보를 관리하려면 다시 로그인하세요.",
-        "INVALID_INPUT": "Anthropic 키는 sk-ant- 로 시작해야 합니다."
+        "INVALID_INPUT": "Anthropic 키는 sk-ant- 로 시작해야 합니다.",
+        "INVALID_PROVIDER_CREDENTIAL": "Anthropic 키는 sk-ant- 로 시작해야 합니다."
       }
     },
     "ApiKeys": {

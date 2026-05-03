@@ -68,4 +68,20 @@ describe("<ProviderSettingsClient>", () => {
       expect(screen.getByText("Not connected")).toBeInTheDocument();
     });
   });
+
+  it("translates invalid provider credential errors", async () => {
+    vi.mocked(connectProviderCredential).mockRejectedValueOnce({
+      code: "INVALID_PROVIDER_CREDENTIAL",
+    });
+
+    const user = userEvent.setup();
+    render(<ProviderSettingsClient />);
+
+    await user.type(screen.getByLabelText(/anthropic api key/i), "not-anthropic");
+    await user.click(screen.getByTestId("connect-provider"));
+
+    await expect(
+      screen.findByText("Anthropic keys must start with sk-ant-"),
+    ).resolves.toBeVisible();
+  });
 });

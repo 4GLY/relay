@@ -105,4 +105,25 @@ describe("POST /settings/language", () => {
     expect(response.headers.get("location")).toBe("https://relay.4gly.dev/settings/providers");
     expect(response.cookies.get(RELAY_LOCALE_COOKIE)?.value).toBe("ko");
   });
+
+  it("does not downgrade public forwarded hosts when the origin request is HTTP", async () => {
+    const formData = new FormData();
+    formData.set("locale", "ko");
+    formData.set("redirectTo", "/");
+
+    const response = await POST(
+      new Request("http://0.0.0.0:3000/settings/language", {
+        method: "POST",
+        headers: {
+          "x-forwarded-host": "relay.4gly.dev",
+          "x-forwarded-proto": "http",
+        },
+        body: formData,
+      }),
+    );
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe("https://relay.4gly.dev/");
+    expect(response.cookies.get(RELAY_LOCALE_COOKIE)?.value).toBe("ko");
+  });
 });

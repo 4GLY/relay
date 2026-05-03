@@ -183,5 +183,6 @@ function providerErrorMap(t: ReturnType<typeof useTranslations>): Record<string,
   return {
     UNAUTHENTICATED: t("UNAUTHENTICATED"),
     INVALID_INPUT: t("INVALID_INPUT"),
+    INVALID_PROVIDER_CREDENTIAL: t("INVALID_PROVIDER_CREDENTIAL"),
   };
 }

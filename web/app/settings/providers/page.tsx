@@ -91,5 +91,6 @@ function providerErrorMap(t: Awaited<ReturnType<typeof getTranslations>>): Recor
   return {
     UNAUTHENTICATED: t("UNAUTHENTICATED"),
     INVALID_INPUT: t("INVALID_INPUT"),
+    INVALID_PROVIDER_CREDENTIAL: t("INVALID_PROVIDER_CREDENTIAL"),
   };
 }

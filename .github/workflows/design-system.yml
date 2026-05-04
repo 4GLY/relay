@@ -38,5 +38,25 @@ jobs:
         working-directory: web
         run: npm ci
 
-      - name: Lint DESIGN.md
+      - name: Lint DESIGN.md token contract
         run: npm --prefix web run design:lint
+
+      - name: Validate implementation contract docs
+        run: |
+          node <<'NODE'
+          const fs = require("node:fs");
+          const text = fs.readFileSync("docs/design-system.md", "utf8");
+          const required = [
+            "DESIGN.md is the canonical visual identity source",
+            "web/app/globals.css",
+            "web/components/relay/*",
+            "npm --prefix web run design:lint",
+            "https://github.com/google-labs-code/design.md"
+          ];
+          const missing = required.filter((item) => !text.includes(item));
+          if (missing.length > 0) {
+            console.error(`Missing design-system contract strings: ${missing.join(", ")}`);
+            process.exit(1);
+          }
+          console.log("docs/design-system.md contract strings are present");
+          NODE

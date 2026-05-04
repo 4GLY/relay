@@ -9,6 +9,24 @@ Relay UI 하드닝은 화면별 임시 CSS를 줄이고, `web/app/globals.css` +
 - 공통 UI는 `relay-*` 클래스와 데이터 속성 기반 variant로 통일한다.
 - 문서에서 계약을 선행 정의하고 구현을 따라가게 하여 회귀를 줄인다.
 
+Source of truth:
+
+- `DESIGN.md is the canonical visual identity source` and follows the
+  `google-labs-code/design.md` format: YAML token front matter plus canonical
+  Markdown rationale sections.
+- `DESIGN.md`: brand meaning, normative tokens, component token references,
+  and section-ordered design rationale.
+- `web/app/globals.css`: Tailwind v4 token projection and concrete `relay-*`
+  class behavior.
+- `web/components/relay/*`: React primitive API for screens.
+- `docs/design-system.md`: engineering rules for applying the system without
+  re-litigating brand decisions.
+- Validate the contract with:
+
+  ```bash
+  npm --prefix web run design:lint
+  ```
+
 ---
 
 ## 1) 설계 의도
@@ -255,6 +273,8 @@ rg -n "React\\.CSSProperties|CSSProperties|style=\\{" web/app web/components
   `web/components/relay/index.ts`
 - Token and component CSS:
   `web/app/globals.css`
+- DESIGN.md format specification:
+  `https://github.com/google-labs-code/design.md`
 
 ---
 

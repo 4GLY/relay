@@ -7,6 +7,8 @@ on:
     paths:
       - "DESIGN.md"
       - "docs/design-system.md"
+      - "CLAUDE.md"
+      - "web/README.md"
       - "docs/api.md"
       - "internal/api/server_test.go"
       - "internal/services/services_test.go"
@@ -90,16 +92,39 @@ jobs:
           const requiredGlobals = [
             "--color-canvas: #faf8f3",
             "--color-ink: #0e1a35",
-            "--color-magic-primary: #a7c4ff",
             "--canvas: #faf8f3",
             "--ink: #0e1a35",
-            "--magic-primary: #a7c4ff"
+            "--magic-primary: #a7c4ff",
+            "--problem: #1e2230"
           ];
           const missing = requiredGlobals.filter((needle) => !globals.includes(needle));
           if (missing.length > 0) {
-            console.error(`Missing DESIGN.md token projection in globals.css: ${missing.join(", ")}`);
+            console.error(`Missing runtime token projection in globals.css: ${missing.join(", ")}`);
             process.exit(1);
           }
 
-          console.log("canonical design references and runtime token projection are present");
+          const design = fs.readFileSync("DESIGN.md", "utf8");
+          const bodyHeading = design.match(/^# Design System\b/m);
+          if (!bodyHeading) {
+            console.error("DESIGN.md is missing the canonical '# Design System' body heading");
+            process.exit(1);
+          }
+          const body = design.slice(bodyHeading.index);
+          const retired = [
+            /\bduckling\b/i,
+            /\bswan\b/i,
+            /\bmagic\b/i,
+            /\bproblem\b/i,
+            /\bUgly\b/,
+            /\bElegant\b/,
+            /Toy Workshop/i,
+            /\bmascot\b/i
+          ];
+          const foundRetired = retired.filter((pattern) => pattern.test(body)).map(String);
+          if (foundRetired.length > 0) {
+            console.error(`Retired metaphor language remains in DESIGN.md body: ${foundRetired.join(", ")}`);
+            process.exit(1);
+          }
+
+          console.log("canonical design references, runtime aliases, and generic DESIGN.md body are valid");
           NODE

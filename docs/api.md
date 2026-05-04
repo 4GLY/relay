@@ -308,7 +308,7 @@ Request body:
 {
   "repo_path": ".",
   "handoff_path": "docs/handoff.md",
-  "design_path": "docs/design.md",
+  "design_path": "DESIGN.md",
   "extra_artifacts": [
     {
       "type": "code_path",
@@ -411,7 +411,7 @@ Request body:
   "heuristic_key": "explicit_contracts_over_magic",
   "canonical_text": "Prefer explicit contracts over magic inference.",
   "source_trace_ids": ["trace_xxx"],
-  "source_refs": ["docs/design.md"],
+  "source_refs": ["DESIGN.md"],
   "proposed_by": "manual",
   "idempotency_key": "proposal-001"
 }

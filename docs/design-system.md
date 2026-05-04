@@ -43,8 +43,11 @@ Source of truth:
 ## 2) 토큰 계약 (Token Contract)
 
 ### 2.1 단일 진입점
-- 정식 소스는 `web/app/globals.css`의 `@theme` 및 `@layer base` 변수.
-- 컴포넌트는 하드코딩 컬러/폰트/거리값을 사용하지 않고 **의미 토큰**만 사용한다.
+- `DESIGN.md`가 디자인 토큰과 시각 정체성의 canonical source다.
+- `web/app/globals.css`는 `@theme` 및 `@layer base`를 통해 해당 토큰을
+  Tailwind/runtime으로 투영한다.
+- 컴포넌트는 하드코딩 컬러/폰트/거리값 같은 시각 값을 사용하지 않고
+  **의미 토큰**만 사용한다.
 
 ### 2.2 색/표면 토큰
 

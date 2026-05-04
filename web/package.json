@@ -11,6 +11,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
+    "design:lint": "design.md lint --format json ../DESIGN.md",
+    "design:spec": "design.md spec --rules",
+    "design:export:tailwind": "design.md export --format tailwind ../DESIGN.md",
     "typecheck": "tsc --noEmit",
     "qa:e2e": "playwright test",
     "test": "vitest run",
@@ -28,6 +31,7 @@
     "tailwind-merge": "^2.5.0"
   },
   "devDependencies": {
+    "@google/design.md": "^0.1.1",
     "@playwright/test": "^1.59.1",
     "@tailwindcss/postcss": "^4.0.0",
     "@testing-library/jest-dom": "^6.9.1",

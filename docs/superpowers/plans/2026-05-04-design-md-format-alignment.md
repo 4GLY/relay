@@ -84,9 +84,9 @@ Edit `web/package.json` so the `scripts` block contains these exact entries:
   "qa:e2e": "playwright test",
   "test": "vitest run",
   "test:watch": "vitest",
-  "design:lint": "design.md lint --format json ../DESIGN.md",
-  "design:spec": "design.md spec --rules",
-  "design:export:tailwind": "design.md export --format tailwind ../DESIGN.md"
+  "design:lint": "node ./node_modules/@google/design.md/dist/index.js lint --format json ../DESIGN.md",
+  "design:spec": "node ./node_modules/@google/design.md/dist/index.js spec --rules",
+  "design:export:tailwind": "node ./node_modules/@google/design.md/dist/index.js export --format tailwind ../DESIGN.md"
 }
 ```
 
@@ -884,7 +884,7 @@ If Task 6 produced no changes, do not create an empty commit.
 
 **Placeholder scan:** The plan contains no unresolved file paths and no instruction that depends on undefined functions or components.
 
-**Type consistency:** Token references use the same YAML paths throughout: `{colors.*}`, `{typography.*}`, `{rounded.*}`, and `{spacing.*}`. npm scripts consistently run from `web` and reference `../DESIGN.md`.
+**Type consistency:** Token references use the same YAML paths throughout: `{colors.*}`, `{typography.*}`, `{rounded.*}`, and `{spacing.*}`. npm scripts consistently run from `web`, call the installed CLI entrypoint through `node`, and reference `../DESIGN.md`.
 
 ## Execution Handoff
 

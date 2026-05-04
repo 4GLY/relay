@@ -1313,7 +1313,7 @@ func testHandler(projectID string, apiKeyStores ...*fakeAPIKeyStore) Handler {
 			},
 			Artifacts: &fakeArtifactStore{
 				items: []domain.Artifact{
-					{ID: "art_1", ProjectID: projectID, Type: "design_doc", SourcePath: "docs/design.md", TrustLevel: "trusted"},
+					{ID: "art_1", ProjectID: projectID, Type: "design_doc", SourcePath: "DESIGN.md", TrustLevel: "trusted"},
 				},
 			},
 			Decisions: &fakeDecisionStore{

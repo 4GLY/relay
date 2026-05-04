@@ -590,7 +590,7 @@ func TestHeuristicProposalApprovalPreservesLineage(t *testing.T) {
 		HeuristicKey:   "explicit_contracts_over_magic",
 		CanonicalText:  "Prefer explicit contracts over magic inference.",
 		SourceTraceIDs: []string{"trace-2"},
-		SourceRefs:     []string{"docs/design.md"},
+		SourceRefs:     []string{"DESIGN.md"},
 		ProposedBy:     "manual",
 	})
 	if err != nil {

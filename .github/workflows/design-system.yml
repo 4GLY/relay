@@ -7,6 +7,8 @@ on:
     paths:
       - "DESIGN.md"
       - "docs/design-system.md"
+      - "docs/api.md"
+      - "web/app/globals.css"
       - "web/package.json"
       - "web/package-lock.json"
       - ".github/workflows/design-system.yml"
@@ -59,4 +61,42 @@ jobs:
             process.exit(1);
           }
           console.log("docs/design-system.md contract strings are present");
+          NODE
+
+      - name: Validate canonical design references
+        run: |
+          node <<'NODE'
+          const fs = require("node:fs");
+
+          const forbidden = [
+            ["docs/api.md", "docs/design.md"],
+            ["internal/api/server_test.go", "docs/design.md"],
+            ["internal/services/services_test.go", "docs/design.md"],
+            ["internal/services/style_memory_test.go", "docs/design.md"]
+          ];
+
+          const stale = forbidden.filter(([file, needle]) =>
+            fs.readFileSync(file, "utf8").includes(needle)
+          );
+          if (stale.length > 0) {
+            console.error(`Stale design document path references: ${stale.map(([file]) => file).join(", ")}`);
+            process.exit(1);
+          }
+
+          const globals = fs.readFileSync("web/app/globals.css", "utf8");
+          const requiredGlobals = [
+            "--color-canvas: #faf8f3",
+            "--color-ink: #0e1a35",
+            "--color-magic-primary: #a7c4ff",
+            "--canvas: #faf8f3",
+            "--ink: #0e1a35",
+            "--magic-primary: #a7c4ff"
+          ];
+          const missing = requiredGlobals.filter((needle) => !globals.includes(needle));
+          if (missing.length > 0) {
+            console.error(`Missing DESIGN.md token projection in globals.css: ${missing.join(", ")}`);
+            process.exit(1);
+          }
+
+          console.log("canonical design references and runtime token projection are present");
           NODE

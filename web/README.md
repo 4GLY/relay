@@ -17,7 +17,7 @@ This package only ships the scaffold (S5). The real screens land in:
 - Framer Motion
 - `next/font/local` for self-hosted Fraunces, Nunito, JetBrains Mono, and LXGW WenKai KR for Korean UI
 
-All visual tokens come from `DESIGN.md §6`. Do not introduce additional fonts or colors.
+All visual tokens come from `DESIGN.md` `Colors` and the token front matter. Do not introduce additional fonts or colors.
 
 ## Run
 
@@ -46,7 +46,7 @@ Then open <http://localhost:3000>.
 
 ## Conventions
 
-- Use only DESIGN.md §6 tokens (`--surface`, `--ink`, `--magic-primary`, …).
+- Use only `DESIGN.md` `Colors` and token front matter tokens such as `--canvas`, `--ink`, `--magic-primary`, and related light/dark values.
 - Use only the declared typefaces: Fraunces, Nunito, JetBrains Mono, and LXGW WenKai KR for Korean UI.
 - `--magic-primary` and `--magic-accent` only appear at transformation moments — never as
   ambient background.

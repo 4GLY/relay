@@ -7,7 +7,7 @@ Relay is an API-first second-brain backend for long-running AI-assisted work, sh
 Always read `DESIGN.md` before making any visual or UI decision. All font choices, colors, spacing, and aesthetic direction are defined there. Do not deviate without explicit user approval.
 
 When you write or review any UI code:
-- Use only tokens defined in `DESIGN.md §6` (light + dark).
+- Use only tokens defined in `DESIGN.md` `Colors` and the token front matter (light + dark).
 - Use the declared typefaces: **Fraunces** (display + editorial italic), **Nunito** (body / UI), **Commit Mono** (mono, with **JetBrains Mono** as stand-in until licensed).
 - Never reintroduce banned fonts (Inter, Roboto, Arial, system-ui, Space Grotesk, Poppins, Montserrat, Helvetica, Open Sans, Lato, Clash Display).
 - `--magic-primary` and `--magic-accent` appear only at transformation moments. They are never ambient background.

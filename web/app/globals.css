@@ -1,9 +1,10 @@
 @import "tailwindcss";
 
 /*
- * Relay design tokens. Mirrors DESIGN.md §6 (Color) and the canonical values
+ * Relay design tokens. Mirrors DESIGN.md Colors and the canonical values
  * used in the approved finalized HTML mockups for sharable-url, onboarding,
- * and style-memory. Do not invent new tokens; extend §6 first.
+ * and style-memory. Do not invent new tokens; extend DESIGN.md front matter and
+ * Colors first.
  */
 
 @theme {

@@ -133,7 +133,7 @@ Source: `~/.gstack/projects/relay/ceo-plans/2026-04-25-v2-end-user-surface.md` R
 - See finalized.json for full revision history
 
 **D3. Style Memory single gravitational card refactor**
-- DESIGN.md §8 violation per both reviewers
+- DESIGN.md Layout violation per both reviewers
 - Action: per Open Q #15. Edit existing finalized HTML to rank proposals by confidence, apply post-approval state preview to rank-1 only with halo + magic-accent border + Fraunces italic
 - Effort: S (~1-2h CC)
 
@@ -165,7 +165,7 @@ Source: `~/.gstack/projects/relay/ceo-plans/2026-04-25-v2-end-user-surface.md` R
 
 **D9. Decision Graph magic-color misuse fix** (V2.5) ✅ ADDRESSED IN FIRST SLICE 2026-04-30
 - Codex finding: "Magic colors used as graph vocabulary, not transformation moments. Reserve magic for selected/yielded transform path."
-- DESIGN.md §6 rule 1 violation
+- DESIGN.md Colors rule 1 violation
 - Action: first Decision Graph slice uses neutral edge strokes by default and reserves the magic accent for the active route / transform path.
 - Follow-up: keep this rule when adding interactive filtering and graph layout controls.
 

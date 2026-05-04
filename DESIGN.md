@@ -1,3 +1,178 @@
+---
+version: alpha
+name: Relay
+description: 4gly Labs product design system for Relay, a calm engineering workspace that turns chaotic AI work into reusable decisions, style memory, and handoff packets.
+colors:
+  primary: "#0E1A35"
+  secondary: "#4A5669"
+  tertiary: "#6F96DB"
+  neutral: "#FAF8F3"
+  canvas: "#FAF8F3"
+  canvas-raised: "#FFFFFF"
+  ink: "#0E1A35"
+  ink-muted: "#4A5669"
+  muted: "#687386"
+  problem: "#1E2230"
+  problem-soft: "#2B3140"
+  magic-primary: "#A7C4FF"
+  magic-primary-strong: "#6F96DB"
+  magic-accent: "#C7B8FF"
+  magic-accent-strong: "#8B76E4"
+  border: "#E7ECF3"
+  border-strong: "#D4DCE8"
+  success: "#2F9B73"
+  danger: "#C84646"
+  on-primary: "#FFFFFF"
+  on-problem: "#FAF8F3"
+  dark-canvas: "#0B1020"
+  dark-canvas-raised: "#121930"
+  dark-ink: "#EEF4FF"
+  dark-ink-muted: "#A5B1C8"
+  dark-problem: "#06091A"
+  dark-problem-soft: "#1A1F30"
+  dark-magic-primary: "#7FB6FF"
+  dark-magic-primary-strong: "#A7C4FF"
+  dark-magic-accent: "#A78BFA"
+  dark-magic-accent-strong: "#C7B8FF"
+  dark-border: "#273244"
+  dark-border-strong: "#3A4660"
+  dark-success: "#64D6A4"
+  dark-danger: "#FF7777"
+typography:
+  display:
+    fontFamily: Fraunces
+    fontSize: 40px
+    fontWeight: 650
+    lineHeight: 1.1
+    letterSpacing: "-0.02em"
+    fontVariation: "\"opsz\" 96, \"SOFT\" 40"
+  page-title:
+    fontFamily: Fraunces
+    fontSize: 28px
+    fontWeight: 650
+    lineHeight: 1.1
+    letterSpacing: "-0.02em"
+    fontVariation: "\"opsz\" 96, \"SOFT\" 35"
+  body:
+    fontFamily: Nunito
+    fontSize: 14px
+    fontWeight: 500
+    lineHeight: 1.55
+    letterSpacing: "0em"
+  body-large:
+    fontFamily: Nunito
+    fontSize: 16px
+    fontWeight: 500
+    lineHeight: 1.55
+    letterSpacing: "0em"
+  editorial:
+    fontFamily: Fraunces
+    fontSize: 20px
+    fontWeight: 450
+    lineHeight: 1.5
+    letterSpacing: "0em"
+    fontVariation: "\"opsz\" 48"
+  mono-label:
+    fontFamily: JetBrains Mono
+    fontSize: 11px
+    fontWeight: 500
+    lineHeight: 1.4
+    letterSpacing: "0.12em"
+rounded:
+  chip: 6px
+  control: 8px
+  card: 12px
+  chrome: 14px
+  pill: 999px
+spacing:
+  xxs: 2px
+  xs: 4px
+  sm: 8px
+  md: 12px
+  lg: 16px
+  xl: 24px
+  2xl: 32px
+  3xl: 48px
+  4xl: 64px
+  5xl: 96px
+components:
+  app-shell:
+    backgroundColor: "{colors.canvas}"
+    textColor: "{colors.ink}"
+    typography: "{typography.body}"
+    width: 1440px
+  top-rail:
+    backgroundColor: "{colors.canvas}"
+    textColor: "{colors.ink}"
+    height: 56px
+    padding: 24px
+  project-rail:
+    backgroundColor: "{colors.canvas-raised}"
+    textColor: "{colors.ink-muted}"
+    width: 240px
+    padding: 16px
+  inspector:
+    backgroundColor: "{colors.canvas-raised}"
+    textColor: "{colors.ink-muted}"
+    width: 320px
+    rounded: "{rounded.chrome}"
+    padding: 24px
+  button-primary:
+    backgroundColor: "{colors.primary}"
+    textColor: "{colors.on-primary}"
+    typography: "{typography.mono-label}"
+    rounded: "{rounded.control}"
+    padding: 12px
+  button-secondary:
+    backgroundColor: "{colors.canvas-raised}"
+    textColor: "{colors.ink-muted}"
+    typography: "{typography.mono-label}"
+    rounded: "{rounded.control}"
+    padding: 12px
+  button-danger:
+    backgroundColor: "{colors.danger}"
+    textColor: "{colors.on-primary}"
+    typography: "{typography.mono-label}"
+    rounded: "{rounded.control}"
+    padding: 12px
+  card:
+    backgroundColor: "{colors.canvas-raised}"
+    textColor: "{colors.ink}"
+    typography: "{typography.body}"
+    rounded: "{rounded.card}"
+    padding: 24px
+  source-chip:
+    backgroundColor: "{colors.canvas-raised}"
+    textColor: "{colors.ink-muted}"
+    typography: "{typography.mono-label}"
+    rounded: "{rounded.pill}"
+    padding: 8px
+  status-badge:
+    backgroundColor: "{colors.canvas-raised}"
+    textColor: "{colors.ink-muted}"
+    typography: "{typography.mono-label}"
+    rounded: "{rounded.pill}"
+    padding: 8px
+  transform-step-active:
+    backgroundColor: "{colors.magic-primary}"
+    textColor: "{colors.magic-primary-strong}"
+    typography: "{typography.mono-label}"
+    rounded: "{rounded.pill}"
+    padding: 8px
+  diff-before:
+    backgroundColor: "{colors.problem-soft}"
+    textColor: "{colors.on-problem}"
+    typography: "{typography.mono-label}"
+    rounded: "{rounded.control}"
+    padding: 12px
+  diff-after:
+    backgroundColor: "{colors.magic-primary}"
+    textColor: "{colors.ink}"
+    typography: "{typography.mono-label}"
+    rounded: "{rounded.control}"
+    padding: 12px
+---
+
 # Design System — Relay (project-swan · 4gly Labs)
 
 > **Simplicity out of Complexity.**

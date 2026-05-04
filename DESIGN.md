@@ -155,7 +155,7 @@ components:
     padding: 8px
   transform-step-active:
     backgroundColor: "{colors.magic-primary}"
-    textColor: "{colors.magic-primary-strong}"
+    textColor: "{colors.ink}"
     typography: "{typography.mono-label}"
     rounded: "{rounded.pill}"
     padding: 8px

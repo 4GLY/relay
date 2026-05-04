@@ -4,7 +4,7 @@
   "private": true,
   "description": "Relay V2 end-user web surface — Next.js + Tailwind v4 + shadcn + Framer Motion.",
   "engines": {
-    "node": ">=20"
+    "node": ">=24"
   },
   "scripts": {
     "dev": "next dev",

@@ -182,7 +182,9 @@ Relay is a product shipped by **4gly Labs**. Before making any visual or UI deci
 
 ---
 
-## 0. Product Context
+## Overview
+
+### Product Context
 
 - **What this is:** An API-first second-brain backend for long-running AI-assisted work, now getting its first web UI.
 - **Who it's for:** Senior engineers, researchers, and PMs running many parallel AI workstreams who need to capture notes, audit judgments, learn style memory, and hand off packets to AI consumers (Claude, Codex).
@@ -190,7 +192,7 @@ Relay is a product shipped by **4gly Labs**. Before making any visual or UI deci
 - **Project type:** Internal dense web application + minimal public surface. Desktop-first (>=1280px). Mobile deferred.
 - **Priority screens (in order):** Style Memory (signature) → Project Explorer → Judgment Traces → Decision Graph → Packet Builder.
 
-## 1. The Memorable Thing
+### The Memorable Thing
 
 > **"A quiet engine that turns chaos into swans."**
 
@@ -198,7 +200,7 @@ First 3 seconds, a user should feel: *"this is a serious engineering tool, but i
 
 Every design decision downstream serves this sentence. If a decision doesn't — reject it.
 
-## 2. 4gly 4-Step Engine → Relay Domain Mapping
+### 4gly 4-Step Engine to Relay Domain Mapping
 
 | Step | 4gly | Relay surface |
 |------|------|--------------|
@@ -209,14 +211,14 @@ Every design decision downstream serves this sentence. If a decision doesn't —
 
 The UI carries a thin "Face → Dissect → Refine → Transform" ribbon in the top rail. The active step is faintly tinted with `--magic-primary`. This is the engine's heartbeat, always visible, never loud.
 
-## 3. Aesthetic Direction
+### Aesthetic Direction
 
 - **Direction:** **Sophisticated Cuteness Plus** — 4gly's Magic Lab × Toy Workshop warmed with editorial authority and anchored with stronger engineering charcoal. Professional but not cold. Minimal but not empty. Playful only at signature moments.
 - **Decoration level:** **Intentional** — no ornamentation. Allowed: very subtle grain on `--problem` surfaces, pastel halo glow for elevation, the 900 ms duckling→swan contour transform.
 - **Mood:** *"Someone who reads and thinks built this."* Engineer-serious on the surface, with rare toy-workshop warmth at transformation moments.
 - **Density:** Comfortable-leaning. Tighter than Granola, looser than Linear. Reference density is Reflect.app with engineering additions.
 
-## 4. Brand Voice (4gly foundation, applied to UI copy)
+### Brand Voice
 
 - **Professional, but not cold.** — `"Three proposals waiting for your judgment."` not `"Pending items: 3"`.
 - **Minimal, but not empty.** — Empty states show context, not shrug emojis.
@@ -229,36 +231,7 @@ The UI carries a thin "Face → Dissect → Refine → Transform" ribbon in the 
 - `Reject` (danger-tinted ghost)
 - `Compose handoff` (packet build)
 
-## 5. Typography
-
-Three faces, four roles. Fraunces covers both display and editorial italic to save a font load and reinforce the family voice.
-
-| Role | Font | Weights | Usage |
-|------|------|---------|-------|
-| Display / Hero / Section headers | **Fraunces Variable** (Google Fonts) | 500 / 600 / 700 | Use `opsz 96–144`, `SOFT 30–50`, `letter-spacing: -0.025em`. Wordmark, page headers, mockup chrome titles. |
-| Body / UI | **Nunito** (Google Fonts) | 400 / 500 / 600 / 700 | Default body, buttons, labels, table rows. Never use weight 300 (too thin against navy). Never use weight 900. |
-| Editorial / Authored | **Fraunces Italic** (same family) | 400 / 500 | Decision rationale, Approved Heuristic summaries, Packet cover notes, trace-card quote. Use `opsz 48`. This is the "authored knowledge" surface. |
-| Mono | **Commit Mono** (self-hosted, paid) — stand-in: **JetBrains Mono** (Google Fonts) | 400 / 500 | Trace IDs, heuristic IDs, code spans, provenance metadata, scope chips, timestamps. Always `font-variant-numeric: tabular-nums`. |
-
-**Scale** (root 16px):
-
-| Role | px | rem | line-height |
-|------|-----|------|-------------|
-| micro / mono-label | 10 | 0.625 | 1.4 |
-| meta / chip | 11 | 0.6875 | 1.4 |
-| UI-small | 12 | 0.75 | 1.5 |
-| body | 13–14 | 0.8125–0.875 | 1.55 |
-| body-large | 16 | 1 | 1.55 |
-| editorial italic | 18–22 | 1.125–1.375 | 1.5 |
-| ws-heading | 28 | 1.75 | 1.1 |
-| section-title | 40 | 2.5 | 1.1 |
-| hero | 72–168 (clamp) | — | 0.92 |
-
-**Loading:** Google Fonts CDN in development, self-host in production via `next/font` for CLS safety. License Commit Mono when shipping; JetBrains Mono is the fallback.
-
-**Bans:** Inter, Roboto, Arial, Helvetica, Open Sans, Lato, Montserrat, Poppins, Space Grotesk, Clash Display, system-ui, -apple-system (as display or body).
-
-## 6. Color
+## Colors
 
 Approach: **Restrained.** Pastel magic (blue + purple) never washes the canvas — it appears only where transformation is about to happen or just did. Charcoal does the engineering work. Deep navy is the text.
 
@@ -306,29 +279,53 @@ Approach: **Restrained.** Pastel magic (blue + purple) never washes the canvas �
 --grain-opacity:       0.045;
 ```
 
-### Color rules (hard)
+### Color rules
 
 1. **`--magic-*` tokens appear only at transformation moments.** Hover-to-approve glow, the 900 ms swan contour, the `ScopeMatrix` heatmap, the Current Transform inspector tile. They are **not** ambient background.
 2. **`--problem`** gets used for Ugly-side states: pending proposals (not in focus), failed curator jobs, unresolved Open Questions, diff-before panels.
 3. **No gradients** except the singular pastel rim-light on signature moments.
-4. **Elevation = pastel halo,** not drop-shadow. Cards use `box-shadow: 0 0 0 4px var(--halo)` patterns, never dark-opacity shadows.
-5. **Dark mode is 1st-class.** Every component must be designed and tested in both themes. Dark canvas is deep navy, never pure black.
+4. **Dark mode is 1st-class.** Every component must be designed and tested in both themes. Dark canvas is deep navy, never pure black.
 
-## 7. Spacing & Grid
+## Typography
+
+Three faces, four roles. Fraunces covers both display and editorial italic to save a font load and reinforce the family voice.
+
+| Role | Font | Weights | Usage |
+|------|------|---------|-------|
+| Display / Hero / Section headers | **Fraunces Variable** (Google Fonts) | 500 / 600 / 700 | Use `opsz 96–144`, `SOFT 30–50`, `letter-spacing: -0.025em`. Wordmark, page headers, mockup chrome titles. |
+| Body / UI | **Nunito** (Google Fonts) | 400 / 500 / 600 / 700 | Default body, buttons, labels, table rows. Never use weight 300 (too thin against navy). Never use weight 900. |
+| Editorial / Authored | **Fraunces Italic** (same family) | 400 / 500 | Decision rationale, Approved Heuristic summaries, Packet cover notes, trace-card quote. Use `opsz 48`. This is the "authored knowledge" surface. |
+| Mono | **Commit Mono** (self-hosted, paid) — stand-in: **JetBrains Mono** (Google Fonts) | 400 / 500 | Trace IDs, heuristic IDs, code spans, provenance metadata, scope chips, timestamps. Always `font-variant-numeric: tabular-nums`. |
+
+**Scale** (root 16px):
+
+| Role | px | rem | line-height |
+|------|-----|------|-------------|
+| micro / mono-label | 10 | 0.625 | 1.4 |
+| meta / chip | 11 | 0.6875 | 1.4 |
+| UI-small | 12 | 0.75 | 1.5 |
+| body | 13–14 | 0.8125–0.875 | 1.55 |
+| body-large | 16 | 1 | 1.55 |
+| editorial italic | 18–22 | 1.125–1.375 | 1.5 |
+| ws-heading | 28 | 1.75 | 1.1 |
+| section-title | 40 | 2.5 | 1.1 |
+| hero | 72–168 (clamp) | — | 0.92 |
+
+**Loading:** Google Fonts CDN in development, self-host in production via `next/font` for CLS safety. License Commit Mono when shipping; JetBrains Mono is the fallback.
+
+**Bans:** Inter, Roboto, Arial, Helvetica, Open Sans, Lato, Montserrat, Poppins, Space Grotesk, Clash Display, system-ui, -apple-system (as display or body).
+
+## Layout
+
+### Spacing and Grid
 
 - **Base unit:** 4 px.
 - **Scale:** `2 · 4 · 8 · 12 · 16 · 24 · 32 · 48 · 64 · 96`.
 - **Density:** Comfortable. Card internal padding is `20–24 px`, not `12–14`.
 - **Grid (desktop 1440×900 reference):** three-region `240 px · 1fr · 320 px`. Inspector (`320 px`) is collapsible.
 - **Max content width for non-app surfaces** (hero, docs): `1360 px`.
-- **Border radius:**
-  - Cards: `12 px`
-  - Inspector / mockup chrome: `14 px`
-  - Buttons / inputs: `8 px`
-  - Chips / pills: `6 px` for rectangular, `999 px` for pill-shaped (source chips, scope chips)
-  - **Never** uniform 9999 px on every element.
 
-## 8. Layout
+### App Shell
 
 - **Approach:** Hybrid. Three-region engineering workspace for app screens. Editorial serif surfaces for authored content (Decision rationale, Approved Heuristic summaries, Packet cover notes).
 - **App shell:**
@@ -337,9 +334,21 @@ Approach: **Restrained.** Pastel magic (blue + purple) never washes the canvas �
   - **Main workspace:** the hero object of the current view. Tabs at top, content below, everything honors the 4 px grid.
   - **Right inspector (320 px, collapsible):** "Current Transform" tile + Scope Matrix heatmap + project stats.
   - **Bottom tray (collapsed by default):** Packet Builder.
-- **First viewport = poster, not document.** The Style Memory screen has one gravitational card (hover-to-approve state, pastel halo). Every other element supports that card.
 
-## 9. Motion
+### First Viewport Rule
+
+**First viewport = poster, not document.** The Style Memory screen has one gravitational card (hover-to-approve state, pastel halo). Every other element supports that card.
+
+## Elevation & Depth
+
+### Halo Elevation
+
+- **Elevation = pastel halo,** not drop-shadow. Cards use `box-shadow: 0 0 0 4px var(--halo)` patterns, never dark-opacity shadows.
+- Use pastel halo glow for important raised surfaces and signature transformation states.
+- Keep charcoal surfaces visually heavy for unresolved or Ugly-side states, with very subtle grain controlled by `--grain-opacity`.
+- Use the singular pastel rim-light only on signature moments.
+
+### Motion
 
 Framer Motion. CSS transitions for simple hover/focus.
 
@@ -355,13 +364,23 @@ Framer Motion. CSS transitions for simple hover/focus.
   3. 640–900 ms: a swan-contour silhouette is drawn by graph edges, resolves into the actual approved-heuristic chip (or packet cover, or decision node). The contour uses `stroke-dasharray` reveal.
 - **Do not:** confetti, scale-bounce, hover-springs above `1.02`, entrance animations on every element, more than one signature moment on screen at once.
 
-## 10. Iconography & Illustration
+## Shapes
+
+### Radius Scale
+
+- Cards: `12 px`
+- Inspector / mockup chrome: `14 px`
+- Buttons / inputs: `8 px`
+- Chips / pills: `6 px` for rectangular, `999 px` for pill-shaped (source chips, scope chips)
+- **Never** uniform 9999 px on every element.
+
+### Iconography and Illustration
 
 - **Icon set:** Custom line icons, 1.5 px stroke, inheriting `currentColor`. Lucide as placeholder during early dev.
 - **Duckling / Swan:** used only at (a) very subtle empty-state hint, (b) the 900 ms contour transform, (c) the wordmark's post-dot. **Never** a cartoon mascot. **Never** a decorative illustration.
 - **Status glyphs in Project Explorer:** small mono characters (`◈`, `△`, `○`) colored per `--problem` / `--magic-primary` role. No emoji.
 
-## 11. Component Contracts
+## Components
 
 ### TraceCard
 - Collapsed: `pill(scope chip in mono) · timestamp(mono) · rationale(Fraunces italic, single line)`.
@@ -390,14 +409,36 @@ Framer Motion. CSS transitions for simple hover/focus.
 ### TransformRibbon
 - Top-rail centered. Mono uppercase labels separated by `→`. Active step has `color-mix(magic-primary 30%, canvas)` pill bg.
 
-## 12. Accessibility
+## Do's and Don'ts
+
+### Do
+
+- Use `--magic-*` only when transformation is about to happen or just happened.
+- Use `--problem` for unresolved, pending, failed, or ugly-side states.
+- Use pastel halo elevation for important surfaces.
+- Preserve the visible `Face -> Dissect -> Refine -> Transform` engine in app workspaces.
+- Keep Style Memory as the signature screen.
+- Use sentence-case product copy that is professional but not cold.
+- Respect `prefers-reduced-motion` for signature animation.
+
+### Don't
+
+- Do not use `--magic-*` as ambient page background.
+- Do not use generic dark-opacity drop shadows as the primary elevation model.
+- Do not use confetti, bounce, emoji, or mascot decoration.
+- Do not expose curator job state, lease counters, or attempt numbers on primary surfaces.
+- Do not use Inter, Roboto, Arial, Helvetica, Open Sans, Lato, Montserrat, Poppins, Space Grotesk, Clash Display, or system UI fonts as display or body.
+- Do not apply pill radius uniformly to every element.
+- Do not add more than one signature transformation moment on screen at once.
+
+## Accessibility
 
 - WCAG AA minimum. Test all `ink`/`ink-muted` × `canvas` pairs at ≥ 4.5:1. Pastel magic over canvas pairs are UI-chrome only, not for text.
 - Focus rings: `outline: 2px solid var(--halo); outline-offset: 2px; border-color: var(--magic-primary-strong)`.
 - Keyboard-first navigation across Project Explorer, tabs, proposal cards, approve/reject actions.
 - Motion respects `prefers-reduced-motion`: the 900 ms signature collapses to a 160 ms fade.
 
-## 13. Tech Stack (enforced by 4gly foundation §10)
+## Tech Stack
 
 - **Framework:** Next.js (App Router)
 - **CSS:** Tailwind v4 with CSS variables driving tokens
@@ -407,14 +448,14 @@ Framer Motion. CSS transitions for simple hover/focus.
 - **Fonts:** `next/font` (Fraunces, Nunito, JetBrains Mono). Commit Mono self-hosted when licensed.
 - Do **not** design anything this stack cannot render. Graceful degradation is fine; fantasy is not.
 
-## 14. Non-Scope (don't build this round)
+## Non-Scope
 
 - Onboarding, marketing landing, signup funnels
 - Mobile-first layouts (design responsive collapse points only)
 - Admin / org-management consoles (API Keys management fits inside one inspector panel)
 - Multi-tenant switching (single-user-per-account for v0.1)
 
-## 15. Success Bar (reject everything that fails this)
+## Success Bar
 
 1. **The 3-second rule.** A first-time viewer feels: *"this tool turns chaos into swans."* No exceptions.
 2. **Show the Swan rule.** User finishes a session without ever seeing `curator_jobs.state`, lease counters, or attempt numbers on the primary surface. The information is accessible one click deeper — never hidden, never in the way.
@@ -422,7 +463,7 @@ Framer Motion. CSS transitions for simple hover/focus.
 4. **Density + calm rule.** Density is Linear-class. Breath is Arc-class. Feel is 4gly-class.
 5. **The Anchor.** Re-read `4gly_foundation.md §12`. If this UI would make that document's author flinch, rebuild.
 
-## 16. References
+## References
 
 - **Foundation:** `/Users/hoon-ch/repos/4gly/4gly_foundation.md`
 - **Preview artifact (light + dark):** `~/.gstack/projects/relay/designs/design-system-20260425/preview.html`
@@ -430,7 +471,7 @@ Framer Motion. CSS transitions for simple hover/focus.
 - **Rendered preview (dark):** `/tmp/relay-preview-dark.png`
 - **Competitor visual scan (2026-04-24):** Linear · Raycast · Reflect · Granola (screenshots in `/tmp/relay-research/`)
 
-## 17. Decisions Log
+## Decisions Log
 
 | Date | Decision | Rationale |
 |------|----------|-----------|

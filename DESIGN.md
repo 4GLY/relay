@@ -4,36 +4,35 @@ name: Relay
 description: 4gly Labs product design system for Relay, a calm engineering workspace that turns chaotic AI work into reusable decisions, style memory, and handoff packets.
 colors:
   primary: "#0E1A35"
-  secondary: "#4A5669"
-  tertiary: "#6F96DB"
-  neutral: "#FAF8F3"
   canvas: "#FAF8F3"
   canvas-raised: "#FFFFFF"
-  ink: "#0E1A35"
-  ink-muted: "#4A5669"
-  muted: "#687386"
-  problem: "#1E2230"
-  problem-soft: "#2B3140"
-  magic-primary: "#A7C4FF"
-  magic-primary-strong: "#6F96DB"
-  magic-accent: "#C7B8FF"
-  magic-accent-strong: "#8B76E4"
+  text: "#0E1A35"
+  text-muted: "#4A5669"
+  text-subtle: "#687386"
+  surface-inverse: "#1E2230"
+  surface-inverse-muted: "#2B3140"
+  accent: "#A7C4FF"
+  accent-strong: "#6F96DB"
+  accent-secondary: "#C7B8FF"
+  accent-secondary-strong: "#8B76E4"
   border: "#E7ECF3"
   border-strong: "#D4DCE8"
   success: "#2F9B73"
   danger: "#C84646"
-  on-primary: "#FFFFFF"
-  on-problem: "#FAF8F3"
+  on-accent: "#0E1A35"
+  on-inverse: "#FAF8F3"
+  on-danger: "#FFFFFF"
   dark-canvas: "#0B1020"
   dark-canvas-raised: "#121930"
-  dark-ink: "#EEF4FF"
-  dark-ink-muted: "#A5B1C8"
-  dark-problem: "#06091A"
-  dark-problem-soft: "#1A1F30"
-  dark-magic-primary: "#7FB6FF"
-  dark-magic-primary-strong: "#A7C4FF"
-  dark-magic-accent: "#A78BFA"
-  dark-magic-accent-strong: "#C7B8FF"
+  dark-text: "#EEF4FF"
+  dark-text-muted: "#A5B1C8"
+  dark-text-subtle: "#9AA6B8"
+  dark-surface-inverse: "#06091A"
+  dark-surface-inverse-muted: "#1A1F30"
+  dark-accent: "#7FB6FF"
+  dark-accent-strong: "#A7C4FF"
+  dark-accent-secondary: "#A78BFA"
+  dark-accent-secondary-strong: "#C7B8FF"
   dark-border: "#273244"
   dark-border-strong: "#3A4660"
   dark-success: "#64D6A4"
@@ -98,79 +97,198 @@ spacing:
 components:
   app-shell:
     backgroundColor: "{colors.canvas}"
-    textColor: "{colors.ink}"
+    textColor: "{colors.primary}"
     typography: "{typography.body}"
     width: 1440px
   top-rail:
     backgroundColor: "{colors.canvas}"
-    textColor: "{colors.ink}"
+    textColor: "{colors.text}"
     height: 56px
     padding: "{spacing.xl}"
-  project-rail:
+  navigation-rail:
     backgroundColor: "{colors.canvas-raised}"
-    textColor: "{colors.ink-muted}"
+    textColor: "{colors.text-muted}"
     width: 240px
     padding: "{spacing.lg}"
-  inspector:
+  inspector-panel:
     backgroundColor: "{colors.canvas-raised}"
-    textColor: "{colors.ink-muted}"
+    textColor: "{colors.text-muted}"
     width: 320px
     rounded: "{rounded.chrome}"
     padding: "{spacing.xl}"
-  button-primary:
-    backgroundColor: "{colors.primary}"
-    textColor: "{colors.on-primary}"
+  action-primary:
+    backgroundColor: "{colors.text}"
+    textColor: "{colors.on-inverse}"
     typography: "{typography.mono-label}"
     rounded: "{rounded.control}"
     padding: "{spacing.md}"
-  button-secondary:
+  action-secondary:
     backgroundColor: "{colors.canvas-raised}"
-    textColor: "{colors.ink-muted}"
+    textColor: "{colors.text-muted}"
     typography: "{typography.mono-label}"
     rounded: "{rounded.control}"
     padding: "{spacing.md}"
-  button-danger:
+  action-danger:
     backgroundColor: "{colors.danger}"
-    textColor: "{colors.on-primary}"
+    textColor: "{colors.on-danger}"
     typography: "{typography.mono-label}"
     rounded: "{rounded.control}"
     padding: "{spacing.md}"
-  card:
+  content-card:
     backgroundColor: "{colors.canvas-raised}"
-    textColor: "{colors.ink}"
+    textColor: "{colors.text}"
     typography: "{typography.body}"
     rounded: "{rounded.card}"
     padding: "{spacing.xl}"
+  metadata-label:
+    backgroundColor: "{colors.canvas}"
+    textColor: "{colors.text-subtle}"
+    typography: "{typography.mono-label}"
   source-chip:
     backgroundColor: "{colors.canvas-raised}"
-    textColor: "{colors.ink-muted}"
+    textColor: "{colors.text-muted}"
     typography: "{typography.mono-label}"
     rounded: "{rounded.pill}"
     padding: "{spacing.sm}"
-  status-badge:
+  status-neutral:
     backgroundColor: "{colors.canvas-raised}"
-    textColor: "{colors.ink-muted}"
+    textColor: "{colors.text-muted}"
     typography: "{typography.mono-label}"
     rounded: "{rounded.pill}"
     padding: "{spacing.sm}"
-  transform-step-active:
-    backgroundColor: "{colors.magic-primary}"
-    textColor: "{colors.ink}"
+  status-pending:
+    backgroundColor: "{colors.surface-inverse}"
+    textColor: "{colors.on-inverse}"
+    typography: "{typography.mono-label}"
+    rounded: "{rounded.chip}"
+    padding: "{spacing.sm}"
+  status-complete:
+    backgroundColor: "{colors.accent}"
+    textColor: "{colors.on-accent}"
+    typography: "{typography.mono-label}"
+    rounded: "{rounded.chip}"
+    padding: "{spacing.sm}"
+  status-success:
+    backgroundColor: "{colors.text}"
+    textColor: "{colors.success}"
     typography: "{typography.mono-label}"
     rounded: "{rounded.pill}"
     padding: "{spacing.sm}"
-  diff-before:
-    backgroundColor: "{colors.problem-soft}"
-    textColor: "{colors.on-problem}"
+  status-danger:
+    backgroundColor: "{colors.danger}"
+    textColor: "{colors.on-danger}"
+    typography: "{typography.mono-label}"
+    rounded: "{rounded.pill}"
+    padding: "{spacing.sm}"
+  comparison-before:
+    backgroundColor: "{colors.surface-inverse-muted}"
+    textColor: "{colors.on-inverse}"
     typography: "{typography.mono-label}"
     rounded: "{rounded.control}"
     padding: "{spacing.md}"
-  diff-after:
-    backgroundColor: "{colors.magic-primary}"
-    textColor: "{colors.ink}"
+  comparison-after:
+    backgroundColor: "{colors.accent}"
+    textColor: "{colors.on-accent}"
     typography: "{typography.mono-label}"
     rounded: "{rounded.control}"
     padding: "{spacing.md}"
+  accent-emphasis:
+    backgroundColor: "{colors.accent-secondary}"
+    textColor: "{colors.text}"
+    rounded: "{rounded.card}"
+    padding: "{spacing.lg}"
+  accent-control:
+    backgroundColor: "{colors.text}"
+    textColor: "{colors.accent-strong}"
+    typography: "{typography.mono-label}"
+    rounded: "{rounded.control}"
+    padding: "{spacing.md}"
+  accent-secondary-control:
+    backgroundColor: "{colors.text}"
+    textColor: "{colors.accent-secondary-strong}"
+    typography: "{typography.mono-label}"
+    rounded: "{rounded.control}"
+    padding: "{spacing.md}"
+  divider:
+    backgroundColor: "{colors.border}"
+    height: 1px
+  divider-strong:
+    backgroundColor: "{colors.border-strong}"
+    height: 1px
+  dark-app-shell:
+    backgroundColor: "{colors.dark-canvas}"
+    textColor: "{colors.dark-text}"
+    typography: "{typography.body}"
+    width: 1440px
+  dark-content-card:
+    backgroundColor: "{colors.dark-canvas-raised}"
+    textColor: "{colors.dark-text}"
+    typography: "{typography.body}"
+    rounded: "{rounded.card}"
+    padding: "{spacing.xl}"
+  dark-metadata-label:
+    backgroundColor: "{colors.dark-canvas}"
+    textColor: "{colors.dark-text-subtle}"
+    typography: "{typography.mono-label}"
+  dark-source-chip:
+    backgroundColor: "{colors.dark-canvas-raised}"
+    textColor: "{colors.dark-text-muted}"
+    typography: "{typography.mono-label}"
+    rounded: "{rounded.pill}"
+    padding: "{spacing.sm}"
+  dark-status-pending:
+    backgroundColor: "{colors.dark-surface-inverse}"
+    textColor: "{colors.dark-text}"
+    typography: "{typography.mono-label}"
+    rounded: "{rounded.chip}"
+    padding: "{spacing.sm}"
+  dark-comparison-before:
+    backgroundColor: "{colors.dark-surface-inverse-muted}"
+    textColor: "{colors.dark-text}"
+    typography: "{typography.mono-label}"
+    rounded: "{rounded.control}"
+    padding: "{spacing.md}"
+  dark-status-complete:
+    backgroundColor: "{colors.dark-accent}"
+    textColor: "{colors.dark-canvas}"
+    typography: "{typography.mono-label}"
+    rounded: "{rounded.chip}"
+    padding: "{spacing.sm}"
+  dark-status-success:
+    backgroundColor: "{colors.dark-canvas-raised}"
+    textColor: "{colors.dark-success}"
+    typography: "{typography.mono-label}"
+    rounded: "{rounded.pill}"
+    padding: "{spacing.sm}"
+  dark-action-danger:
+    backgroundColor: "{colors.dark-danger}"
+    textColor: "{colors.dark-canvas}"
+    typography: "{typography.mono-label}"
+    rounded: "{rounded.control}"
+    padding: "{spacing.md}"
+  dark-accent-control:
+    backgroundColor: "{colors.dark-canvas-raised}"
+    textColor: "{colors.dark-accent-strong}"
+    typography: "{typography.mono-label}"
+    rounded: "{rounded.control}"
+    padding: "{spacing.md}"
+  dark-accent-emphasis:
+    backgroundColor: "{colors.dark-accent-secondary}"
+    textColor: "{colors.dark-canvas}"
+    rounded: "{rounded.card}"
+    padding: "{spacing.lg}"
+  dark-accent-secondary-control:
+    backgroundColor: "{colors.dark-canvas-raised}"
+    textColor: "{colors.dark-accent-secondary-strong}"
+    typography: "{typography.mono-label}"
+    rounded: "{rounded.control}"
+    padding: "{spacing.md}"
+  dark-divider:
+    backgroundColor: "{colors.dark-border}"
+    height: 1px
+  dark-divider-strong:
+    backgroundColor: "{colors.dark-border-strong}"
+    height: 1px
 ---
 
 # Design System — Relay (project-swan · 4gly Labs)

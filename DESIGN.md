@@ -105,72 +105,72 @@ components:
     backgroundColor: "{colors.canvas}"
     textColor: "{colors.ink}"
     height: 56px
-    padding: 24px
+    padding: "{spacing.xl}"
   project-rail:
     backgroundColor: "{colors.canvas-raised}"
     textColor: "{colors.ink-muted}"
     width: 240px
-    padding: 16px
+    padding: "{spacing.lg}"
   inspector:
     backgroundColor: "{colors.canvas-raised}"
     textColor: "{colors.ink-muted}"
     width: 320px
     rounded: "{rounded.chrome}"
-    padding: 24px
+    padding: "{spacing.xl}"
   button-primary:
     backgroundColor: "{colors.primary}"
     textColor: "{colors.on-primary}"
     typography: "{typography.mono-label}"
     rounded: "{rounded.control}"
-    padding: 12px
+    padding: "{spacing.md}"
   button-secondary:
     backgroundColor: "{colors.canvas-raised}"
     textColor: "{colors.ink-muted}"
     typography: "{typography.mono-label}"
     rounded: "{rounded.control}"
-    padding: 12px
+    padding: "{spacing.md}"
   button-danger:
     backgroundColor: "{colors.danger}"
     textColor: "{colors.on-primary}"
     typography: "{typography.mono-label}"
     rounded: "{rounded.control}"
-    padding: 12px
+    padding: "{spacing.md}"
   card:
     backgroundColor: "{colors.canvas-raised}"
     textColor: "{colors.ink}"
     typography: "{typography.body}"
     rounded: "{rounded.card}"
-    padding: 24px
+    padding: "{spacing.xl}"
   source-chip:
     backgroundColor: "{colors.canvas-raised}"
     textColor: "{colors.ink-muted}"
     typography: "{typography.mono-label}"
     rounded: "{rounded.pill}"
-    padding: 8px
+    padding: "{spacing.sm}"
   status-badge:
     backgroundColor: "{colors.canvas-raised}"
     textColor: "{colors.ink-muted}"
     typography: "{typography.mono-label}"
     rounded: "{rounded.pill}"
-    padding: 8px
+    padding: "{spacing.sm}"
   transform-step-active:
     backgroundColor: "{colors.magic-primary}"
     textColor: "{colors.ink}"
     typography: "{typography.mono-label}"
     rounded: "{rounded.pill}"
-    padding: 8px
+    padding: "{spacing.sm}"
   diff-before:
     backgroundColor: "{colors.problem-soft}"
     textColor: "{colors.on-problem}"
     typography: "{typography.mono-label}"
     rounded: "{rounded.control}"
-    padding: 12px
+    padding: "{spacing.md}"
   diff-after:
     backgroundColor: "{colors.magic-primary}"
     textColor: "{colors.ink}"
     typography: "{typography.mono-label}"
     rounded: "{rounded.control}"
-    padding: 12px
+    padding: "{spacing.md}"
 ---
 
 # Design System — Relay (project-swan · 4gly Labs)

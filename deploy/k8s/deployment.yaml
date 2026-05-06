@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: relay-api
-        image: ghcr.io/4gly/relay-api:sha-c0b0a78e46090416744bd3762437b691534713ed
+        image: ghcr.io/4gly/relay-api:sha-28997658c285360b8754f9144108e6198d002661
         imagePullPolicy: Always
         ports:
         - containerPort: 8080
@@ -91,7 +91,7 @@ spec:
     spec:
       containers:
       - name: relay-curator-worker
-        image: ghcr.io/4gly/relay-api:sha-c0b0a78e46090416744bd3762437b691534713ed
+        image: ghcr.io/4gly/relay-api:sha-28997658c285360b8754f9144108e6198d002661
         imagePullPolicy: Always
         command:
         - /app/relay-worker

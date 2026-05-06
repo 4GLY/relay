@@ -1,0 +1,130 @@
+name: design-system
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "DESIGN.md"
+      - "docs/design-system.md"
+      - "CLAUDE.md"
+      - "web/README.md"
+      - "docs/api.md"
+      - "internal/api/server_test.go"
+      - "internal/services/services_test.go"
+      - "internal/services/style_memory_test.go"
+      - "web/app/globals.css"
+      - "web/package.json"
+      - "web/package-lock.json"
+      - ".github/workflows/design-system.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: design-system-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  design-md:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install web dependencies
+        working-directory: web
+        run: npm ci
+
+      - name: Lint DESIGN.md token contract
+        run: npm --prefix web run design:lint
+
+      - name: Validate implementation contract docs
+        run: |
+          node <<'NODE'
+          const fs = require("node:fs");
+          const text = fs.readFileSync("docs/design-system.md", "utf8");
+          const required = [
+            "DESIGN.md is the canonical visual identity source",
+            "web/app/globals.css",
+            "web/components/relay/*",
+            "npm --prefix web run design:lint",
+            "https://github.com/google-labs-code/design.md"
+          ];
+          const missing = required.filter((item) => !text.includes(item));
+          if (missing.length > 0) {
+            console.error(`Missing design-system contract strings: ${missing.join(", ")}`);
+            process.exit(1);
+          }
+          console.log("docs/design-system.md contract strings are present");
+          NODE
+
+      - name: Validate canonical design references
+        run: |
+          node <<'NODE'
+          const fs = require("node:fs");
+
+          const forbidden = [
+            ["docs/api.md", "docs/design.md"],
+            ["internal/api/server_test.go", "docs/design.md"],
+            ["internal/services/services_test.go", "docs/design.md"],
+            ["internal/services/style_memory_test.go", "docs/design.md"]
+          ];
+
+          const stale = forbidden.filter(([file, needle]) =>
+            fs.readFileSync(file, "utf8").includes(needle)
+          );
+          if (stale.length > 0) {
+            console.error(`Stale design document path references: ${stale.map(([file]) => file).join(", ")}`);
+            process.exit(1);
+          }
+
+          const globals = fs.readFileSync("web/app/globals.css", "utf8");
+          const requiredGlobals = [
+            "--color-canvas: #faf8f3",
+            "--color-ink: #0e1a35",
+            "--canvas: #faf8f3",
+            "--ink: #0e1a35",
+            "--magic-primary: #a7c4ff",
+            "--problem: #1e2230"
+          ];
+          const missing = requiredGlobals.filter((needle) => !globals.includes(needle));
+          if (missing.length > 0) {
+            console.error(`Missing runtime token projection in globals.css: ${missing.join(", ")}`);
+            process.exit(1);
+          }
+
+          const design = fs.readFileSync("DESIGN.md", "utf8");
+          const bodyHeading = design.match(/^# Design System\b/m);
+          if (!bodyHeading) {
+            console.error("DESIGN.md is missing the canonical '# Design System' body heading");
+            process.exit(1);
+          }
+          const body = design.slice(bodyHeading.index);
+          const retired = [
+            /\bduckling\b/i,
+            /\bswan\b/i,
+            /\bmagic\b/i,
+            /\bproblem\b/i,
+            /\bUgly\b/,
+            /\bElegant\b/,
+            /Toy Workshop/i,
+            /\bmascot\b/i
+          ];
+          const foundRetired = retired.filter((pattern) => pattern.test(body)).map(String);
+          if (foundRetired.length > 0) {
+            console.error(`Retired metaphor language remains in DESIGN.md body: ${foundRetired.join(", ")}`);
+            process.exit(1);
+          }
+
+          console.log("canonical design references, runtime aliases, and generic DESIGN.md body are valid");
+          NODE

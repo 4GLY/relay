@@ -131,7 +131,7 @@ V2 scope 재정의 이후 범위: 최소 authenticated Style Memory UI + A(Shara
 - 닫힌 finding: F1 hero memorable thing, F4 LIVE 900ms transform, "Capture your first judgment" CTA, F2 4개 error state panel, F2 magic-primary-strong glow + editorial typography, F3 active step pill, storyboard chrome 제거, F1 outcome preview, mood repetition 제거
 
 **D3. Style Memory single gravitational card refactor**
-- DESIGN.md §8 위반. 두 reviewer 모두 지적.
+- DESIGN.md Layout 위반. 두 reviewer 모두 지적.
 - Action: finalized HTML을 수정해 proposals를 confidence 기준으로 ranking하고, rank-1에만 post-approval state preview + halo + magic-accent border + Fraunces italic 적용
 - Effort: S, 약 1-2시간
 

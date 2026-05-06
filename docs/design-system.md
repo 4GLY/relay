@@ -9,11 +9,29 @@ Relay UI 하드닝은 화면별 임시 CSS를 줄이고, `web/app/globals.css` +
 - 공통 UI는 `relay-*` 클래스와 데이터 속성 기반 variant로 통일한다.
 - 문서에서 계약을 선행 정의하고 구현을 따라가게 하여 회귀를 줄인다.
 
+Source of truth:
+
+- `DESIGN.md is the canonical visual identity source` and follows the
+  `google-labs-code/design.md` format: YAML token front matter plus canonical
+  Markdown rationale sections.
+- `DESIGN.md`: brand meaning, normative tokens, component token references,
+  and section-ordered design rationale.
+- `web/app/globals.css`: Tailwind v4 token projection and concrete `relay-*`
+  class behavior.
+- `web/components/relay/*`: React primitive API for screens.
+- `docs/design-system.md`: engineering rules for applying the system without
+  re-litigating brand decisions.
+- Validate the contract with:
+
+  ```bash
+  npm --prefix web run design:lint
+  ```
+
 ---
 
 ## 1) 설계 의도
 
-- 릴레이는 `Face / Dissect / Refine / Transform` 흐름을 유지하는 
+- 릴레이는 `Capture -> Analyze -> Refine -> Deliver` 흐름을 유지하는
   **차분하고 밀도 높은 작업 공간**이어야 한다.
 - 카드, 패널, 버튼, 배지, 상태 표시 같은 반복 패턴은 페이지에서 직접 그리지 않고
   프리미티브 컴포넌트(API)로 노출한다.
@@ -25,22 +43,60 @@ Relay UI 하드닝은 화면별 임시 CSS를 줄이고, `web/app/globals.css` +
 ## 2) 토큰 계약 (Token Contract)
 
 ### 2.1 단일 진입점
-- 정식 소스는 `web/app/globals.css`의 `@theme` 및 `@layer base` 변수.
-- 컴포넌트는 하드코딩 컬러/폰트/거리값을 사용하지 않고 **의미 토큰**만 사용한다.
+- `DESIGN.md`가 디자인 토큰과 시각 정체성의 canonical source다.
+- `web/app/globals.css`는 `@theme` 및 `@layer base`를 통해 해당 토큰을
+  Tailwind/runtime으로 투영한다.
+- 컴포넌트는 하드코딩 컬러/폰트/거리값 같은 시각 값을 사용하지 않고
+  **의미 토큰**만 사용한다.
 
 ### 2.2 색/표면 토큰
 
 - Surface
   - `--canvas`, `--canvas-raised`
-  - `--ink`, `--ink-muted`, `--muted`, `--problem`, `--problem-soft`, `--border`, `--border-strong`
-  - `--magic-primary`, `--magic-primary-strong`, `--magic-accent`, `--magic-accent-strong`
+  - `--surface-inverse`, `--surface-inverse-muted`
+- Text
+  - `--text`, `--text-muted`, `--text-subtle`, `--on-accent`, `--on-inverse`, `--on-danger`
+- Accent / State
+  - `--accent`, `--accent-strong`, `--accent-secondary`, `--accent-secondary-strong`
   - `--success`, `--danger`
-- Focus/Halo
-  - `--halo`, `--halo-strong`, `--grain-opacity`
+- Border / Focus
+  - `--border`, `--border-strong`, `--focus-ring`, `--grain-opacity`
 - Typography
   - `--font-display`, `--font-sans`, `--font-mono`
 - Shape
   - `--radius-card`, `--radius-pill`
+
+runtime compatibility note: the current web CSS still exposes aliases such as
+`--magic-primary` and `--problem` while the React/CSS migration catches up.
+Those aliases are implementation details. New design language and new docs use
+the generic canonical tokens above.
+
+현재 `web/app/globals.css`를 직접 수정할 때는 아래 매핑을 기준으로 기존
+runtime alias를 확인한다. 새 문서와 새 컴포넌트 계약은 왼쪽 canonical role을
+사용하고, CSS migration이 끝나기 전 실제 변수명은 오른쪽 alias를 유지한다.
+
+| Canonical role | Current runtime alias |
+|---|---|
+| `--text` | `--ink` |
+| `--text-muted` | `--ink-muted` |
+| `--text-subtle` | `--muted` |
+| `--surface-inverse` | `--problem` |
+| `--surface-inverse-muted` | `--problem-soft` |
+| `--accent` | `--magic-primary` |
+| `--accent-strong` | `--magic-primary-strong` |
+| `--accent-secondary` | `--magic-accent` |
+| `--accent-secondary-strong` | `--magic-accent-strong` |
+| `--focus-ring` | `--halo` |
+
+`--halo-strong` is still present in runtime CSS as a legacy strong-focus alias,
+but it is not a canonical `DESIGN.md` token. Do not introduce
+`--focus-ring-strong` in new docs until `DESIGN.md` defines it.
+
+현재 런타임은 workflow labels와 일부 product copy도 아직 migration 전 상태다.
+`web/components/relay-app-shell.tsx`, `web/messages/en.json`,
+`web/app/layout.tsx`를 수정할 때는 현재 구현 문자열을 확인하되, 새 문서와 새
+계약은 `DESIGN.md`의 product promise와
+`Capture -> Analyze -> Refine -> Deliver`를 기준으로 작성한다.
 
 ### 2.3 테마 계약
 - Light/Dark는 `:root` 와 `:root[data-theme="dark"], .dark` 그리고
@@ -67,8 +123,13 @@ Relay UI 하드닝은 화면별 임시 CSS를 줄이고, `web/app/globals.css` +
 - `RelayAppShell`
   - 클래스: `relay-app-shell`, `relay-shell-main`, `relay-inspector`
 - 프로젝트 내비게이션(현재 Shell 내부)
-  - `relay-project-rail`, `relay-rail-section`, `relay-rail-item`, `relay-rail-glyph`,
-    `relay-rail-name`, `relay-badge-duckling`, `relay-badge-swan`
+  - Canonical roles: `status-pending`, `status-complete`
+  - Semantic runtime mapping: `relay-badge-duckling` maps to `status-pending`;
+    `relay-badge-swan` maps to `status-complete`. This is a semantic bridge;
+    the current CSS is not yet a 1:1 canonical token implementation.
+  - Current runtime classes: `relay-project-rail`, `relay-rail-section`,
+    `relay-rail-item`, `relay-rail-glyph`, `relay-rail-name`,
+    `relay-badge-duckling`, `relay-badge-swan`
   - 상태: `relay-rail-item[data-active="true"]`, `relay-rail-glyph[data-kind="snapshot|pending|active"]`
 
 ### 3.2 데이터/카드 계열 (현재 정적 클래스, 향후 컴포넌트 래핑 대상)
@@ -178,6 +239,8 @@ Relay UI 하드닝은 화면별 임시 CSS를 줄이고, `web/app/globals.css` +
 - 현재 허용된 주요 예외는 Style Memory의 `framer-motion` 카드 exit/enter
   상태, 승인 glow 애니메이션, diff 패널의 before/after 런타임 스타일처럼
   동적 상태를 직접 계산해야 하는 위치다.
+- `web/app/layout.tsx`의 body-level inline style은 전역 폰트/CSS 변수
+  migration이 끝날 때까지 별도 예외로 추적한다.
 
 확인 명령:
 
@@ -193,7 +256,7 @@ rg -n "React\\.CSSProperties|CSSProperties|style=\\{" web/app web/components
 
 ```tsx
 <RelayPageHead
-  eyebrow="Transform"
+  eyebrow="Deliver"
   title="Claude provider"
   copy="Provider keys live in Settings, outside first-run onboarding."
   actions={<RelayStatusBadge>Settings only</RelayStatusBadge>}
@@ -208,7 +271,7 @@ rg -n "React\\.CSSProperties|CSSProperties|style=\\{" web/app web/components
 
 ```tsx
 <RelayAppShell
-  activeStep="Face"
+  activeStep="Face" // current runtime alias for canonical Capture
   projectHref={projectHref}
   railItems={railItems}
   inspector={<ProjectInspector />}
@@ -255,6 +318,8 @@ rg -n "React\\.CSSProperties|CSSProperties|style=\\{" web/app web/components
   `web/components/relay/index.ts`
 - Token and component CSS:
   `web/app/globals.css`
+- DESIGN.md format specification:
+  `https://github.com/google-labs-code/design.md`
 
 ---
 

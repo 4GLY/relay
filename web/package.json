@@ -4,13 +4,16 @@
   "private": true,
   "description": "Relay V2 end-user web surface — Next.js + Tailwind v4 + shadcn + Framer Motion.",
   "engines": {
-    "node": ">=20"
+    "node": ">=24"
   },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
+    "design:lint": "node ./node_modules/@google/design.md/dist/index.js lint --format json ../DESIGN.md",
+    "design:spec": "node ./node_modules/@google/design.md/dist/index.js spec --rules",
+    "design:export:tailwind": "node ./node_modules/@google/design.md/dist/index.js export --format tailwind ../DESIGN.md",
     "typecheck": "tsc --noEmit",
     "qa:e2e": "playwright test",
     "test": "vitest run",
@@ -28,6 +31,7 @@
     "tailwind-merge": "^2.5.0"
   },
   "devDependencies": {
+    "@google/design.md": "^0.1.1",
     "@playwright/test": "^1.59.1",
     "@tailwindcss/postcss": "^4.0.0",
     "@testing-library/jest-dom": "^6.9.1",

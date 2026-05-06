@@ -4,5 +4,6 @@
 .claude/
 .gstack/
 .omc/
+.superpowers/
 .worktrees/
 __pycache__/

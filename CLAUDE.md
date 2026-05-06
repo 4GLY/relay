@@ -7,11 +7,13 @@ Relay is an API-first second-brain backend for long-running AI-assisted work, sh
 Always read `DESIGN.md` before making any visual or UI decision. All font choices, colors, spacing, and aesthetic direction are defined there. Do not deviate without explicit user approval.
 
 When you write or review any UI code:
-- Use only tokens defined in `DESIGN.md §6` (light + dark).
+- Use only tokens defined in `DESIGN.md` `Colors` and the token front matter.
+- Use canonical token language in new docs: `accent`, `surface-inverse`, `status-pending`, `status-complete`, `focus-ring`.
+- Treat existing legacy runtime CSS variables and badge class names as compatibility aliases until the web CSS migration removes them.
 - Use the declared typefaces: **Fraunces** (display + editorial italic), **Nunito** (body / UI), **Commit Mono** (mono, with **JetBrains Mono** as stand-in until licensed).
 - Never reintroduce banned fonts (Inter, Roboto, Arial, system-ui, Space Grotesk, Poppins, Montserrat, Helvetica, Open Sans, Lato, Clash Display).
-- `--magic-primary` and `--magic-accent` appear only at transformation moments. They are never ambient background.
-- Elevation uses pastel halo, not drop-shadow.
+- Accent tokens appear only for focus, review, selected paths, and completion emphasis. They are never ambient background.
+- Elevation targets soft focus-ring emphasis. Existing shared primitives still contain legacy shadow styles; do not expand them, and migrate touched surfaces toward the canonical focus-ring model.
 
 In QA mode, flag any code that does not match `DESIGN.md`.
 
@@ -19,8 +21,10 @@ In QA mode, flag any code that does not match `DESIGN.md`.
 
 The product's voice and visual identity live in `4gly_foundation.md` at `/Users/hoon-ch/repos/4gly/4gly_foundation.md`. When the design system and the foundation disagree, the foundation wins — re-sync `DESIGN.md` rather than drifting.
 
-The memorable thing: **"A quiet engine that turns chaos into swans."**
+The product promise: **"A calm workspace that turns unstructured work into reviewable decisions."**
 Every UI change must serve that sentence.
+Older runtime metadata and localized copy may lag this promise during the staged
+migration; treat `DESIGN.md` as canonical for new UI and docs.
 
 ## Skill routing
 
@@ -73,4 +77,4 @@ Key routing rules:
 - Do not commit without user approval.
 - Do not push to remote without user approval.
 - Do not add a UI feature that bypasses `DESIGN.md`.
-- Do not add illustration / mascot work on the primary surface — the swan appears through graph behavior and the 900 ms contour transform, not as cartoon art.
+- Do not add decorative metaphor or character work on the primary surface — evidence, review state, and graph behavior carry the product identity.

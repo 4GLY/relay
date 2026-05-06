@@ -1255,7 +1255,7 @@ func TestProjectGraphBuildsCanonicalProjection(t *testing.T) {
 		},
 		Artifacts: &fakeArtifactStore{
 			items: []domain.Artifact{
-				{ID: "art_1", ProjectID: projectID, Type: "design_doc", SourcePath: "docs/design.md", TrustLevel: "trusted"},
+				{ID: "art_1", ProjectID: projectID, Type: "design_doc", SourcePath: "DESIGN.md", TrustLevel: "trusted"},
 			},
 		},
 		Decisions: &fakeDecisionStore{
@@ -1377,7 +1377,7 @@ func TestProjectGraphIncludesStyleMemoryAndSnapshotEvidence(t *testing.T) {
 		Notes: &fakeNoteStore{},
 		Artifacts: &fakeArtifactStore{
 			items: []domain.Artifact{
-				{ID: "art_1", ProjectID: projectID, Type: "design_doc", SourcePath: "docs/design.md"},
+				{ID: "art_1", ProjectID: projectID, Type: "design_doc", SourcePath: "DESIGN.md"},
 			},
 		},
 		Decisions: &fakeDecisionStore{

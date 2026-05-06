@@ -3,10 +3,11 @@
 The Relay V2 end-user web surface. Public landing, the authenticated **Style Memory** screen,
 read-only **Sharable Packet Snapshot** pages, and the **1-click Onboarding** flow live here.
 
-This package only ships the scaffold (S5). The real screens land in:
+This package contains the initial scaffold plus early authenticated, onboarding,
+and shareable packet routes. The next hardening milestones are:
 
-- **S6** — Style Memory authenticated UI with the 900 ms duckling→swan signature transform.
-- **S7** — Sharable Packet Snapshot URL (`/p/{snapshotId}`); the Go backend serves `/p/{token}` from S3.
+- **S6** — Style Memory authenticated UI with the 900 ms review-to-approved transition.
+- **S7** — Sharable Packet Snapshot public URL (`/p/{token}`) is owned by the Go backend; the Next `/p/{snapshotId}` route is a migration placeholder, not the canonical renderer.
 - **S8** — 1-click Onboarding (create workspace first; provider keys move to a later settings flow).
 
 ## Stack
@@ -17,7 +18,7 @@ This package only ships the scaffold (S5). The real screens land in:
 - Framer Motion
 - `next/font/local` for self-hosted Fraunces, Nunito, JetBrains Mono, and LXGW WenKai KR for Korean UI
 
-All visual tokens come from `DESIGN.md §6`. Do not introduce additional fonts or colors.
+All visual tokens come from `DESIGN.md` `Colors` and the token front matter. Do not introduce additional fonts or colors.
 
 ## Run
 
@@ -46,8 +47,9 @@ Then open <http://localhost:3000>.
 
 ## Conventions
 
-- Use only DESIGN.md §6 tokens (`--surface`, `--ink`, `--magic-primary`, …).
+- Use `DESIGN.md` `Colors` and token front matter names as the canonical vocabulary for new design docs and contracts.
+- When editing CSS before the runtime-token migration, verify the concrete variable names in `web/app/globals.css`; some compatibility aliases still exist.
 - Use only the declared typefaces: Fraunces, Nunito, JetBrains Mono, and LXGW WenKai KR for Korean UI.
-- `--magic-primary` and `--magic-accent` only appear at transformation moments — never as
-  ambient background.
-- Elevation is pastel halo, not drop-shadow.
+- Accent tokens only appear for focus, review, selected paths, and completion emphasis — never as ambient background.
+- Canonical elevation is soft focus-ring emphasis. Some current shared primitives still carry legacy shadows; check `web/app/globals.css` before changing runtime elevation.
+- Existing legacy runtime CSS variables are compatibility aliases until the web CSS migration removes them.
